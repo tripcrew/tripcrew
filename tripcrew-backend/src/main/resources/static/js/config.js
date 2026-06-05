@@ -1,3 +1,0 @@
-const CONFIG = {
-    KAKAO_MAP_KEY: "865f24a9b340a07007316b583ca9518a"
-};
