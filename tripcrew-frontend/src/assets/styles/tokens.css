@@ -1,0 +1,76 @@
+/* ============================================
+ * TripCrew Design Tokens
+ * 화면 설계서(SC-02 Design System)에서 추출
+ * ============================================ */
+
+:root {
+  /* === Color: Primary (Teal) === */
+  --teal: #0F6E56;
+  --teal-2: #15876B;
+  --teal-3: #0A503E;
+  --teal-soft: #E6F3EF;
+  --teal-tint: #F1FAF6;
+
+  /* === Color: Accent (Coral) === */
+  --coral: #D85A30;
+  --coral-2: #C44A22;
+  --coral-soft: #FBEAE2;
+  --coral-tint: #FEF5F1;
+
+  /* === Color: Ink (Text) === */
+  --ink: #1B2027;
+  --ink-2: #343A40;
+  --ink-3: #495057;
+  --ink-soft: #6C757D;
+  --muted: #ADB5BD;
+
+  /* === Color: Background & Lines === */
+  --bg: #FFFFFF;
+  --bg-soft: #F8F9FA;
+  --bg-2: #F1F3F5;
+  --line: #E9ECEF;
+  --line-2: #DEE2E6;
+
+  /* === Color: Status === */
+  --success: #2BA66A;
+  --warning: #E89A3C;
+  --danger: #DC3545;
+  --info: #3B82F6;
+  --violet: #7B61C8;
+  --amber: #E89A3C;
+  --green: #2BA66A;
+  --blue: #3B82F6;
+  --red: #DC3545;
+
+  /* === Typography === */
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+
+  /* === Border Radius === */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 18px;
+
+  /* === Shadow === */
+  --sh-1: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
+  --sh-2: 0 2px 4px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.06);
+  --sh-3: 0 4px 8px rgba(15, 23, 42, 0.05), 0 8px 24px rgba(15, 23, 42, 0.08);
+  --sh-modal: 0 24px 48px rgba(15, 23, 42, 0.16), 0 2px 4px rgba(15, 23, 42, 0.06);
+
+  /* === Spacing scale === */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* === Layout === */
+  --container-max: 1280px;
+  --header-height: 64px;
+}
