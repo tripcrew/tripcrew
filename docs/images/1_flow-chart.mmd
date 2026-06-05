@@ -1,0 +1,38 @@
+flowchart TD
+    Start([사용자 접속]) --> Auth{로그인 여부}
+    Auth -->|비회원| Guest[게스트 진입]
+    Auth -->|로그인| Member[회원 대시보드]
+    Guest --> Choice{이용 방식 선택}
+    Member --> Choice
+
+    Choice -->|챗봇 사용| ChatInput[자연어 입력<br/>예: 부산 1박2일 부모님과]
+    Choice -->|직접 선택| ManualSearch[시도/구군/타입<br/>필터 선택]
+
+    ChatInput --> Pipeline[AI 파이프라인 실행]
+    Pipeline --> Recommend[추천 코스 자동 생성]
+
+    ManualSearch --> Browse[관광지 리스트 탐색]
+    Browse --> AddSpot[코스에 추가]
+    AddSpot --> Optimize[동선 최적화 요청]
+    Optimize --> Recommend
+
+    Recommend --> Review[코스 미리보기<br/>지도 + 타임라인]
+    Review --> Edit{수정 필요?}
+    Edit -->|예| Tweak[장소 교체/순서 변경]
+    Tweak --> Optimize
+    Edit -->|아니오| SaveCheck{회원 여부}
+
+    SaveCheck -->|비회원| ShareOnly[URL 공유만 가능]
+    SaveCheck -->|회원| SaveOrShare[저장 / 공유 선택]
+
+    SaveOrShare --> Save[(나의 여행계획에 저장)]
+    SaveOrShare --> Share[QR/URL 공유]
+    ShareOnly --> Share
+
+    Save --> End([완료])
+    Share --> End
+
+    style ChatInput fill:#FAECE7,stroke:#993C1D
+    style Pipeline fill:#EEEDFE,stroke:#3C3489
+    style Recommend fill:#E1F5EE,stroke:#085041
+    style Optimize fill:#E6F1FB,stroke:#0C447C

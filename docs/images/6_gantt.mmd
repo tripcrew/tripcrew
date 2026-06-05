@@ -1,0 +1,36 @@
+gantt
+    title EnjoyTrip 개발 일정 (6주)
+    dateFormat YYYY-MM-DD
+    axisFormat %m/%d
+
+    section Phase 0 기획
+    기획안 확정 (README)         :done,    p0, 2026-05-15, 2d
+
+    section Phase 1 기반 작업
+    DB 스키마 마이그레이션        :active,  p1a, 2026-05-17, 2d
+    DTO 정리 및 통일             :         p1b, after p1a, 1d
+    Spring Security 정상화       :         p1c, after p1b, 2d
+
+    section Phase 2 동선 최적화
+    TSP 알고리즘 Java 포팅       :         p2a, 2026-05-22, 3d
+    REST API 엔드포인트 구현      :         p2b, after p2a, 1d
+    프론트 호출부 교체           :         p2c, after p2b, 1d
+
+    section Phase 3 챗봇 MVP
+    Gemini API 연동              :         p3a, 2026-05-27, 2d
+    의도 추출 (1단계)             :         p3b, after p3a, 2d
+    DB 검색 (2단계)               :         p3c, after p3b, 2d
+
+    section Phase 4 챗봇 완성
+    동선 최적화 결합 (3단계)      :         p4a, 2026-06-04, 2d
+    응답 생성 (4단계)             :         p4b, after p4a, 1d
+    캐싱 적용                    :         p4c, after p4b, 1d
+
+    section Phase 5 부가 기능
+    Customer Voice 게시판        :         p5a, 2026-06-09, 2d
+    관리자 페이지                :         p5b, after p5a, 2d
+
+    section Phase 6 마무리
+    코스 공유 (URL/QR)           :         p6a, 2026-06-15, 2d
+    통합 테스트                  :         p6b, after p6a, 2d
+    발표 자료 준비               :         p6c, after p6b, 2d

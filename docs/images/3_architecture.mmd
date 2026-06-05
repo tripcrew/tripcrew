@@ -1,0 +1,37 @@
+flowchart LR
+    subgraph Client[클라이언트 계층]
+        Web[Vue.js SPA<br/>웹/모바일]
+    end
+
+    subgraph Backend[백엔드 계층 - Spring Boot]
+        Controller[Controller<br/>REST API]
+        Service[Service<br/>비즈니스 로직]
+        TspService[TSP Service<br/>동선 최적화]
+        ChatService[Chat Service<br/>LLM 연동]
+        Mapper[MyBatis Mapper]
+    end
+
+    subgraph DB[데이터베이스]
+        MySQL[(MySQL 8.0<br/>56K+ 관광지)]
+    end
+
+    subgraph External[외부 서비스]
+        Gemini[Google Gemini API<br/>무료 티어]
+        Kakao[Kakao Map API]
+        TourAPI[한국관광공사 API]
+    end
+
+    Web -->|HTTPS/JSON| Controller
+    Controller --> Service
+    Service --> TspService
+    Service --> ChatService
+    Service --> Mapper
+    Mapper --> MySQL
+
+    ChatService -->|자연어 처리| Gemini
+    Web -.지도 렌더링.-> Kakao
+    Service -.초기 데이터 적재.-> TourAPI
+
+    style Backend fill:#E6F1FB
+    style External fill:#FAEEDA
+    style DB fill:#E1F5EE

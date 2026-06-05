@@ -1,0 +1,38 @@
+sequenceDiagram
+    autonumber
+    participant U as 사용자
+    participant FE as Vue.js
+    participant BE as Spring Boot
+    participant LLM as Gemini API
+    participant DB as MySQL
+    participant TSP as TSP Service
+
+    U->>FE: "비 와도 갈 부산 1박2일, 부모님과"
+    FE->>BE: POST /chat/messages
+
+    rect rgb(238, 237, 254)
+    Note over BE,LLM: [1단계] 의도 추출
+    BE->>LLM: 자연어 + 추출 스키마 전송
+    LLM-->>BE: {지역:부산, 기간:2일, 동행:부모님,<br/>키워드:[실내], 제외:[야외]}
+    end
+
+    rect rgb(225, 245, 238)
+    Note over BE,DB: [2단계] DB 후보 검색
+    BE->>DB: 시도/구군/타입 + 키워드 필터링
+    DB-->>BE: 후보 N개 (실내 위주 관광지)
+    end
+
+    rect rgb(250, 236, 231)
+    Note over BE,TSP: [3단계] 코스 구성 + 동선 최적화
+    BE->>TSP: 후보 위경도 전달
+    TSP-->>BE: 최적 순서 + 일자 분배<br/>(Day1: 3곳 / Day2: 3곳)
+    end
+
+    rect rgb(250, 238, 218)
+    Note over BE,LLM: [4단계] 응답 생성
+    BE->>LLM: 코스 데이터 + 응답 톤 지시
+    LLM-->>BE: "부산 1박2일 코스를 짜드렸어요..."
+    end
+
+    BE-->>FE: {message, course[], days[]}
+    FE-->>U: 텍스트 + 추천 카드 + 지도

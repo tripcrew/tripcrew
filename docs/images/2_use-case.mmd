@@ -1,0 +1,48 @@
+graph TB
+    subgraph Actors[" "]
+        Guest((비회원))
+        User((회원))
+        Admin((관리자))
+        AI((AI 시스템<br/>Gemini))
+        PublicAPI((공공데이터 API))
+    end
+
+    subgraph System[EnjoyTrip 시스템]
+        UC1[챗봇으로 추천 받기]
+        UC2[직접 코스 설계]
+        UC3[동선 최적화]
+        UC4[회원가입/로그인]
+        UC5[여행계획 저장]
+        UC6[여행계획 조회/수정/삭제]
+        UC7[코스 공유 - URL/QR]
+        UC8[Customer Voice 작성]
+        UC9[Customer Voice 답변]
+        UC10[회원 관리]
+    end
+
+    Guest --> UC1
+    Guest --> UC2
+    Guest --> UC3
+    Guest --> UC7
+    Guest --> UC4
+
+    User --> UC1
+    User --> UC2
+    User --> UC3
+    User --> UC5
+    User --> UC6
+    User --> UC7
+    User --> UC8
+
+    Admin --> UC9
+    Admin --> UC10
+
+    UC1 -.uses.-> AI
+    UC1 -.uses.-> PublicAPI
+    UC2 -.uses.-> PublicAPI
+
+    style Guest fill:#F1EFE8
+    style User fill:#E6F1FB
+    style Admin fill:#FBEAF0
+    style AI fill:#EEEDFE
+    style PublicAPI fill:#E1F5EE

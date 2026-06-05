@@ -1,0 +1,98 @@
+erDiagram
+    member ||--o{ trip_plans : "작성"
+    member ||--o{ customer_voices : "작성"
+    member ||--o{ chat_sessions : "보유"
+    trip_plans ||--o{ trip_plan_spots : "포함"
+    trip_plan_spots }o--|| attractions : "참조"
+    attractions }o--|| sidos : "위치"
+    attractions }o--|| guguns : "위치"
+    attractions }o--|| contenttypes : "분류"
+    guguns }o--|| sidos : "소속"
+    chat_sessions ||--o{ chat_messages : "포함"
+    customer_voices }o--o| member : "답변자(관리자)"
+
+    member {
+        VARCHAR user_id PK "사용자 ID"
+        VARCHAR user_pwd "BCrypt 암호화"
+        VARCHAR user_name "이름"
+        VARCHAR email "이메일"
+        ENUM role "USER/ADMIN"
+        TIMESTAMP created_at
+    }
+
+    trip_plans {
+        INT plan_id PK
+        VARCHAR user_id FK
+        VARCHAR title "여행 제목"
+        DATE start_date "여행 시작일"
+        DATE end_date "여행 종료일"
+        VARCHAR description "설명"
+        VARCHAR share_token UK "공유 토큰"
+        TINYINT is_public "공개 여부"
+        TIMESTAMP created_at
+    }
+
+    trip_plan_spots {
+        INT spot_id PK
+        INT plan_id FK
+        INT attraction_id FK
+        INT day_number "일차 번호"
+        INT spot_order "방문 순서"
+        TIME visit_time "방문 시각"
+        VARCHAR memo "메모"
+    }
+
+    attractions {
+        INT no PK "명소 코드"
+        INT content_id "콘텐츠 번호"
+        VARCHAR title "명소 이름"
+        INT content_type_id FK
+        INT area_code FK
+        INT si_gun_gu_code FK
+        DECIMAL latitude
+        DECIMAL longitude
+        VARCHAR first_image1
+        VARCHAR addr1
+        VARCHAR overview
+    }
+
+    sidos {
+        INT sido_code PK
+        VARCHAR sido_name
+    }
+
+    guguns {
+        INT gugun_code PK
+        INT sido_code FK
+        VARCHAR gugun_name
+    }
+
+    contenttypes {
+        INT content_type_id PK
+        VARCHAR content_type_name
+    }
+
+    chat_sessions {
+        VARCHAR session_id PK "UUID"
+        VARCHAR user_id FK "NULL이면 비회원"
+        TIMESTAMP created_at
+    }
+
+    chat_messages {
+        INT message_id PK
+        VARCHAR session_id FK
+        ENUM role "user/assistant"
+        TEXT content
+        TIMESTAMP created_at
+    }
+
+    customer_voices {
+        INT voice_id PK
+        VARCHAR user_id FK
+        ENUM category "feedback/review/bug"
+        VARCHAR title
+        TEXT content
+        TEXT admin_reply
+        TIMESTAMP replied_at
+        TIMESTAMP created_at
+    }
