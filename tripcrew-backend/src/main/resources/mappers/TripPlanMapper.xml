@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.enjoytrip.tripplan.model.mapper.TripPlanMapper">
+
+    <resultMap id="tripPlanSummary" type="com.enjoytrip.tripplan.model.dto.TripPlanDto">
+        <id property="planId" column="plan_id"/>
+        <result property="userId" column="user_id"/>
+        <result property="title" column="title"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <resultMap id="tripPlanWithSpots" type="com.enjoytrip.tripplan.model.dto.TripPlanDto" extends="tripPlanSummary">
+        <collection property="spots" ofType="com.enjoytrip.tripplan.model.dto.TripPlanSpotDto" notNullColumn="spot_id">
+            <id property="spotId" column="spot_id"/>
+            <result property="planId" column="plan_id"/>
+            <result property="attractionId" column="attraction_id"/>
+            <result property="order" column="spot_order"/>
+            <result property="title" column="spot_title"/>
+            <result property="addr" column="spot_addr"/>
+            <result property="lat" column="latitude"/>
+            <result property="lng" column="longitude"/>
+            <result property="image" column="first_image"/>
+        </collection>
+    </resultMap>
+
+    <select id="getTripPlans" parameterType="string" resultMap="tripPlanSummary">
+        SELECT plan_id, user_id, title, created_at
+        FROM trip_plans
+        WHERE user_id = #{userId}
+        ORDER BY created_at DESC
+    </select>
+
+    <select id="getTripPlanDetail" parameterType="int" resultMap="tripPlanWithSpots">
+        SELECT
+            p.plan_id, p.user_id, p.title, p.created_at,
+            s.spot_id, s.attraction_id, s.spot_order,
+            a.title AS spot_title,
+            CONCAT_WS(' ', a.addr1, a.addr2) AS spot_addr,
+            a.latitude,
+            a.longitude,
+            a.first_image1 AS first_image
+        FROM trip_plans p
+        LEFT JOIN trip_plan_spots s ON p.plan_id = s.plan_id
+        LEFT JOIN attractions a ON s.attraction_id = a.no
+        WHERE p.plan_id = #{planId}
+        ORDER BY s.spot_order ASC
+    </select>
+
+    <select id="getTripPlanSpots" parameterType="int" resultType="com.enjoytrip.tripplan.model.dto.TripPlanSpotDto">
+        SELECT
+            s.spot_id,
+            s.plan_id,
+            s.attraction_id,
+            s.spot_order AS `order`,
+            a.title,
+            CONCAT_WS(' ', a.addr1, a.addr2) AS addr,
+            a.latitude AS lat,
+            a.longitude AS lng,
+            a.first_image1 AS image
+        FROM trip_plan_spots s
+        LEFT JOIN attractions a ON s.attraction_id = a.no
+        WHERE s.plan_id = #{planId}
+        ORDER BY `order`
+    </select>
+
+    <insert id="createTripPlan" parameterType="com.enjoytrip.tripplan.model.dto.TripPlanDto" useGeneratedKeys="true" keyProperty="planId">
+        INSERT INTO trip_plans (user_id, title, created_at)
+        VALUES (#{userId}, #{title}, NOW())
+    </insert>
+
+    <insert id="createTripPlanSpots" parameterType="java.util.List">
+        INSERT INTO trip_plan_spots (plan_id, attraction_id, spot_order) VALUES
+        <foreach collection="list" item="spot" separator=",">
+            (#{spot.planId}, #{spot.attractionId}, #{spot.order})
+        </foreach>
+    </insert>
+
+    <update id="updateTripPlan" parameterType="com.enjoytrip.tripplan.model.dto.TripPlanDto">
+        UPDATE trip_plans
+        SET title = #{title}
+        WHERE plan_id = #{planId}
+    </update>
+
+    <delete id="deleteTripPlanSpots" parameterType="int">
+        DELETE FROM trip_plan_spots
+        WHERE plan_id = #{planId}
+    </delete>
+
+    <delete id="deleteTripPlan" parameterType="int">
+        DELETE FROM trip_plans
+        WHERE plan_id = #{planId}
+    </delete>
+
+</mapper>
