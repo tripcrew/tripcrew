@@ -1,7 +1,7 @@
 -- =============================================================
 -- TripCrew Database Schema
 -- Target: MySQL 8 / InnoDB / utf8mb4
--- Stack : Spring Boot 3.3 + JPA (Hibernate)
+-- Stack : Spring Boot 3.3 + MyBatis + REST API
 --
 -- NOTE: Spring Boot 셋업 전이라 docs/db 에 둔다.
 --       셋업 후 src/main/resources/db/migration/V1__init.sql (Flyway)로 이동 예정.
@@ -12,8 +12,14 @@
 --   - Boolean: is_ / has_ 접두사.
 --   - 제약/인덱스: pk_/fk_/uk_/idx_/chk_ prefix.
 --   - 모든 테이블: id BIGINT AUTO_INCREMENT PK, created_at / updated_at (DATETIME, NOT NULL).
---   - ENUM 은 MySQL ENUM 대신 VARCHAR + 주석 (JPA @Enumerated(STRING) 호환 / 확장성).
+--   - ENUM 은 MySQL ENUM 대신 VARCHAR + 주석 (MyBatis EnumTypeHandler 호환 / 확장성).
 --   - 생성 순서는 FK 의존성 순서를 따름.
+--
+-- MyBatis 관련:
+--   - JPA Auditing 이 없으므로 created_at/updated_at 은 DB DEFAULT 로 채운다
+--     (DEFAULT CURRENT_TIMESTAMP / ON UPDATE CURRENT_TIMESTAMP).
+--   - 낙관적 락(version)은 자동 증가가 없으므로 UPDATE 문에서 수동 처리한다:
+--     UPDATE ... SET ..., version = version + 1 WHERE id = ? AND version = ?  -> affected rows 0 이면 충돌.
 -- =============================================================
 
 -- -------------------------------------------------------------
@@ -25,8 +31,8 @@ CREATE TABLE users (
     password    VARCHAR(255) NOT NULL COMMENT '해시 비밀번호 (BCrypt/Argon2 등, 알고리즘 교체 대비 넉넉히)',
     nickname    VARCHAR(50)  NOT NULL,
     role        VARCHAR(20)  NOT NULL DEFAULT 'USER' COMMENT 'USER | ADMIN',
-    created_at  DATETIME     NOT NULL,
-    updated_at  DATETIME     NOT NULL,
+    created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     UNIQUE KEY uk_users_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='회원';
@@ -39,8 +45,8 @@ CREATE TABLE refresh_tokens (
     user_id     BIGINT       NOT NULL,
     token       VARCHAR(255) NOT NULL,
     expires_at  DATETIME     NOT NULL,
-    created_at  DATETIME     NOT NULL,
-    updated_at  DATETIME     NOT NULL,
+    created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     UNIQUE KEY uk_refresh_tokens_token (token),
     KEY idx_refresh_tokens_user (user_id),
@@ -65,8 +71,8 @@ CREATE TABLE attractions (
     image_url   VARCHAR(500) NULL,
     cached_at   DATETIME     NOT NULL COMMENT '최초 캐싱 시각',
     synced_at   DATETIME     NOT NULL COMMENT '마지막 갱신 시각',
-    created_at  DATETIME     NOT NULL,
-    updated_at  DATETIME     NOT NULL,
+    created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     UNIQUE KEY uk_attractions_source_external (source, external_id),
     KEY idx_attractions_area (area_code)
@@ -83,9 +89,9 @@ CREATE TABLE trip_plans (
     start_date  DATE         NULL,
     end_date    DATE         NULL,
     view_count  BIGINT       NOT NULL DEFAULT 0 COMMENT 'F07 랭킹 집계 원천',
-    version     BIGINT       NOT NULL DEFAULT 0 COMMENT 'JPA @Version (낙관적 락 / 공동편집)',
-    created_at  DATETIME     NOT NULL,
-    updated_at  DATETIME     NOT NULL,
+    version     BIGINT       NOT NULL DEFAULT 0 COMMENT '낙관적 락 (MyBatis: UPDATE 시 version=version+1 + WHERE version=? 검사)',
+    created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     KEY idx_trip_plans_owner (owner_id) COMMENT '사용자별 계획 조회',
     KEY idx_trip_plans_view_count (view_count) COMMENT '랭킹 정렬 원천',
@@ -101,8 +107,8 @@ CREATE TABLE trip_members (
     trip_plan_id BIGINT      NOT NULL,
     user_id      BIGINT      NOT NULL,
     role         VARCHAR(20) NOT NULL COMMENT 'OWNER | EDITOR | VIEWER',
-    created_at   DATETIME    NOT NULL,
-    updated_at   DATETIME    NOT NULL,
+    created_at   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     UNIQUE KEY uk_trip_members (trip_plan_id, user_id) COMMENT '한 계획에 동일 유저 1행',
     KEY idx_trip_members_user (user_id) COMMENT '내가 참여중인 계획 조회',
@@ -125,8 +131,8 @@ CREATE TABLE trip_places (
     visit_day     INT          NULL COMMENT '여행 N일차 그룹',
     order_index   INT          NOT NULL COMMENT '방문 순서 (동선 최적화 결과)',
     memo          VARCHAR(255) NULL,
-    created_at    DATETIME     NOT NULL,
-    updated_at    DATETIME     NOT NULL,
+    created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     KEY idx_trip_places_plan_order (trip_plan_id, order_index) COMMENT '계획별 동선 순서 조회',
     KEY idx_trip_places_attraction (attraction_id),
@@ -148,8 +154,8 @@ CREATE TABLE reviews (
     target_id   BIGINT      NOT NULL COMMENT '대상 PK (FK 제약 없음, 앱레벨 검증)',
     rating      TINYINT     NOT NULL COMMENT '별점 1~5',
     content     TEXT        NULL,
-    created_at  DATETIME    NOT NULL,
-    updated_at  DATETIME    NOT NULL,
+    created_at  DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     KEY idx_reviews_target (target_type, target_id) COMMENT '대상별 평점 집계',
     KEY idx_reviews_user (user_id),
@@ -167,8 +173,8 @@ CREATE TABLE notices (
     title       VARCHAR(200) NOT NULL,
     content     TEXT         NOT NULL,
     is_pinned   BOOLEAN      NOT NULL DEFAULT FALSE COMMENT '상단 고정',
-    created_at  DATETIME     NOT NULL,
-    updated_at  DATETIME     NOT NULL,
+    created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     KEY idx_notices_pinned_created (is_pinned, created_at) COMMENT '고정+최신순 목록',
     CONSTRAINT fk_notices_author FOREIGN KEY (author_id)
@@ -184,8 +190,8 @@ CREATE TABLE chat_messages (
     trip_plan_id BIGINT      NULL COMMENT '관련 계획 (없을 수 있음)',
     role         VARCHAR(20) NOT NULL COMMENT 'USER | ASSISTANT',
     content      TEXT        NOT NULL,
-    created_at   DATETIME    NOT NULL,
-    updated_at   DATETIME    NOT NULL,
+    created_at   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     KEY idx_chat_messages_user (user_id),
     KEY idx_chat_messages_plan (trip_plan_id),

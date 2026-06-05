@@ -1,6 +1,6 @@
 # TripCrew ERD
 
-> Spring Boot 3.3 + MySQL 8 + JPA 기준 데이터 모델.
+> Spring Boot 3.3 + MySQL 8 + MyBatis 기준 데이터 모델.
 > 표기는 Mermaid `erDiagram`. 자세한 설계 근거는 [db-design-notes.md](./db-design-notes.md), DDL은 [db/schema.sql](./db/schema.sql) 참고.
 
 ## 다이어그램
@@ -62,7 +62,7 @@ erDiagram
         date start_date
         date end_date
         bigint view_count "랭킹(F07) 원천"
-        bigint version "JPA @Version (낙관적 락)"
+        bigint version "낙관적 락 (UPDATE 시 수동 증가)"
         datetime created_at
         datetime updated_at
     }

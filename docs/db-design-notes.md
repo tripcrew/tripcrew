@@ -1,13 +1,15 @@
 # TripCrew DB 설계 결정 사항
 
-> 대상: MySQL 8 / InnoDB / utf8mb4 · Spring Boot 3.3 + JPA(Hibernate)
+> 대상: MySQL 8 / InnoDB / utf8mb4 · Spring Boot 3.3 + MyBatis + REST API
 > 산출물: [erd.md](./erd.md) · [db/schema.sql](./db/schema.sql)
 
-## 0. 스택 관련 메모 (불일치 주의)
+## 0. 스택 메모
 
-README의 기술 스택에는 Persistence가 **MyBatis**, 인증이 **Refresh Token Rotation**, 토큰 저장에 **Redis** 사용으로 적혀 있다.
-이번 DB 설계는 작업 지시 기준인 **JPA**(`@Version` 낙관적 락 / `@Enumerated(STRING)`)와 **refresh_tokens DB 저장(단순화)** 을 따른다.
-추후 실제 구현에서 MyBatis/Redis로 가더라도 본 스키마는 그대로 쓸 수 있으나, `@Version` 자동 증가는 JPA 전제이므로 MyBatis 채택 시 version 증가 로직을 직접 작성해야 한다.
+영속성 계층은 **MyBatis**, API는 **REST**로 구현한다(README 스택과 일치). 토큰은 **refresh_tokens DB 저장(단순화)** 방식.
+> 이력: 초기 DB 설계 지시에는 "JPA(@Version/@Enumerated/Auditing)"로 적혀 있었으나, MyBatis로 확정됨에 따라 문서를 정정함. MyBatis는 JPA 같은 자동 기능이 없으므로 아래 항목을 DB/매퍼 레벨에서 직접 처리한다.
+> - **낙관적 락(version)**: 자동 증가 없음 → UPDATE 문에서 수동 처리(3.1 참고).
+> - **created_at/updated_at**: JPA Auditing 없음 → **DB DEFAULT**(`CURRENT_TIMESTAMP` / `ON UPDATE CURRENT_TIMESTAMP`)로 채움.
+> - **ENUM(VARCHAR)**: MyBatis `EnumTypeHandler`로 매핑.
 
 ## 1. 네이밍 컨벤션 (실무 기준)
 
@@ -20,13 +22,13 @@ README의 기술 스택에는 Persistence가 **MyBatis**, 인증이 **Refresh To
 | FK 컬럼 | 논리 엔티티 단수 + `_id` (`user_id`, `trip_plan_id`) | FK는 "어떤 엔티티를 가리키냐"를 표현 → 단수 유지가 관례 |
 | Boolean | `is_` / `has_` 접두사 (`is_pinned`) | 의미 명확화 |
 | PK | `id` (BIGINT AUTO_INCREMENT) | 단순/일관 |
-| 시각 | `created_at` / `updated_at` (DATETIME, NOT NULL) | JPA Auditing으로 채움 |
+| 시각 | `created_at` / `updated_at` (DATETIME, NOT NULL) | DB DEFAULT(`CURRENT_TIMESTAMP`)로 채움 |
 | 제약/인덱스 | `pk_` / `fk_` / `uk_` / `idx_` / `chk_` prefix | 식별 용이 |
-| ENUM | **MySQL ENUM 대신 VARCHAR + 주석** | ENUM은 값 추가 시 ALTER 비용·이식성 문제. `@Enumerated(STRING)` 호환 + 확장 자유 |
+| ENUM | **MySQL ENUM 대신 VARCHAR + 주석** | ENUM은 값 추가 시 ALTER 비용·이식성 문제. MyBatis `EnumTypeHandler` 호환 + 확장 자유 |
 
 > 단수형 규칙에서 복수형으로 변경한 이력: 초기엔 "테이블 단수형" 규칙이었으나, `user` 예약어 리스크(특히 PostgreSQL 이식 시)와 다수 ORM 관례를 고려해 **전 테이블 복수형**으로 전환.
 
-문자셋은 `utf8mb4`(이모지 포함 다국어). `updated_at`은 JPA `@LastModifiedDate`로 채우는 전제라 DB DEFAULT를 두지 않았다.
+문자셋은 `utf8mb4`(이모지 포함 다국어). JPA Auditing이 없으므로 `created_at`/`updated_at`은 **DB DEFAULT**로 채운다: `created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP`, `updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`.
 
 ## 2. 테이블 개요 (9개)
 
@@ -35,7 +37,7 @@ README의 기술 스택에는 Persistence가 **MyBatis**, 인증이 **Refresh To
 | `users` | F01, F09 | role(USER/ADMIN)로 관리자 권한 처리 |
 | `refresh_tokens` | F01 | DB 저장 방식 (단순화) |
 | `attractions` | F02, F07 | 외부 API 캐시, 자체 PK + (source, external_id) UNIQUE |
-| `trip_plans` | F03, F06, F07 | version(@Version), view_count(랭킹 원천) |
+| `trip_plans` | F03, F06, F07 | version(낙관적 락), view_count(랭킹 원천) |
 | `trip_members` | F06 | 공동편집 참여자 N:M, role(OWNER/EDITOR/VIEWER) |
 | `trip_places` | F04 | 동선 — order_index로 방문 순서 |
 | `reviews` | F08, F07 | 폴리모픽 대상 + rating 1~5 |
@@ -49,8 +51,15 @@ README의 기술 스택에는 Persistence가 **MyBatis**, 인증이 **Refresh To
 ## 3. 주요 설계 결정
 
 ### 3.1 낙관적 락 (F03 / F06)
-- `trip_plans.version BIGINT NOT NULL DEFAULT 0` → JPA `@Version` 매핑.
-- 공동편집 시 동시에 같은 계획을 수정하면 version 충돌로 `OptimisticLockException` 발생 → 클라이언트 재시도/머지 유도.
+- `trip_plans.version BIGINT NOT NULL DEFAULT 0`.
+- MyBatis는 `@Version` 같은 자동 증가가 없으므로 **UPDATE 문에서 수동 처리**한다:
+  ```sql
+  UPDATE trip_plans
+     SET title = #{title}, ..., version = version + 1
+   WHERE id = #{id} AND version = #{version};
+  ```
+  → affected rows가 0이면 그 사이 다른 사용자가 수정한 것(충돌)이므로 예외를 던져 클라이언트 재시도/머지를 유도한다.
+- 공동편집 시 동시에 같은 계획을 수정하면 위 조건으로 한쪽만 성공한다.
 
 ### 3.2 공동편집 참여자 (F06)
 - `trip_members`로 users ↔ trip_plans N:M.
@@ -117,7 +126,7 @@ README의 기술 스택에는 Persistence가 **MyBatis**, 인증이 **Refresh To
 ## 6. 후속 작업 (TODO)
 
 - Spring Boot 셋업 후 `schema.sql`을 `src/main/resources/db/migration/V1__init.sql`(Flyway)로 이동.
-- JPA Auditing(`@CreatedDate`/`@LastModifiedDate`) 설정 — `created_at`/`updated_at` 자동 관리.
+- MyBatis 매퍼 작성 시: `version` 낙관적 락 UPDATE 패턴(3.1), 도메인 enum용 `EnumTypeHandler` 등록.
 - `reviews` 폴리모픽 대상 존재 검증 + 대상 삭제 시 후기 정리 로직(앱레벨).
 - (실무 확장 고려) 소프트 삭제(`deleted_at`) 도입 검토 — RESTRICT 정책과 잘 맞음. 현재는 미적용.
 - (시간 부족 시) `trip_plans.view_count` 제거 검토 — 랭킹 원천을 reviews 집계만으로 단순화 가능.
