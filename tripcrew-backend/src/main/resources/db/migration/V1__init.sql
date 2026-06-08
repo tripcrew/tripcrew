@@ -56,30 +56,74 @@ CREATE TABLE refresh_tokens (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='리프레시 토큰';
 
 -- -------------------------------------------------------------
--- 3. attractions  (F02 관광지 - 외부 API 캐시 / F07 랭킹 원천)
+-- 3. sidos  (F02 관광지 지역 코드 - 제공 관광지 데이터 기준)
 -- -------------------------------------------------------------
-CREATE TABLE attractions (
-    id          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '자체 PK (외부 id와 별도)',
-    source      VARCHAR(30)  NOT NULL COMMENT '외부 출처 e.g. TOUR_API',
-    external_id VARCHAR(64)  NOT NULL COMMENT '외부 API의 id (예: TourAPI contentId)',
-    name        VARCHAR(255) NOT NULL,
-    category    VARCHAR(50)  NULL,
-    address     VARCHAR(255) NULL,
-    area_code   VARCHAR(20)  NULL COMMENT '지역 코드 (지역별 조회용)',
-    latitude    DECIMAL(10,7) NULL,
-    longitude   DECIMAL(10,7) NULL,
-    image_url   VARCHAR(500) NULL,
-    cached_at   DATETIME     NOT NULL COMMENT '최초 캐싱 시각',
-    synced_at   DATETIME     NOT NULL COMMENT '마지막 갱신 시각',
-    created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_attractions_source_external (source, external_id),
-    KEY idx_attractions_area (area_code)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='관광지 (외부 API 캐시)';
+CREATE TABLE sidos (
+    no        INT         NOT NULL AUTO_INCREMENT COMMENT '시도번호',
+    sido_code INT         NOT NULL COMMENT '시도코드',
+    sido_name VARCHAR(20) NULL COMMENT '시도이름',
+    PRIMARY KEY (no),
+    UNIQUE KEY uk_sidos_sido_code (sido_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='시도정보테이블';
 
 -- -------------------------------------------------------------
--- 4. trip_plans  (F03 여행계획 / F06 공동편집 version / F07 랭킹 원천)
+-- 4. guguns  (F02 관광지 구군 코드 - 제공 관광지 데이터 기준)
+-- -------------------------------------------------------------
+CREATE TABLE guguns (
+    no         INT         NOT NULL AUTO_INCREMENT COMMENT '구군번호',
+    sido_code  INT         NOT NULL COMMENT '시도코드',
+    gugun_code INT         NOT NULL COMMENT '구군코드',
+    gugun_name VARCHAR(20) NULL COMMENT '구군이름',
+    PRIMARY KEY (no),
+    KEY idx_guguns_sido_code (sido_code),
+    KEY idx_guguns_gugun_code (gugun_code),
+    CONSTRAINT fk_guguns_sido FOREIGN KEY (sido_code)
+        REFERENCES sidos (sido_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='구군정보테이블';
+
+-- -------------------------------------------------------------
+-- 5. contenttypes  (F02 관광지 콘텐츠 타입 - 제공 관광지 데이터 기준)
+-- -------------------------------------------------------------
+CREATE TABLE contenttypes (
+    content_type_id   INT         NOT NULL COMMENT '콘텐츠타입번호',
+    content_type_name VARCHAR(45) NULL COMMENT '콘텐츠타입이름',
+    PRIMARY KEY (content_type_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='콘텐츠타입정보테이블';
+
+-- -------------------------------------------------------------
+-- 6. attractions  (F02 관광지 - 제공 schema/dump 기준)
+-- -------------------------------------------------------------
+CREATE TABLE attractions (
+    no              INT             NOT NULL AUTO_INCREMENT COMMENT '명소코드',
+    content_id      INT             NULL COMMENT '콘텐츠번호',
+    title           VARCHAR(500)    NULL COMMENT '명소이름',
+    content_type_id INT             NULL COMMENT '콘텐츠타입',
+    area_code       INT             NULL COMMENT '시도코드',
+    si_gun_gu_code  INT             NULL COMMENT '구군코드',
+    first_image1    VARCHAR(100)    NULL COMMENT '이미지경로1',
+    first_image2    VARCHAR(100)    NULL COMMENT '이미지경로2',
+    map_level       INT             NULL COMMENT '줌레벨',
+    latitude        DECIMAL(20, 17) NULL COMMENT '위도',
+    longitude       DECIMAL(20, 17) NULL COMMENT '경도',
+    tel             VARCHAR(20)     NULL COMMENT '전화번호',
+    addr1           VARCHAR(100)    NULL COMMENT '주소1',
+    addr2           VARCHAR(100)    NULL COMMENT '주소2',
+    homepage        VARCHAR(1000)   NULL COMMENT '홈페이지',
+    overview        VARCHAR(10000)  NULL COMMENT '설명',
+    PRIMARY KEY (no),
+    KEY idx_attractions_content_type (content_type_id),
+    KEY idx_attractions_area_code (area_code),
+    KEY idx_attractions_sigungu_code (si_gun_gu_code),
+    CONSTRAINT fk_attractions_area FOREIGN KEY (area_code)
+        REFERENCES sidos (sido_code),
+    CONSTRAINT fk_attractions_sigungu FOREIGN KEY (si_gun_gu_code)
+        REFERENCES guguns (gugun_code),
+    CONSTRAINT fk_attractions_content_type FOREIGN KEY (content_type_id)
+        REFERENCES contenttypes (content_type_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='명소정보테이블';
+
+-- -------------------------------------------------------------
+-- 7. trip_plans  (F03 여행계획 / F06 공동편집 version / F07 랭킹 원천)
 -- -------------------------------------------------------------
 CREATE TABLE trip_plans (
     id          BIGINT       NOT NULL AUTO_INCREMENT,
@@ -100,7 +144,7 @@ CREATE TABLE trip_plans (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='여행 계획';
 
 -- -------------------------------------------------------------
--- 5. trip_members  (F06 공동편집 참여자 N:M)
+-- 8. trip_members  (F06 공동편집 참여자 N:M)
 -- -------------------------------------------------------------
 CREATE TABLE trip_members (
     id           BIGINT      NOT NULL AUTO_INCREMENT,
@@ -119,12 +163,12 @@ CREATE TABLE trip_members (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='여행 계획 참여자';
 
 -- -------------------------------------------------------------
--- 6. trip_places  (F04 동선 - 계획 내 장소 + 방문 순서)
+-- 9. trip_places  (F04 동선 - 계획 내 장소 + 방문 순서)
 -- -------------------------------------------------------------
 CREATE TABLE trip_places (
     id            BIGINT       NOT NULL AUTO_INCREMENT,
     trip_plan_id  BIGINT       NOT NULL,
-    attraction_id BIGINT       NULL COMMENT '관광지 참조 (NULL=커스텀 장소)',
+    attraction_id INT          NULL COMMENT '관광지 참조 (NULL=커스텀 장소)',
     name          VARCHAR(255) NOT NULL COMMENT '장소명 스냅샷 (attraction 삭제돼도 유지)',
     latitude      DECIMAL(10,7) NULL,
     longitude     DECIMAL(10,7) NULL,
@@ -139,11 +183,11 @@ CREATE TABLE trip_places (
     CONSTRAINT fk_trip_places_plan FOREIGN KEY (trip_plan_id)
         REFERENCES trip_plans (id) ON DELETE CASCADE,
     CONSTRAINT fk_trip_places_attraction FOREIGN KEY (attraction_id)
-        REFERENCES attractions (id) ON DELETE SET NULL
+        REFERENCES attractions (no) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='여행 계획 내 장소(동선)';
 
 -- -------------------------------------------------------------
--- 7. reviews  (F08 후기/평점 - 폴리모픽 대상 / F07 평점 집계 원천)
+-- 10. reviews  (F08 후기/평점 - 폴리모픽 대상 / F07 평점 집계 원천)
 --    target_type + target_id 로 attractions 또는 trip_plans 를 가리킨다.
 --    가리키는 테이블이 둘이라 DB FK 제약 불가 -> 앱레벨 검증.
 -- -------------------------------------------------------------
@@ -165,7 +209,7 @@ CREATE TABLE reviews (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='후기/평점';
 
 -- -------------------------------------------------------------
--- 8. notices  (F10 공지)
+-- 11. notices  (F10 공지)
 -- -------------------------------------------------------------
 CREATE TABLE notices (
     id          BIGINT       NOT NULL AUTO_INCREMENT,
@@ -182,7 +226,7 @@ CREATE TABLE notices (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='공지사항';
 
 -- -------------------------------------------------------------
--- 9. chat_messages  (F05 챗봇 - [옵션] 대화 로그)
+-- 12. chat_messages  (F05 챗봇 - [옵션] 대화 로그)
 -- -------------------------------------------------------------
 CREATE TABLE chat_messages (
     id           BIGINT      NOT NULL AUTO_INCREMENT,
