@@ -77,6 +77,7 @@ CREATE TABLE guguns (
     PRIMARY KEY (no),
     KEY idx_guguns_sido_code (sido_code),
     KEY idx_guguns_gugun_code (gugun_code),
+    UNIQUE KEY uk_guguns_sido_gugun (sido_code, gugun_code),
     CONSTRAINT fk_guguns_sido FOREIGN KEY (sido_code)
         REFERENCES sidos (sido_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='구군정보테이블';
@@ -113,11 +114,11 @@ CREATE TABLE attractions (
     PRIMARY KEY (no),
     KEY idx_attractions_content_type (content_type_id),
     KEY idx_attractions_area_code (area_code),
-    KEY idx_attractions_sigungu_code (si_gun_gu_code),
+    KEY idx_attractions_area_sigungu (area_code, si_gun_gu_code),
     CONSTRAINT fk_attractions_area FOREIGN KEY (area_code)
         REFERENCES sidos (sido_code),
-    CONSTRAINT fk_attractions_sigungu FOREIGN KEY (si_gun_gu_code)
-        REFERENCES guguns (gugun_code),
+    CONSTRAINT fk_attractions_sigungu FOREIGN KEY (area_code, si_gun_gu_code)
+        REFERENCES guguns (sido_code, gugun_code),
     CONSTRAINT fk_attractions_content_type FOREIGN KEY (content_type_id)
         REFERENCES contenttypes (content_type_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='명소정보테이블';
