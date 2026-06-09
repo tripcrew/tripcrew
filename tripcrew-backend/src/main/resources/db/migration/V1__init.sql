@@ -75,8 +75,9 @@ CREATE TABLE guguns (
     gugun_code INT         NOT NULL COMMENT '구군코드',
     gugun_name VARCHAR(20) NULL COMMENT '구군이름',
     PRIMARY KEY (no),
+    -- 구군코드는 시도 내에서만 유일 → (시도+구군) 복합 UNIQUE. attractions 가 이 키를 FK 로 참조한다.
+    UNIQUE KEY uk_guguns_sido_gugun (sido_code, gugun_code),
     KEY idx_guguns_sido_code (sido_code),
-    KEY idx_guguns_gugun_code (gugun_code),
     CONSTRAINT fk_guguns_sido FOREIGN KEY (sido_code)
         REFERENCES sidos (sido_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='구군정보테이블';
@@ -113,11 +114,12 @@ CREATE TABLE attractions (
     PRIMARY KEY (no),
     KEY idx_attractions_content_type (content_type_id),
     KEY idx_attractions_area_code (area_code),
-    KEY idx_attractions_sigungu_code (si_gun_gu_code),
+    KEY idx_attractions_area_sigungu (area_code, si_gun_gu_code),
     CONSTRAINT fk_attractions_area FOREIGN KEY (area_code)
         REFERENCES sidos (sido_code),
-    CONSTRAINT fk_attractions_sigungu FOREIGN KEY (si_gun_gu_code)
-        REFERENCES guguns (gugun_code),
+    -- (시도+구군) 복합 FK. 구군코드 단독은 비유일하므로 area_code 와 함께 guguns 복합키를 참조.
+    CONSTRAINT fk_attractions_sigungu FOREIGN KEY (area_code, si_gun_gu_code)
+        REFERENCES guguns (sido_code, gugun_code),
     CONSTRAINT fk_attractions_content_type FOREIGN KEY (content_type_id)
         REFERENCES contenttypes (content_type_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='명소정보테이블';
