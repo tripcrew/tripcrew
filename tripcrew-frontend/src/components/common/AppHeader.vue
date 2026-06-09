@@ -20,7 +20,9 @@
               <path d="M18 16v-5a6 6 0 1 0-12 0v5l-2 2h16l-2-2zM10 21a2 2 0 0 0 4 0"/>
             </svg>
           </button>
-          <div class="avatar avatar--sm">민</div>
+          <router-link to="/profile" class="avatar avatar--sm" :aria-label="`${displayName} 프로필`">
+            {{ avatarText }}
+          </router-link>
         </template>
         <template v-else>
           <router-link :to="{ path: '/auth', query: { mode: 'login' } }" class="nav-link">로그인</router-link>
@@ -34,12 +36,17 @@
 <script setup>
 import { computed } from 'vue'
 
+import { useAuthStore } from '@/stores/auth'
+
 const props = defineProps({
   loggedIn: { type: Boolean, default: true },
   minimal: { type: Boolean, default: false }
 })
 
+const authStore = useAuthStore()
 const logoTo = computed(() => props.loggedIn ? '/home' : '/')
+const displayName = computed(() => authStore.user?.nickname || authStore.user?.email || '사용자')
+const avatarText = computed(() => displayName.value.trim().slice(0, 1).toUpperCase() || 'U')
 </script>
 
 <style scoped>
@@ -132,6 +139,12 @@ const logoTo = computed(() => props.loggedIn ? '/home' : '/')
   color: white;
   font-weight: 700;
   font-size: 14px;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.avatar:hover {
+  background: var(--teal-2);
+  transform: translateY(-1px);
 }
 
 .avatar--sm { width: 32px; height: 32px; font-size: 13px; }
