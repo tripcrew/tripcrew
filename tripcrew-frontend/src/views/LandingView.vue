@@ -105,7 +105,7 @@
               최대 10명까지 동시 편집 · WebSocket 기반 즉시 동기화.
             </p>
             <div style="margin-top: 24px;">
-              <BaseButton variant="primary" size="lg" @click="$router.push('/auth')">
+              <BaseButton variant="primary" size="lg" @click="$router.push({ path: '/auth', query: { mode: 'signup' } })">
                 3초 만에 회원가입 →
               </BaseButton>
             </div>

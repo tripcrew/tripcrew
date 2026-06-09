@@ -1,7 +1,7 @@
 <template>
   <header class="app-header">
     <div class="app-header__inner">
-      <router-link to="/" class="app-header__logo">
+      <router-link :to="logoTo" class="app-header__logo">
         TripCrew<span class="dot">.</span>
       </router-link>
 
@@ -23,8 +23,8 @@
           <div class="avatar avatar--sm">민</div>
         </template>
         <template v-else>
-          <router-link to="/auth" class="nav-link">로그인</router-link>
-          <router-link to="/auth" class="btn btn--primary btn--sm">회원가입</router-link>
+          <router-link :to="{ path: '/auth', query: { mode: 'login' } }" class="nav-link">로그인</router-link>
+          <router-link :to="{ path: '/auth', query: { mode: 'signup' } }" class="btn btn--primary btn--sm">회원가입</router-link>
         </template>
       </div>
     </div>
@@ -32,10 +32,14 @@
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue'
+
+const props = defineProps({
   loggedIn: { type: Boolean, default: true },
   minimal: { type: Boolean, default: false }
 })
+
+const logoTo = computed(() => props.loggedIn ? '/home' : '/')
 </script>
 
 <style scoped>

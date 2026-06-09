@@ -55,7 +55,7 @@ auth/
 
 MyBatis 매퍼 인터페이스(`@Mapper`)는 `*.mapper` 패키지에, 그에 대응하는 XML은 `resources/mappers/<feature>/`에 둔다.
 
-## 로컬 실행 방법
+## Maven 직접 실행
 
 ### 사전 준비 (각자 1회)
 - **JDK 17** 이상
@@ -102,6 +102,84 @@ cd tripcrew-backend
 ./mvnw spring-boot:run
 ```
 
+## Docker Compose 로컬 실행
+
+프론트엔드, 백엔드, MySQL을 한 번에 띄우고 싶을 때는 저장소 루트에서 Docker Compose를 사용한다.
+Docker Compose 방식에서는 로컬에 설치된 MySQL을 직접 실행하지 않아도 된다.
+
+먼저 저장소 루트의 예시 파일을 복사해 개인 로컬용 `.env` 파일을 만든다.
+
+```bash
+cp .env.example .env
+```
+
+`.env`에서 각자 로컬 값을 채운다. `.env`는 git에 올라가지 않는다.
+
+```bash
+MYSQL_ROOT_PASSWORD=<본인 MySQL root 비밀번호>
+MYSQL_DATABASE=tripcrew
+MYSQL_PORT=3306
+
+DB_URL=jdbc:mysql://mysql:3306/tripcrew?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+DB_USERNAME=root
+DB_PASSWORD=<본인 MySQL root 비밀번호>
+JWT_SECRET=<openssl rand -base64 32 결과값>
+BACKEND_PORT=8080
+VITE_API_BASE_URL=http://localhost:8080/api
+```
+
+JWT 시크릿 생성:
+
+```bash
+openssl rand -base64 32
+```
+
+그 다음 실행한다.
+
+```bash
+docker compose up --build
+```
+
+실행 후 접속:
+
+- 프론트엔드: http://localhost:5173
+- 백엔드 API: `.env`의 `BACKEND_PORT` 값 사용. 기본 예시는 http://localhost:8080/api
+- 헬스체크: 기본 예시는 http://localhost:8080/api/health
+- MySQL: `.env`의 `MYSQL_PORT`, `MYSQL_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` 값 사용
+
+Docker 중심으로 개발할 때는 Docker가 표준 포트(`3306`, `8080`, `5173`)를 사용하도록 두고, 같은 포트를 쓰는 로컬 MySQL이나 직접 실행한 Spring Boot 서버는 먼저 종료한다.
+백엔드 컨테이너는 Docker 내부 네트워크의 `mysql:3306`으로 접속하므로 `MYSQL_PORT`를 바꿔도 `DB_URL`은 그대로 두면 된다.
+부득이하게 로컬 서비스와 Docker를 동시에 띄워야 한다면 `.env`에서 `MYSQL_PORT` 또는 `BACKEND_PORT`를 다른 값으로 바꿀 수 있다.
+
+백그라운드 실행:
+
+```bash
+docker compose up -d --build
+```
+
+로그 확인:
+
+```bash
+docker compose logs -f backend
+docker compose logs -f frontend
+docker compose logs -f mysql
+```
+
+중지:
+
+```bash
+docker compose down
+```
+
+DB 데이터까지 초기화:
+
+```bash
+docker compose down -v
+```
+
+Docker Compose 실행 시에는 `docker-compose.yml`이 `.env`의 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`을 읽어 백엔드 컨테이너에 주입한다.
+실제 `.env` 값은 절대 git에 커밋하지 않는다.
+
 ### 확인
 ```bash
 curl localhost:8080/api/health
@@ -123,6 +201,7 @@ curl localhost:8080/api/health
 - 앱 기동 시 `classpath:db/migration` 의 `V{버전}__{설명}.sql` 을 버전 순으로 자동 적용한다.
 - **한번 적용된 마이그레이션 파일은 절대 수정하지 않는다.** 스키마 변경은 항상 새 파일(`V2__add_xxx.sql`)로 누적한다.
 - 적용 이력은 DB의 `flyway_schema_history` 테이블에서 확인할 수 있다.
+- 로컬 Docker DB를 초기화해 마이그레이션을 처음부터 다시 적용하려면 `docker compose down -v` 후 재실행한다.
 
 ## 자주 쓰는 명령
 
@@ -131,6 +210,8 @@ curl localhost:8080/api/health
 ./mvnw test               # 테스트 (컨텍스트 로딩 시 DB 필요)
 ./mvnw spring-boot:run    # 실행
 ./mvnw clean package      # 빌드 (jar)
+docker compose up --build # 프론트+백엔드+MySQL 통합 실행
+docker compose down       # Docker Compose 중지
 ```
 
 ## 협업 규칙
