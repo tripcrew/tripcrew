@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.tripcrew.tripplan.model.mapper.TripPlanMapper">
+
+    <!-- view_count / version / created_at / updated_at 는 DB DEFAULT 로 채워진다 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO trip_plans (owner_id, title, description, start_date, end_date)
+        VALUES (#{ownerId}, #{title}, #{description}, #{startDate}, #{endDate})
+    </insert>
+
+    <select id="findById" resultType="TripPlan">
+        SELECT id, owner_id, title, description, start_date, end_date,
+               view_count, version, created_at, updated_at
+          FROM trip_plans
+         WHERE id = #{id}
+    </select>
+
+    <select id="findByOwnerId" resultType="TripPlan">
+        SELECT id, owner_id, title, description, start_date, end_date,
+               view_count, version, created_at, updated_at
+          FROM trip_plans
+         WHERE owner_id = #{ownerId}
+         ORDER BY created_at DESC, id DESC
+    </select>
+
+    <!-- 낙관적 락: 기대 version 과 일치할 때만 갱신하고 version 을 +1. affected rows 0 = 충돌 -->
+    <update id="updateWithVersion">
+        UPDATE trip_plans
+           SET title       = #{plan.title},
+               description = #{plan.description},
+               start_date  = #{plan.startDate},
+               end_date    = #{plan.endDate},
+               version     = version + 1
+         WHERE id = #{id}
+           AND version = #{expectedVersion}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM trip_plans WHERE id = #{id}
+    </delete>
+
+</mapper>
