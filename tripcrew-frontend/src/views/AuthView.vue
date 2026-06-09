@@ -1,7 +1,7 @@
 <template>
   <div class="page auth-page">
     <header class="auth-header">
-      <router-link to="/" class="logo">TripCrew<span class="dot">.</span></router-link>
+      <router-link :to="authStore.isAuthenticated ? '/home' : '/'" class="logo">TripCrew<span class="dot">.</span></router-link>
     </header>
 
     <div class="auth-grid">
@@ -48,76 +48,93 @@
           <div class="auth-tabs">
             <button
               :class="['auth-tab', { active: mode === 'login' }]"
-              @click="mode = 'login'"
+              @click="setMode('login')"
             >
               로그인
             </button>
             <button
               :class="['auth-tab', { active: mode === 'signup' }]"
-              @click="mode = 'signup'"
+              @click="setMode('signup')"
             >
               회원가입
             </button>
           </div>
 
-          <div v-if="mode === 'signup'" class="auth-form">
+          <form v-if="mode === 'signup'" class="auth-form" @submit.prevent="handleSignup">
             <h2 class="auth-form__title">계정 만들기</h2>
-            <p class="auth-form__lead">이메일과 비밀번호를 입력해주세요.</p>
+            <p class="auth-form__lead">이메일, 닉네임, 비밀번호를 입력해주세요.</p>
 
             <div class="field">
               <label>이메일 <span class="req">*</span></label>
-              <input type="email" placeholder="trip@crew.kr" />
+              <input v-model.trim="signupForm.email" type="email" placeholder="trip@crew.kr" required />
+            </div>
+
+            <div class="field">
+              <label>닉네임 <span class="req">*</span></label>
+              <input
+                v-model.trim="signupForm.nickname"
+                type="text"
+                placeholder="여행메이트"
+                maxlength="50"
+                required
+              />
             </div>
 
             <div class="field">
               <label>비밀번호 <span class="req">*</span></label>
-              <input type="password" value="password123" />
+              <input v-model="signupForm.password" type="password" minlength="8" maxlength="64" required />
               <div class="pwd-meter">
                 <div class="meter-bar">
-                  <div class="meter-fill" style="width: 60%; background: var(--warning);"></div>
+                  <div class="meter-fill" :style="passwordMeterStyle"></div>
                 </div>
-                <span class="meter-label">보통</span>
+                <span class="meter-label" :class="`meter-label--${passwordStrength.key}`">{{ passwordStrength.label }}</span>
               </div>
               <p class="field-help">영문 + 숫자 8자 이상 ✓ · 특수문자 권장</p>
             </div>
 
             <div class="field">
               <label>비밀번호 확인 <span class="req">*</span></label>
-              <input type="password" value="password" class="error-input" />
-              <p class="field-error">! 비밀번호가 일치하지 않습니다</p>
+              <input
+                v-model="signupForm.passwordConfirm"
+                type="password"
+                :class="{ 'error-input': isPasswordMismatch }"
+                required
+              />
+              <p v-if="isPasswordMismatch" class="field-error">! 비밀번호가 일치하지 않습니다</p>
             </div>
 
             <label class="check-row">
-              <input type="checkbox" />
+              <input v-model="signupForm.agreed" type="checkbox" required />
               <span>
                 <strong>서비스 이용약관</strong> 및
                 <strong>개인정보 처리방침</strong>에 동의합니다 <span class="req">*</span>
               </span>
             </label>
 
-            <BaseButton variant="primary" size="lg" full @click="$router.push('/home')">
-              계정 만들기
+            <p v-if="signupError" class="form-error">{{ signupError }}</p>
+
+            <BaseButton variant="primary" size="lg" type="submit" full :disabled="isSubmitting">
+              {{ isSubmitting ? '처리 중...' : '계정 만들기' }}
             </BaseButton>
 
             <p class="switch-mode">
               이미 계정이 있으신가요?
-              <a href="#" @click.prevent="mode = 'login'">로그인 →</a>
+              <a href="#" @click.prevent="setMode('login')">로그인 →</a>
             </p>
-          </div>
+          </form>
 
-          <div v-else class="auth-form">
+          <form v-else class="auth-form" @submit.prevent="handleLogin">
             <h2 class="auth-form__title">다시 만나서 반갑습니다 👋</h2>
             <p class="auth-form__lead">계정 정보를 입력해주세요.</p>
 
             <div class="field">
               <label>이메일</label>
-              <input type="email" placeholder="trip@crew.kr" />
+              <input v-model.trim="loginForm.email" type="email" placeholder="trip@crew.kr" required />
             </div>
 
             <div class="field">
               <label>비밀번호</label>
-              <input type="password" value="••••••••" />
-              <p class="field-error">! 비밀번호가 올바르지 않습니다 (5회 중 3회 시도)</p>
+              <input v-model="loginForm.password" type="password" required />
             </div>
 
             <div class="login-options">
@@ -128,8 +145,10 @@
               <a href="#" class="link-muted">비밀번호 찾기</a>
             </div>
 
-            <BaseButton variant="primary" size="lg" full @click="$router.push('/home')">
-              로그인
+            <p v-if="loginError" class="form-error">{{ loginError }}</p>
+
+            <BaseButton variant="primary" size="lg" type="submit" full :disabled="isSubmitting">
+              {{ isSubmitting ? '처리 중...' : '로그인' }}
             </BaseButton>
 
             <div class="divider">또는</div>
@@ -138,7 +157,7 @@
               <span class="oauth-icon">💬</span>
               카카오로 시작
             </button>
-          </div>
+          </form>
         </div>
 
         <div class="api-note">
@@ -151,10 +170,118 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import BaseButton from '@/components/common/BaseButton.vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
-const mode = ref('signup')
+import BaseButton from '@/components/common/BaseButton.vue'
+import { useAuthStore } from '@/stores/auth'
+
+const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
+const mode = ref(getModeFromQuery(route.query.mode))
+
+const signupForm = reactive({
+  email: '',
+  nickname: '',
+  password: '',
+  passwordConfirm: '',
+  agreed: false,
+})
+
+const loginForm = reactive({
+  email: '',
+  password: '',
+})
+
+const isSubmitting = ref(false)
+const signupError = ref('')
+const loginError = ref('')
+
+const isPasswordMismatch = computed(() =>
+  signupForm.passwordConfirm.length > 0 && signupForm.password !== signupForm.passwordConfirm,
+)
+
+const passwordStrength = computed(() => {
+  const password = signupForm.password
+  if (password.length === 0) return { key: 'empty', label: '입력 전', width: '12%', color: 'var(--muted)' }
+  if (password.length < 8) return { key: 'weak', label: '약함', width: '28%', color: 'var(--danger)' }
+
+  const hasLetter = /[A-Za-z]/.test(password)
+  const hasNumber = /\d/.test(password)
+  const hasSpecial = /[^A-Za-z0-9]/.test(password)
+  const score = [hasLetter, hasNumber, hasSpecial].filter(Boolean).length
+
+  if (score >= 3) return { key: 'strong', label: '좋음', width: '100%', color: 'var(--teal)' }
+  if (score >= 2) return { key: 'normal', label: '보통', width: '65%', color: 'var(--warning)' }
+  return { key: 'weak', label: '약함', width: '40%', color: 'var(--danger)' }
+})
+
+const passwordMeterStyle = computed(() => ({
+  width: passwordStrength.value.width,
+  background: passwordStrength.value.color,
+}))
+
+function getErrorMessage(error, fallback) {
+  const data = error?.response?.data
+  if (data?.errors) {
+    const firstFieldError = Object.values(data.errors)[0]
+    if (firstFieldError) return firstFieldError
+  }
+  return data?.message || fallback
+}
+
+function getModeFromQuery(queryMode) {
+  return queryMode === 'login' ? 'login' : 'signup'
+}
+
+function setMode(nextMode) {
+  mode.value = nextMode
+  router.replace({ path: '/auth', query: { mode: nextMode } })
+}
+
+watch(
+  () => route.query.mode,
+  (queryMode) => {
+    mode.value = getModeFromQuery(queryMode)
+  },
+)
+
+async function handleSignup() {
+  signupError.value = ''
+  if (isPasswordMismatch.value) return
+
+  isSubmitting.value = true
+  try {
+    const credentials = {
+      email: signupForm.email,
+      password: signupForm.password,
+    }
+    await authStore.signup({
+      ...credentials,
+      nickname: signupForm.nickname,
+    })
+    await authStore.login(credentials)
+    router.push('/home')
+  } catch (error) {
+    signupError.value = getErrorMessage(error, '회원가입에 실패했습니다. 입력값을 확인해주세요.')
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+async function handleLogin() {
+  loginError.value = ''
+  isSubmitting.value = true
+  try {
+    await authStore.login(loginForm)
+    router.push('/home')
+  } catch (error) {
+    loginError.value = getErrorMessage(error, '이메일 또는 비밀번호를 확인해주세요.')
+  } finally {
+    isSubmitting.value = false
+  }
+}
 </script>
 
 <style scoped>
@@ -354,6 +481,17 @@ const mode = ref('signup')
   font-weight: 500;
 }
 
+.form-error {
+  padding: 10px 12px;
+  margin: -4px 0 14px;
+  border: 1px solid rgba(224, 70, 85, 0.25);
+  border-radius: 8px;
+  background: #FFF5F5;
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .pwd-meter {
   display: flex;
   align-items: center;
@@ -378,6 +516,22 @@ const mode = ref('signup')
   font-size: 12px;
   font-weight: 600;
   color: var(--warning);
+}
+
+.meter-label--empty {
+  color: var(--muted);
+}
+
+.meter-label--weak {
+  color: var(--danger);
+}
+
+.meter-label--normal {
+  color: var(--warning);
+}
+
+.meter-label--strong {
+  color: var(--teal);
 }
 
 .check-row {
