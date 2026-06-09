@@ -1,6 +1,6 @@
 services:
   mysql:
-    image: mysql:8.4
+    image: mysql:8.0
     container_name: tripcrew-mysql
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}
@@ -32,7 +32,6 @@ services:
       - "${BACKEND_PORT:-8080}:8080"
     volumes:
       - ./tripcrew-backend:/app
-      - maven-repo:/root/.m2
     command: ./mvnw spring-boot:run
 
   frontend:
@@ -48,9 +47,8 @@ services:
     volumes:
       - ./tripcrew-frontend:/app
       - frontend-node-modules:/app/node_modules
-    command: npm run dev -- --host 0.0.0.0 --open false
+    command: npm run dev -- --host 0.0.0.0
 
 volumes:
   mysql-data:
-  maven-repo:
   frontend-node-modules:
