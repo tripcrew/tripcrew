@@ -11,7 +11,7 @@
             다음 여행까지 <strong>D-12</strong> · 여수 2박3일 계획이 진행 중입니다.
           </p>
         </div>
-        <BaseButton variant="primary" size="lg">+ 새 계획 만들기</BaseButton>
+        <BaseButton variant="primary" size="lg" @click="$router.push('/plans')">+ 새 계획 만들기</BaseButton>
       </section>
 
       <!-- Active plans -->
