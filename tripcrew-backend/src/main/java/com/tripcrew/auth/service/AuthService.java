@@ -94,6 +94,6 @@ public class AuthService {
                 .expiresAt(LocalDateTime.now().plus(Duration.ofMillis(jwtProvider.getRefreshTokenExpiration())))
                 .build());
 
-        return TokenResponse.of(accessToken, refreshToken);
+        return TokenResponse.of(accessToken, refreshToken, UserResponse.from(user));
     }
 }

@@ -56,6 +56,12 @@ const routes = [
     meta: { title: '내 여행 계획 (SC-09)' }
   },
   {
+    path: '/profile',
+    name: 'profile',
+    component: () => import('@/views/ProfileView.vue'),
+    meta: { title: '마이페이지' }
+  },
+  {
     path: '/attractions/:id/reviews',
     name: 'reviews',
     component: () => import('@/views/ReviewsView.vue'),

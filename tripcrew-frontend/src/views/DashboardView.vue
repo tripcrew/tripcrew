@@ -6,7 +6,7 @@
       <!-- Welcome -->
       <section class="welcome">
         <div>
-          <h1 class="welcome__title">안녕하세요, 민지 님 👋</h1>
+          <h1 class="welcome__title">안녕하세요, {{ displayName }} 님</h1>
           <p class="welcome__sub">
             다음 여행까지 <strong>D-12</strong> · 여수 2박3일 계획이 진행 중입니다.
           </p>
@@ -128,8 +128,14 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
+
 import AppHeader from '@/components/common/AppHeader.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
+const displayName = computed(() => authStore.user?.nickname || '여행자')
 
 const plans = [
   {
