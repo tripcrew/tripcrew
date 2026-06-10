@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.tripcrew.attraction.model.mapper.AttractionMapper">
+
+    <sql id="attractionSearchFrom">
+        FROM attractions a
+        LEFT JOIN sidos s
+               ON a.area_code = s.sido_code
+        LEFT JOIN guguns g
+               ON a.area_code = g.sido_code
+              AND a.si_gun_gu_code = g.gugun_code
+        LEFT JOIN contenttypes ct
+               ON a.content_type_id = ct.content_type_id
+        <where>
+            <if test="keyword != null">
+                AND (
+                    a.title LIKE CONCAT('%', #{keyword}, '%')
+                    OR a.addr1 LIKE CONCAT('%', #{keyword}, '%')
+                    OR a.addr2 LIKE CONCAT('%', #{keyword}, '%')
+                )
+            </if>
+            <if test="sidoCode != null">
+                AND a.area_code = #{sidoCode}
+            </if>
+            <if test="gugunCode != null">
+                AND a.si_gun_gu_code = #{gugunCode}
+            </if>
+            <if test="contentTypeIds != null and contentTypeIds.size() > 0">
+                AND a.content_type_id IN
+                <foreach collection="contentTypeIds" item="contentTypeId" open="(" separator="," close=")">
+                    #{contentTypeId}
+                </foreach>
+            </if>
+        </where>
+    </sql>
+
+    <select id="search" resultType="AttractionSummaryResponse">
+        SELECT
+            a.no,
+            a.title,
+            a.first_image1 AS image_url,
+            s.sido_name AS sido,
+            g.gugun_name AS gugun,
+            ct.content_type_name AS content_type,
+            CONCAT_WS(' ', a.addr1, a.addr2) AS address,
+            a.latitude,
+            a.longitude
+        <include refid="attractionSearchFrom" />
+        ORDER BY a.no DESC
+        LIMIT #{limit}
+        OFFSET #{offset}
+    </select>
+
+    <select id="count" resultType="long">
+        SELECT COUNT(*)
+        <include refid="attractionSearchFrom" />
+    </select>
+
+    <select id="findByNo" resultType="AttractionDetailResponse">
+        SELECT
+            a.no,
+            a.content_id,
+            a.title,
+            a.content_type_id,
+            ct.content_type_name AS content_type,
+            a.area_code,
+            a.si_gun_gu_code,
+            s.sido_name AS sido,
+            g.gugun_name AS gugun,
+            a.first_image1,
+            a.first_image2,
+            a.map_level,
+            a.latitude,
+            a.longitude,
+            a.tel,
+            a.addr1,
+            a.addr2,
+            a.homepage,
+            a.overview
+          FROM attractions a
+          LEFT JOIN sidos s
+                 ON a.area_code = s.sido_code
+          LEFT JOIN guguns g
+                 ON a.area_code = g.sido_code
+                AND a.si_gun_gu_code = g.gugun_code
+          LEFT JOIN contenttypes ct
+                 ON a.content_type_id = ct.content_type_id
+         WHERE a.no = #{no}
+    </select>
+
+</mapper>
