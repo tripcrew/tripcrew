@@ -177,6 +177,31 @@ DB 데이터까지 초기화:
 docker compose down -v
 ```
 
+관광 데이터 import:
+
+관광 데이터 dump 파일은 용량과 관리 편의상 git에 포함하지 않고 별도로 공유받는다.
+Docker DB를 실행한 뒤, 저장소 루트에서 아래 명령으로 import한다.
+
+```bash
+docker compose up -d
+docker compose exec -T mysql sh -c 'mysql --default-character-set=utf8mb4 -u root -p"$MYSQL_ROOT_PASSWORD" tripcrew' < /path/to/tripcrew_dump.sql
+```
+
+정상 import 여부는 MySQL에 접속해 건수를 확인한다.
+
+```bash
+docker compose exec mysql mysql --default-character-set=utf8mb4 -u root -p tripcrew
+```
+
+```sql
+SELECT COUNT(*) FROM sidos;
+SELECT COUNT(*) FROM guguns;
+SELECT COUNT(*) FROM contenttypes;
+SELECT COUNT(*) FROM attractions;
+```
+
+`docker compose down`은 DB 데이터를 유지하지만, `docker compose down -v`는 DB volume을 삭제하므로 관광 데이터를 다시 import해야 한다.
+
 Docker Compose 실행 시에는 `docker-compose.yml`이 `.env`의 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`을 읽어 백엔드 컨테이너에 주입한다.
 실제 `.env` 값은 절대 git에 커밋하지 않는다.
 
