@@ -3,147 +3,216 @@
     <AppHeader />
 
     <main class="container plan-edit-layout">
-      <header class="plan-header">
-        <div>
-          <div class="status-row">
-            <span class="status-chip status--active">진행 중</span>
-            <span class="t-mono muted">v.42</span>
-          </div>
-          <h1 class="t-h1">여수 2박3일 바다 위주</h1>
-          <p class="t-caption">2026.06.04 — 06.06 · <span class="autosave">● 자동 저장됨 (5초 전)</span></p>
-        </div>
+      <p v-if="loading" class="state-msg">불러오는 중…</p>
+      <p v-else-if="loadError" class="state-msg state-msg--error">{{ loadError }}</p>
 
-        <div class="header-right">
-          <div class="presence">
-            <div class="avatar" style="background: var(--teal);">민</div>
-            <div class="avatar" style="background: var(--coral);">지</div>
-            <div class="avatar" style="background: var(--violet);">현</div>
-          </div>
-          <BaseButton variant="secondary">미리보기</BaseButton>
-          <BaseButton variant="primary" @click="showOptimizeModal = true">동선 최적화</BaseButton>
-        </div>
-      </header>
-
-      <div class="plan-grid">
-        <!-- Days tabs + Timeline -->
-        <section class="plan-main">
-          <div class="day-tabs">
-            <button v-for="d in days" :key="d.id" :class="['day-tab', { active: d.active }]">
-              <strong>{{ d.label }}</strong>
-              <span class="t-caption">{{ d.date }}</span>
-            </button>
-            <button class="day-tab day-tab--add">+ 일자 추가</button>
-          </div>
-
-          <div class="timeline">
-            <div v-for="(item, i) in items" :key="item.id" class="timeline-row">
-              <div class="time-col">
-                <strong>{{ item.start }}</strong>
-                <span class="t-caption">{{ item.end }}</span>
-              </div>
-
-              <div class="dot-col">
-                <div class="time-dot">{{ i + 1 }}</div>
-                <div v-if="i < items.length - 1" class="time-line"></div>
-              </div>
-
-              <div class="item-col">
-                <div class="item-card">
-                  <button class="drag-handle">⋮⋮</button>
-                  <div class="item-body">
-                    <h3>{{ item.name }}</h3>
-                    <p class="t-caption">{{ item.region }} · {{ item.note }}</p>
-                  </div>
-                </div>
-                <div v-if="item.transit" class="transit-row">
-                  <span class="transit-icon">{{ item.transit.icon }}</span>
-                  <span>{{ item.transit.mode }} {{ item.transit.duration }} · {{ item.transit.distance }}</span>
-                </div>
-              </div>
+      <template v-else>
+        <header class="plan-header">
+          <div>
+            <div class="status-row">
+              <span class="status-chip status--active">계획</span>
+              <span class="t-mono muted">v.{{ form.version }}</span>
+              <span v-if="saveMsg" class="autosave">● {{ saveMsg }}</span>
             </div>
-
-            <button class="add-item-btn">+ 일정 추가</button>
+            <h1 class="t-h1">{{ form.title || '제목 없음' }}</h1>
+            <p class="t-caption muted">{{ dateLabel }}</p>
           </div>
+
+          <div class="header-right">
+            <BaseButton variant="ghost" @click="$router.push('/plans')">← 목록</BaseButton>
+            <BaseButton variant="secondary" :disabled="deleting" @click="removePlan">삭제</BaseButton>
+            <BaseButton variant="primary" :disabled="saving" @click="save">
+              {{ saving ? '저장 중…' : '저장' }}
+            </BaseButton>
+          </div>
+        </header>
+
+        <!-- F03 편집 폼 -->
+        <section class="edit-card">
+          <div class="field">
+            <label>제목</label>
+            <input v-model="form.title" type="text" maxlength="150" placeholder="여행 제목" />
+          </div>
+
+          <div class="field">
+            <label>설명</label>
+            <textarea v-model="form.description" rows="4" placeholder="이번 여행에 대한 메모"></textarea>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label>시작일</label>
+              <input v-model="form.startDate" type="date" />
+            </div>
+            <div class="field">
+              <label>종료일</label>
+              <input v-model="form.endDate" type="date" />
+            </div>
+          </div>
+
+          <p v-if="formError" class="form-error">{{ formError }}</p>
         </section>
 
-        <!-- Map -->
-        <aside class="plan-map">
-          <div class="map-canvas">
-            <div class="map-grad"></div>
-            <div class="route-pin pin-1">1</div>
-            <div class="route-pin pin-2">2</div>
-            <div class="route-pin pin-3">3</div>
-            <div class="route-pin pin-4">4</div>
-            <svg class="route-svg" viewBox="0 0 300 400">
-              <path d="M 80 80 Q 150 100 180 160 T 220 280 L 100 340" stroke="var(--coral)" stroke-width="3" stroke-dasharray="6 4" fill="none" />
-            </svg>
-          </div>
-          <div class="map-info">
-            <h4>Day 1 동선</h4>
-            <p class="t-mono">총 <strong>4.2km</strong> · <strong>47분</strong></p>
-          </div>
-          <div class="map-controls">
-            <button>+</button>
-            <button>−</button>
-          </div>
-        </aside>
-      </div>
-    </main>
-
-    <!-- Optimize Modal -->
-    <transition name="modal-fade">
-      <div v-if="showOptimizeModal" class="modal-overlay" @click.self="showOptimizeModal = false">
-        <div class="modal">
-          <header class="modal__head">
-            <h2 class="t-h2">동선을 최적화하고 있어요</h2>
-            <p class="t-caption">Day 1의 4개 장소를 가장 짧은 이동시간으로 재배열 중입니다. 다른 탭에서 계속 작업하셔도 됩니다.</p>
-          </header>
-
-          <div class="modal__progress">
-            <div class="progress-info">
-              <span class="t-mono">거리 행렬 계산 → 2-opt 후처리</span>
-              <span class="t-mono"><strong>1.4s</strong> / ~2.0s</span>
-            </div>
-            <div class="progress-bar">
-              <div class="progress-fill"></div>
-            </div>
-          </div>
-
-          <ul class="steps">
-            <li class="done">✓ 장소별 좌표 조회</li>
-            <li class="done">✓ Kakao Mobility 거리행렬 호출</li>
-            <li class="active">● 2-opt 알고리즘 실행 중...</li>
-            <li class="pending">○ 결과 WebSocket 푸시</li>
-          </ul>
-
-          <footer class="modal__foot">
-            <BaseButton variant="ghost" @click="showOptimizeModal = false">백그라운드로 보내기</BaseButton>
-          </footer>
+        <!-- F04/F06 미리보기 (아직 미연동) -->
+        <div class="preview-note">
+          아래 일정·지도·동선 최적화는 <strong>디자인 미리보기</strong>입니다 — F04(동선)·F06(공동편집) 연동 예정.
         </div>
-      </div>
-    </transition>
+
+        <div class="plan-grid is-preview">
+          <section class="plan-main">
+            <div class="day-tabs">
+              <button v-for="d in days" :key="d.id" :class="['day-tab', { active: d.active }]">
+                <strong>{{ d.label }}</strong>
+                <span class="t-caption">{{ d.date }}</span>
+              </button>
+              <button class="day-tab day-tab--add">+ 일자 추가</button>
+            </div>
+
+            <div class="timeline">
+              <div v-for="(item, i) in items" :key="item.id" class="timeline-row">
+                <div class="time-col">
+                  <strong>{{ item.start }}</strong>
+                  <span class="t-caption">{{ item.end }}</span>
+                </div>
+                <div class="dot-col">
+                  <div class="time-dot">{{ i + 1 }}</div>
+                  <div v-if="i < items.length - 1" class="time-line"></div>
+                </div>
+                <div class="item-col">
+                  <div class="item-card">
+                    <div class="item-body">
+                      <h3>{{ item.name }}</h3>
+                      <p class="t-caption">{{ item.region }}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <aside class="plan-map">
+            <div class="map-canvas"><div class="map-grad"></div></div>
+            <div class="map-info">
+              <h4>동선 미리보기</h4>
+              <p class="t-mono">F04 연동 예정</p>
+            </div>
+          </aside>
+        </div>
+      </template>
+    </main>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import AppHeader from '@/components/common/AppHeader.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
+import { tripPlanApi } from '@/api/tripPlans'
 
-const showOptimizeModal = ref(false)
+const route = useRoute()
+const router = useRouter()
+const id = route.params.id
 
+const loading = ref(true)
+const loadError = ref('')
+const saving = ref(false)
+const deleting = ref(false)
+const formError = ref('')
+const saveMsg = ref('')
+
+const form = ref({
+  title: '',
+  description: '',
+  startDate: '',
+  endDate: '',
+  version: 0,
+})
+
+const dateLabel = computed(() => {
+  const { startDate, endDate } = form.value
+  if (!startDate && !endDate) return '날짜 미정'
+  if (startDate && endDate) return `${startDate} — ${endDate}`
+  return startDate || endDate
+})
+
+function fill(plan) {
+  form.value = {
+    title: plan.title ?? '',
+    description: plan.description ?? '',
+    startDate: plan.startDate ?? '',
+    endDate: plan.endDate ?? '',
+    version: plan.version,
+  }
+}
+
+async function load() {
+  loading.value = true
+  loadError.value = ''
+  try {
+    fill(await tripPlanApi.get(id))
+  } catch (e) {
+    loadError.value = e.response?.status === 404
+      ? '여행계획을 찾을 수 없습니다.'
+      : '계획을 불러오지 못했습니다.'
+  } finally {
+    loading.value = false
+  }
+}
+
+async function save() {
+  if (saving.value) return
+  formError.value = ''
+  saveMsg.value = ''
+  saving.value = true
+  try {
+    const updated = await tripPlanApi.update(id, {
+      title: form.value.title,
+      description: form.value.description || null,
+      startDate: form.value.startDate || null,
+      endDate: form.value.endDate || null,
+      version: form.value.version,
+    })
+    fill(updated)
+    saveMsg.value = '저장됨'
+  } catch (e) {
+    const status = e.response?.status
+    if (status === 409) {
+      // 낙관적 락 충돌: 다른 사용자가 먼저 수정 → 최신본으로 재동기화
+      formError.value = '다른 사용자가 먼저 수정했습니다. 최신 내용을 다시 불러왔어요.'
+      await load()
+    } else if (status === 400) {
+      formError.value = e.response?.data?.message || '입력값을 확인해 주세요.'
+    } else {
+      formError.value = '저장에 실패했습니다.'
+    }
+  } finally {
+    saving.value = false
+  }
+}
+
+async function removePlan() {
+  if (deleting.value) return
+  if (!window.confirm('이 여행계획을 삭제할까요?')) return
+  deleting.value = true
+  try {
+    await tripPlanApi.remove(id)
+    router.push('/plans')
+  } catch (e) {
+    formError.value = '삭제에 실패했습니다.'
+    deleting.value = false
+  }
+}
+
+// --- 아래는 F04/F06 디자인 미리보기용 정적 데이터 (미연동) ---
 const days = [
-  { id: 1, label: 'Day 1', date: '6/4', active: true },
-  { id: 2, label: 'Day 2', date: '6/5', active: false },
-  { id: 3, label: 'Day 3', date: '6/6', active: false }
+  { id: 1, label: 'Day 1', date: '미정', active: true },
+]
+const items = [
+  { id: 1, start: '09:00', end: '~10:30', name: '일정 예시', region: 'F04에서 장소 추가 예정' },
 ]
 
-const items = [
-  { id: 1, start: '09:00', end: '~10:30', name: '오동도 동백숲', region: '전남 여수', note: '도보 5분', transit: { icon: '🚶', mode: '도보', duration: '8분', distance: '480m' } },
-  { id: 2, start: '11:00', end: '~12:00', name: '하멜등대', region: '전남 여수', note: '야경 명소', transit: { icon: '🚌', mode: '버스', duration: '18분', distance: '4.2km' } },
-  { id: 3, start: '13:00', end: '~14:30', name: '여수 해상케이블카', region: '자산공원 → 돌산공원', note: '', transit: { icon: '🚶', mode: '도보', duration: '12분', distance: '850m' } },
-  { id: 4, start: '15:00', end: '~17:00', name: '돌산공원 + 거북선대교', region: '전남 여수', note: '일몰 명소' }
-]
+onMounted(load)
 </script>
 
 <style scoped>
@@ -151,11 +220,18 @@ const items = [
   padding: 32px var(--space-6) 80px;
 }
 
+.state-msg {
+  padding: 60px 0;
+  text-align: center;
+  color: var(--ink-soft);
+}
+.state-msg--error { color: var(--coral); }
+
 .plan-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 28px;
+  margin-bottom: 24px;
 }
 
 .status-row {
@@ -171,44 +247,87 @@ const items = [
   padding: 4px 10px;
   border-radius: 999px;
 }
-
 .status--active { background: var(--teal); color: white; }
 
-.autosave {
-  color: var(--success);
-  font-weight: 500;
-}
+.autosave { color: var(--success); font-weight: 500; font-size: 13px; }
+.muted { color: var(--ink-soft); }
 
 .header-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
-.presence {
+/* 편집 폼 */
+.edit-card {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  padding: 24px;
   display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-bottom: 28px;
 }
 
-.presence .avatar {
-  margin-left: -8px;
-  border: 2px solid white;
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
 }
 
-.presence .avatar:first-child { margin-left: 0; }
+.field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-3);
+}
 
-.avatar {
-  width: 32px; height: 32px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  color: white;
-  font-weight: 700;
+.field input,
+.field textarea {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.field input:focus,
+.field textarea:focus {
+  border-color: var(--teal);
+}
+
+.field textarea { resize: vertical; }
+
+.field-row {
+  display: flex;
+  gap: 16px;
+}
+
+.form-error {
+  color: var(--coral);
   font-size: 13px;
 }
 
-.muted { color: var(--ink-soft); }
+/* 미리보기 배너 */
+.preview-note {
+  background: var(--bg-soft);
+  border: 1px dashed var(--line-2);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-bottom: 16px;
+}
 
-/* Plan grid */
+.is-preview {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Plan grid (preview) */
 .plan-grid {
   display: grid;
   grid-template-columns: 1.4fr 1fr;
@@ -239,19 +358,10 @@ const items = [
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
-  transition: all 0.15s;
 }
 
-.day-tab strong {
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.day-tab.active {
-  background: var(--teal);
-  color: white;
-}
-
+.day-tab strong { font-size: 14px; font-weight: 700; }
+.day-tab.active { background: var(--teal); color: white; }
 .day-tab.active .t-caption { color: rgba(255,255,255,0.8); }
 
 .day-tab--add {
@@ -264,7 +374,6 @@ const items = [
   flex-direction: row;
 }
 
-/* Timeline */
 .timeline {
   display: flex;
   flex-direction: column;
@@ -290,9 +399,7 @@ const items = [
   font-weight: 700;
 }
 
-.time-col .t-caption {
-  font-size: 11px;
-}
+.time-col .t-caption { font-size: 11px; }
 
 .dot-col {
   display: flex;
@@ -320,10 +427,7 @@ const items = [
   min-height: 30px;
 }
 
-.item-col {
-  display: flex;
-  flex-direction: column;
-}
+.item-col { display: flex; flex-direction: column; }
 
 .item-card {
   display: flex;
@@ -333,60 +437,11 @@ const items = [
   background: var(--bg-soft);
   border: 1px solid var(--line);
   border-radius: 12px;
-  transition: all 0.15s;
 }
 
-.item-card:hover {
-  border-color: var(--teal);
-  background: white;
-  box-shadow: var(--sh-1);
-}
+.item-body { flex: 1; }
+.item-body h3 { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
 
-.drag-handle {
-  color: var(--muted);
-  cursor: grab;
-  font-size: 14px;
-  letter-spacing: -2px;
-}
-
-.item-body {
-  flex: 1;
-}
-
-.item-body h3 {
-  font-size: 15px;
-  font-weight: 700;
-  margin-bottom: 2px;
-}
-
-.transit-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 16px;
-  font-size: 12px;
-  color: var(--ink-soft);
-}
-
-.transit-icon { font-size: 14px; }
-
-.add-item-btn {
-  margin-top: 12px;
-  padding: 14px;
-  background: transparent;
-  border: 1.5px dashed var(--line-2);
-  border-radius: 12px;
-  font-size: 13px;
-  color: var(--ink-soft);
-  font-weight: 600;
-}
-
-.add-item-btn:hover {
-  border-color: var(--teal);
-  color: var(--teal);
-}
-
-/* Map */
 .plan-map {
   position: sticky;
   top: 88px;
@@ -394,7 +449,7 @@ const items = [
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
   overflow: hidden;
-  height: 600px;
+  height: 320px;
   display: flex;
   flex-direction: column;
 }
@@ -411,37 +466,7 @@ const items = [
   inset: 0;
   background:
     radial-gradient(circle at 30% 40%, var(--teal-soft) 0%, transparent 50%),
-    radial-gradient(circle at 70% 70%, var(--coral-tint) 0%, transparent 50%),
-    repeating-linear-gradient(0deg, transparent 0, transparent 28px, var(--line) 28px, var(--line) 29px),
-    repeating-linear-gradient(90deg, transparent 0, transparent 28px, var(--line) 28px, var(--line) 29px);
-}
-
-.route-pin {
-  position: absolute;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--coral);
-  color: white;
-  display: grid;
-  place-items: center;
-  font-weight: 700;
-  font-size: 14px;
-  box-shadow: 0 4px 12px rgba(216, 90, 48, 0.4);
-  z-index: 2;
-}
-
-.pin-1 { top: 18%; left: 24%; }
-.pin-2 { top: 38%; left: 56%; }
-.pin-3 { top: 68%; left: 68%; }
-.pin-4 { top: 82%; left: 30%; }
-
-.route-svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
+    radial-gradient(circle at 70% 70%, var(--coral-tint) 0%, transparent 50%);
 }
 
 .map-info {
@@ -454,117 +479,4 @@ const items = [
 }
 
 .map-info h4 { font-size: 14px; font-weight: 700; }
-
-.map-controls {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  display: flex;
-  flex-direction: column;
-  background: white;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  overflow: hidden;
-  z-index: 3;
-}
-
-.map-controls button {
-  width: 32px;
-  height: 32px;
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--ink-3);
-}
-
-.map-controls button:hover { background: var(--bg-2); }
-
-/* Modal */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.5);
-  display: grid;
-  place-items: center;
-  z-index: 1000;
-}
-
-.modal {
-  background: white;
-  border-radius: var(--r-xl);
-  padding: 32px;
-  width: 90%;
-  max-width: 480px;
-  box-shadow: var(--sh-modal);
-}
-
-.modal__head {
-  text-align: center;
-  margin-bottom: 24px;
-}
-
-.modal__head .t-caption {
-  font-size: 14px;
-  margin-top: 8px;
-  color: var(--ink-soft);
-}
-
-.modal__progress {
-  margin-bottom: 24px;
-}
-
-.progress-info {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 8px;
-  font-size: 12px;
-  color: var(--ink-3);
-}
-
-.progress-info strong { color: var(--coral); font-weight: 700; }
-
-.progress-bar {
-  height: 6px;
-  background: var(--bg-2);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  width: 70%;
-  background: linear-gradient(90deg, var(--teal), var(--coral));
-  border-radius: 3px;
-  animation: progress 2s ease-in-out infinite;
-}
-
-@keyframes progress {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-.steps {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 24px;
-  padding: 20px;
-  background: var(--bg-soft);
-  border-radius: 10px;
-}
-
-.steps li {
-  font-size: 14px;
-  font-family: var(--font-mono);
-}
-
-.steps .done { color: var(--success); }
-.steps .active { color: var(--coral); font-weight: 700; }
-.steps .pending { color: var(--muted); }
-
-.modal__foot {
-  text-align: center;
-}
-
-.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.2s; }
-.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
 </style>
