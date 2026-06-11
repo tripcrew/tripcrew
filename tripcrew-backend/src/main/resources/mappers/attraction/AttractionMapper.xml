@@ -12,6 +12,15 @@
               AND a.si_gun_gu_code = g.gugun_code
         LEFT JOIN contenttypes ct
                ON a.content_type_id = ct.content_type_id
+        <include refid="attractionWhere" />
+    </sql>
+
+    <sql id="attractionCountFrom">
+        FROM attractions a
+        <include refid="attractionWhere" />
+    </sql>
+
+    <sql id="attractionWhere">
         <where>
             <if test="keyword != null">
                 AND (
@@ -54,7 +63,7 @@
 
     <select id="count" resultType="long">
         SELECT COUNT(*)
-        <include refid="attractionSearchFrom" />
+        <include refid="attractionCountFrom" />
     </select>
 
     <select id="findByNo" resultType="AttractionDetailResponse">
