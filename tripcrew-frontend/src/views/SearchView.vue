@@ -151,6 +151,7 @@ import { attractionApi } from '@/api/attractions'
 import AppHeader from '@/components/common/AppHeader.vue'
 
 const DEFAULT_PAGE_SIZE = 6
+const MIN_KEYWORD_LENGTH = 2
 
 const keyword = ref('')
 const isLoading = ref(false)
@@ -243,8 +244,10 @@ const visiblePages = computed(() => {
 })
 
 function buildParams() {
+  const normalizedKeyword = keyword.value.trim()
+
   return {
-    keyword: keyword.value || null,
+    keyword: normalizedKeyword.length >= MIN_KEYWORD_LENGTH ? normalizedKeyword : null,
     sidoCode: filters.sidoCode,
     gugunCode: filters.gugunCode,
     contentTypeIds: filters.contentTypeIds,

@@ -17,6 +17,7 @@ public class AttractionSearchRequest {
 
     private static final int DEFAULT_SIZE = 6;
     private static final int MAX_SIZE = 60;
+    private static final int MIN_KEYWORD_LENGTH = 2;
 
     private String keyword;
     private Integer sidoCode;
@@ -32,7 +33,7 @@ public class AttractionSearchRequest {
     public void normalize() {
         if (keyword != null) {
             keyword = keyword.trim();
-            if (keyword.isEmpty()) {
+            if (keyword.length() < MIN_KEYWORD_LENGTH) {
                 keyword = null;
             }
         }
