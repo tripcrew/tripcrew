@@ -23,11 +23,8 @@
     <sql id="attractionWhere">
         <where>
             <if test="keyword != null">
-                AND (
-                    a.title LIKE CONCAT('%', #{keyword}, '%')
-                    OR a.addr1 LIKE CONCAT('%', #{keyword}, '%')
-                    OR a.addr2 LIKE CONCAT('%', #{keyword}, '%')
-                )
+                AND MATCH(a.title, a.addr1, a.addr2)
+                    AGAINST(CONCAT(#{keyword}, '*') IN BOOLEAN MODE)
             </if>
             <if test="sidoCode != null">
                 AND a.area_code = #{sidoCode}
