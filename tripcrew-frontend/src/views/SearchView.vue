@@ -101,10 +101,10 @@
             v-for="a in attractions"
             :key="a.no"
             class="att-card"
-            @click="$router.push(`/attractions/${a.no}`)"
+            @click="goToDetail(a.no)"
           >
             <div class="att-card__thumb">
-              <img v-if="a.imageUrl" :src="a.imageUrl" :alt="a.title" />
+              <img v-if="a.imageUrl" :src="a.imageUrl" :alt="cleanDisplayName(a.title)" />
               <div v-else class="thumb-grad"></div>
             </div>
             <div class="att-card__body">
@@ -112,7 +112,7 @@
                 <span class="rating">TripCrew</span>
                 <span class="t-caption">{{ a.sido }} {{ a.gugun }}</span>
               </div>
-              <h3>{{ a.title }}</h3>
+              <h3>{{ cleanDisplayName(a.title) }}</h3>
               <p class="t-caption">{{ a.address || '주소 정보 없음' }}</p>
               <div class="tag-row">
                 <span v-if="a.contentType" class="chip chip--teal">{{ a.contentType }}</span>
@@ -145,7 +145,8 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import { attractionApi } from '@/api/attractions'
 import AppHeader from '@/components/common/AppHeader.vue'
@@ -153,6 +154,8 @@ import AppHeader from '@/components/common/AppHeader.vue'
 const DEFAULT_PAGE_SIZE = 6
 const MIN_KEYWORD_LENGTH = 2
 
+const route = useRoute()
+const router = useRouter()
 const keyword = ref('')
 const isLoading = ref(false)
 const errorMessage = ref('')
@@ -219,6 +222,8 @@ const contentTypes = [
 ]
 
 let debounceTimer = null
+let suppressNextRouteLoad = false
+let isApplyingRouteQuery = false
 
 const guguns = computed(() => gugunsBySido[filters.sidoCode] || [])
 const selectedSido = computed(() => sidos.find((sido) => sido.code === filters.sidoCode))
@@ -256,6 +261,66 @@ function buildParams() {
   }
 }
 
+function toPositiveNumber(value, fallback) {
+  const parsed = Number(value)
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
+}
+
+function toNullableNumber(value) {
+  const parsed = Number(value)
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null
+}
+
+function toNumberArray(value) {
+  const values = Array.isArray(value) ? value : [value]
+  return values.map((item) => Number(item)).filter((item) => Number.isInteger(item) && item > 0)
+}
+
+function applyQueryToState(query) {
+  keyword.value = typeof query.keyword === 'string' ? query.keyword : ''
+  filters.sidoCode = toNullableNumber(query.sidoCode)
+  filters.gugunCode = toNullableNumber(query.gugunCode)
+  filters.contentTypeIds = toNumberArray(query.contentTypeIds)
+  filters.page = toPositiveNumber(query.page, 1)
+  filters.size = toPositiveNumber(query.size, DEFAULT_PAGE_SIZE)
+}
+
+async function restoreQueryAndLoad() {
+  isApplyingRouteQuery = true
+  applyQueryToState(route.query)
+  await loadAttractions()
+  await nextTick()
+  isApplyingRouteQuery = false
+}
+
+function buildRouteQuery() {
+  const nextQuery = {}
+  const normalizedKeyword = keyword.value.trim()
+
+  if (normalizedKeyword) nextQuery.keyword = normalizedKeyword
+  if (filters.sidoCode) nextQuery.sidoCode = String(filters.sidoCode)
+  if (filters.gugunCode) nextQuery.gugunCode = String(filters.gugunCode)
+  if (filters.contentTypeIds.length) {
+    nextQuery.contentTypeIds = filters.contentTypeIds.map((typeId) => String(typeId))
+  }
+  if (filters.page > 1) nextQuery.page = String(filters.page)
+  if (filters.size !== DEFAULT_PAGE_SIZE) nextQuery.size = String(filters.size)
+
+  return nextQuery
+}
+
+function queriesEqual(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right)
+}
+
+async function syncRouteQuery(replace = true) {
+  const query = buildRouteQuery()
+  if (queriesEqual(route.query, query)) return
+
+  suppressNextRouteLoad = true
+  await router[replace ? 'replace' : 'push']({ name: 'search', query })
+}
+
 async function loadAttractions() {
   isLoading.value = true
   errorMessage.value = ''
@@ -277,49 +342,83 @@ async function loadAttractions() {
 }
 
 function scheduleSearch() {
+  if (isApplyingRouteQuery) return
+
   window.clearTimeout(debounceTimer)
-  debounceTimer = window.setTimeout(() => {
+  debounceTimer = window.setTimeout(async () => {
     filters.page = 1
+    await syncRouteQuery()
     loadAttractions()
   }, 300)
 }
 
-function changePage(page) {
+async function changePage(page) {
   if (page < 1 || page > pageData.totalPages || page === filters.page) return
   filters.page = page
+  await syncRouteQuery(false)
   loadAttractions()
 }
 
-function resetFilters() {
+async function resetFilters() {
   keyword.value = ''
   filters.sidoCode = null
   filters.gugunCode = null
   filters.contentTypeIds = []
   filters.page = 1
+  await syncRouteQuery()
   loadAttractions()
+}
+
+function goToDetail(no) {
+  router.push(`/attractions/${no}`)
+}
+
+function cleanDisplayName(value) {
+  return String(value || '')
+    .trim()
+    .replace(/(?:\s+\(?#?\d{5,}\)?)+\s*$/g, '')
+    .replace(/^\s*(?:\(?#?\d{5,}\)?\s+)+/g, '')
 }
 
 watch(keyword, scheduleSearch)
 
 watch(
   () => filters.sidoCode,
-  () => {
+  async () => {
+    if (isApplyingRouteQuery) return
+
     filters.gugunCode = null
     filters.page = 1
+    await syncRouteQuery()
     loadAttractions()
   },
 )
 
 watch(
   () => [filters.gugunCode, [...filters.contentTypeIds]],
-  () => {
+  async () => {
+    if (isApplyingRouteQuery) return
+
     filters.page = 1
+    await syncRouteQuery()
     loadAttractions()
   },
   { deep: true },
 )
 
-onMounted(loadAttractions)
+watch(
+  () => route.query,
+  () => {
+    if (suppressNextRouteLoad) {
+      suppressNextRouteLoad = false
+      return
+    }
+
+    restoreQueryAndLoad()
+  },
+)
+
+onMounted(restoreQueryAndLoad)
 
 onBeforeUnmount(() => {
   window.clearTimeout(debounceTimer)

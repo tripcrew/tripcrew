@@ -8,7 +8,7 @@
         <div>
           <h1 class="welcome__title">안녕하세요, {{ displayName }} 님</h1>
           <p class="welcome__sub">
-            다음 여행까지 <strong>D-12</strong> · 여수 2박3일 계획이 진행 중입니다.
+            {{ welcomeMessage }}
           </p>
         </div>
         <BaseButton variant="primary" size="lg" @click="$router.push('/plans')">+ 새 계획 만들기</BaseButton>
@@ -18,21 +18,46 @@
       <section class="block">
         <div class="block__head">
           <h2 class="t-h2">진행 중인 여행 계획</h2>
-          <span class="t-mono muted">{{ plans.length }}개</span>
+          <span class="t-mono muted">{{ dashboardPlans.length }}개</span>
         </div>
 
-        <div class="plan-grid">
-          <article v-for="p in plans" :key="p.id" class="plan-card" @click="$router.push(`/plans/${p.id}/edit`)">
+        <p v-if="plansLoading" class="plan-state">여행 계획을 불러오는 중입니다.</p>
+        <p v-else-if="plansError" class="plan-state plan-state--error">{{ plansError }}</p>
+
+        <div v-else-if="dashboardPlans.length === 0" class="plan-empty">
+          <div class="plan-empty__mark">+</div>
+          <div>
+            <h3>아직 진행 중인 여행 계획이 없어요</h3>
+            <p>새 계획을 만들고 관광지를 담으면 이곳에서 바로 이어서 편집할 수 있습니다.</p>
+          </div>
+          <BaseButton variant="secondary" @click="$router.push('/plans')">계획 만들기</BaseButton>
+        </div>
+
+        <div
+          v-else
+          ref="planRail"
+          class="plan-grid"
+          @pointerdown="startPlanDrag"
+          @pointermove="movePlanDrag"
+          @pointerup="endPlanDrag"
+          @pointerleave="endPlanDrag"
+        >
+          <article
+            v-for="p in dashboardPlans"
+            :key="p.id"
+            class="plan-card"
+            @click="openPlan(p.id)"
+          >
             <div class="plan-card__top">
               <span :class="['status-chip', `status--${p.statusKey}`]">{{ p.status }}</span>
-              <span v-if="p.dday" class="dday">D-{{ p.dday }}</span>
+              <span v-if="p.ddayLabel" class="dday">{{ p.ddayLabel }}</span>
             </div>
             <h3 class="plan-card__title">{{ p.title }}</h3>
-            <p class="plan-card__meta">{{ p.dates }} · {{ p.members }}</p>
+            <p class="plan-card__meta">{{ p.dates }}</p>
 
-            <div class="plan-card__members">
-              <div v-for="m in p.avatars" :key="m.letter" class="avatar avatar--sm" :style="{ background: m.color }">{{ m.letter }}</div>
-              <div v-if="p.extra" class="avatar avatar--sm avatar--more">+{{ p.extra }}</div>
+            <div class="plan-card__detail">
+              <span>{{ p.duration }}</span>
+              <span>수정 {{ p.updatedLabel }}</span>
             </div>
 
             <div class="progress">
@@ -128,31 +153,46 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 import AppHeader from '@/components/common/AppHeader.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
+import { tripPlanApi } from '@/api/tripPlans'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
+const router = useRouter()
 const displayName = computed(() => authStore.user?.nickname || '여행자')
+const rawPlans = ref([])
+const plansLoading = ref(true)
+const plansError = ref('')
+const planRail = ref(null)
+const planDrag = ref({
+  active: false,
+  moved: false,
+  startX: 0,
+  scrollLeft: 0,
+})
+const suppressPlanClick = ref(false)
 
-const plans = [
-  {
-    id: 42, title: '여수 2박3일 바다 위주', dates: '2026.06.04 — 06.06',
-    members: '5명 공동 편집', statusKey: 'active', status: '진행 중', dday: 12,
-    progress: 65,
-    avatars: [{ letter: '민', color: 'var(--teal)' }, { letter: '지', color: 'var(--coral)' }, { letter: '현', color: 'var(--violet)' }],
-    extra: 2
-  },
-  {
-    id: 41, title: '강릉 1박2일 카페 투어', dates: '미정 · 혼자',
-    members: '혼자', statusKey: 'draft', status: '초안', dday: null,
-    progress: 22,
-    avatars: [{ letter: '민', color: 'var(--teal)' }],
-    extra: 0
-  }
-]
+const today = startOfDay(new Date())
+
+const dashboardPlans = computed(() =>
+  rawPlans.value
+    .filter((plan) => getStatus(plan).key !== 'done')
+    .map(toDashboardPlan)
+    .sort((a, b) => a.sortTime - b.sortTime),
+)
+
+const welcomeMessage = computed(() => {
+  if (plansLoading.value) return '내 여행 계획을 확인하고 있습니다.'
+  if (dashboardPlans.value.length === 0) return '새 여행 계획을 만들고 다음 여정을 준비해 보세요.'
+  const next = dashboardPlans.value[0]
+  return next.ddayLabel
+    ? `${next.ddayLabel} · ${next.title} 계획이 기다리고 있습니다.`
+    : `${next.title} 계획을 이어서 정리해 보세요.`
+})
 
 const recommendations = [
   { id: 1, name: '통영 동피랑', rating: 4.6, tag: '자연' },
@@ -168,6 +208,161 @@ const ranking = [
   { id: 4, name: '부산 감천문화마을', region: '부산 사하', trend: 'up', delta: 1 },
   { id: 5, name: '통영 동피랑', region: '경남 통영', trend: 'same' }
 ]
+
+async function loadPlans() {
+  plansLoading.value = true
+  plansError.value = ''
+  try {
+    rawPlans.value = await tripPlanApi.list()
+  } catch (error) {
+    rawPlans.value = []
+    plansError.value = error?.response?.data?.message || '여행 계획을 불러오지 못했습니다.'
+  } finally {
+    plansLoading.value = false
+  }
+}
+
+function openPlan(planId) {
+  if (suppressPlanClick.value) {
+    suppressPlanClick.value = false
+    return
+  }
+  router.push(`/plans/${planId}/edit`)
+}
+
+function startPlanDrag(event) {
+  const rail = planRail.value
+  if (!rail) return
+  planDrag.value = {
+    active: true,
+    moved: false,
+    startX: event.clientX,
+    scrollLeft: rail.scrollLeft,
+  }
+  rail.setPointerCapture?.(event.pointerId)
+}
+
+function movePlanDrag(event) {
+  const rail = planRail.value
+  if (!rail || !planDrag.value.active) return
+  const delta = event.clientX - planDrag.value.startX
+  if (Math.abs(delta) > 4) {
+    planDrag.value.moved = true
+    suppressPlanClick.value = true
+  }
+  rail.scrollLeft = planDrag.value.scrollLeft - delta
+}
+
+function endPlanDrag() {
+  if (!planDrag.value.active) return
+  planDrag.value.active = false
+}
+
+function toDashboardPlan(plan) {
+  const status = getStatus(plan)
+  return {
+    id: plan.id,
+    title: plan.title || '제목 없음',
+    dates: formatDates(plan.startDate, plan.endDate),
+    duration: formatDuration(plan.startDate, plan.endDate),
+    updatedLabel: formatRelative(plan.updatedAt),
+    status: status.label,
+    statusKey: status.key,
+    ddayLabel: getDdayLabel(plan.startDate),
+    progress: getProgress(plan.startDate, plan.endDate),
+    sortTime: getSortTime(plan),
+  }
+}
+
+function getStatus(plan) {
+  const start = parseDate(plan.startDate)
+  const end = parseDate(plan.endDate)
+  if (!start || !end) return { key: 'draft', label: '날짜 미정' }
+  if (today < start) return { key: 'ready', label: '예정' }
+  if (today > end) return { key: 'done', label: '완료' }
+  return { key: 'active', label: '진행 중' }
+}
+
+function getDdayLabel(startDate) {
+  const start = parseDate(startDate)
+  if (!start) return ''
+  const diff = Math.round((start - today) / 86400000)
+  if (diff > 0) return `D-${diff}`
+  if (diff === 0) return 'D-Day'
+  return ''
+}
+
+function getProgress(startDate, endDate) {
+  const start = parseDate(startDate)
+  const end = parseDate(endDate)
+  if (!start || !end || end < start) return 12
+  if (today < start) return 8
+  if (today > end) return 100
+  const total = Math.max(1, Math.round((end - start) / 86400000) + 1)
+  const elapsed = Math.round((today - start) / 86400000) + 1
+  return Math.min(100, Math.max(8, Math.round((elapsed / total) * 100)))
+}
+
+function getSortTime(plan) {
+  const start = parseDate(plan.startDate)
+  const updated = plan.updatedAt ? new Date(plan.updatedAt).getTime() : 0
+  return start ? start.getTime() : Number.MAX_SAFE_INTEGER - updated
+}
+
+function formatDates(startDate, endDate) {
+  if (!startDate && !endDate) return '날짜를 정하면 일정 진행률이 표시됩니다.'
+  if (startDate && endDate) return `${formatPlanDate(startDate)} - ${formatPlanEndDate(endDate)}`
+  return formatPlanDate(startDate || endDate)
+}
+
+function formatDuration(startDate, endDate) {
+  const start = parseDate(startDate)
+  const end = parseDate(endDate)
+  if (!start || !end || end < start) return '기간 미정'
+  const days = Math.round((end - start) / 86400000) + 1
+  const nights = Math.max(0, days - 1)
+  return nights > 0 ? `${nights}박 ${days}일` : '당일 여행'
+}
+
+function formatRelative(iso) {
+  if (!iso) return '방금 전'
+  const then = new Date(iso).getTime()
+  const diffMin = Math.round((Date.now() - then) / 60000)
+  if (diffMin < 1) return '방금 전'
+  if (diffMin < 60) return `${diffMin}분 전`
+  const diffHr = Math.round(diffMin / 60)
+  if (diffHr < 24) return `${diffHr}시간 전`
+  return `${Math.round(diffHr / 24)}일 전`
+}
+
+function parseDate(value) {
+  if (!value) return null
+  const [year, month, day] = value.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function startOfDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
+function formatPlanDate(value) {
+  const date = parseDate(value)
+  if (!date) return '날짜 미정'
+  return `${date.getFullYear()}.${pad(date.getMonth() + 1)}.${pad(date.getDate())}`
+}
+
+function formatPlanEndDate(value) {
+  const date = parseDate(value)
+  if (!date) return '날짜 미정'
+  return `${pad(date.getMonth() + 1)}.${pad(date.getDate())}`
+}
+
+function pad(value) {
+  return String(value).padStart(2, '0')
+}
+
+onMounted(loadPlans)
 </script>
 
 <style scoped>
@@ -220,15 +415,90 @@ const ranking = [
 
 .muted { color: var(--ink-soft); }
 
+.plan-state {
+  padding: 36px 0;
+  text-align: center;
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
+.plan-state--error {
+  color: var(--coral);
+}
+
+.plan-empty {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 22px;
+  background: var(--bg-soft);
+  border: 1px dashed var(--line-2);
+  border-radius: var(--r-lg);
+}
+
+.plan-empty__mark {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: white;
+  color: var(--teal);
+  border: 1px solid var(--line);
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.plan-empty h3 {
+  font-size: 17px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.plan-empty p {
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
 /* Plan cards */
 .plan-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  display: flex;
   gap: 16px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding: 2px;
+  padding: 2px 2px 12px;
+  cursor: grab;
+  -webkit-overflow-scrolling: touch;
+}
+
+.plan-grid:active {
+  cursor: grabbing;
+}
+
+.plan-grid::-webkit-scrollbar {
+  height: 8px;
+}
+
+.plan-grid::-webkit-scrollbar-track {
+  background: var(--bg-soft);
+  border-radius: 999px;
+}
+
+.plan-grid::-webkit-scrollbar-thumb {
+  background: var(--line-2);
+  border-radius: 999px;
 }
 
 .plan-card {
-  background: linear-gradient(135deg, var(--teal-tint) 0%, white 60%);
+  flex: 0 0 calc((100% - 16px) / 2);
+  min-height: 190px;
+  display: flex;
+  flex-direction: column;
+  scroll-snap-align: start;
+  background: white;
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   padding: 22px;
@@ -257,6 +527,7 @@ const ranking = [
 }
 
 .status--active { background: var(--teal); color: white; }
+.status--ready { background: var(--coral-tint); color: var(--coral); }
 .status--draft { background: var(--bg-2); color: var(--ink-3); }
 .status--done { background: var(--success); color: white; }
 
@@ -272,40 +543,31 @@ const ranking = [
   font-weight: 700;
   letter-spacing: -0.4px;
   margin-bottom: 6px;
+  overflow-wrap: anywhere;
 }
 
 .plan-card__meta {
   font-size: 13px;
   color: var(--ink-soft);
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
-.plan-card__members {
+.plan-card__detail {
   display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
   margin-bottom: 16px;
 }
 
-.plan-card__members .avatar {
-  margin-left: -8px;
-  border: 2px solid white;
-}
-
-.plan-card__members .avatar:first-child { margin-left: 0; }
-
-.avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  color: white;
-  font-weight: 700;
+.plan-card__detail span {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: var(--bg-soft);
+  color: var(--ink-3);
   font-size: 12px;
-  flex-shrink: 0;
+  font-weight: 700;
 }
-
-.avatar--sm { width: 28px; height: 28px; font-size: 12px; }
-.avatar--more { background: var(--ink-2) !important; }
 
 .progress {
   display: flex;
@@ -323,7 +585,7 @@ const ranking = [
 
 .progress__fill {
   height: 100%;
-  background: var(--teal);
+  background: linear-gradient(90deg, var(--teal), var(--coral));
   border-radius: 3px;
 }
 
@@ -501,5 +763,31 @@ const ranking = [
   font-size: 14px;
   color: var(--ink);
   margin-bottom: 2px;
+}
+
+@media (max-width: 900px) {
+  .welcome {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .plan-grid,
+  .two-col,
+  .rec-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .plan-grid {
+    display: flex;
+  }
+
+  .plan-card {
+    flex-basis: min(88%, 420px);
+  }
+
+  .plan-empty {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

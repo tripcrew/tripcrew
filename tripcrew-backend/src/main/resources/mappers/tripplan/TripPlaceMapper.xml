@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.tripcrew.tripplan.model.mapper.TripPlaceMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO trip_places (
+            trip_plan_id,
+            attraction_id,
+            name,
+            latitude,
+            longitude,
+            visit_day,
+            order_index,
+            memo
+        )
+        VALUES (
+            #{tripPlanId},
+            #{attractionId},
+            #{name},
+            #{latitude},
+            #{longitude},
+            #{visitDay},
+            #{orderIndex},
+            #{memo}
+        )
+    </insert>
+
+    <select id="findByPlanId" resultType="TripPlace">
+        SELECT id, trip_plan_id, attraction_id, name, latitude, longitude,
+               visit_day, order_index, memo, created_at, updated_at
+          FROM trip_places
+         WHERE trip_plan_id = #{planId}
+         ORDER BY
+               CASE WHEN visit_day IS NULL THEN 0 ELSE 1 END,
+               visit_day ASC,
+               order_index ASC,
+               id ASC
+    </select>
+
+    <select id="findByPlanIdAndVisitDay" resultType="TripPlace">
+        SELECT id, trip_plan_id, attraction_id, name, latitude, longitude,
+               visit_day, order_index, memo, created_at, updated_at
+          FROM trip_places
+         WHERE trip_plan_id = #{planId}
+           AND visit_day = #{visitDay}
+         ORDER BY order_index ASC, id ASC
+    </select>
+
+    <select id="findByIdAndPlanId" resultType="TripPlace">
+        SELECT id, trip_plan_id, attraction_id, name, latitude, longitude,
+               visit_day, order_index, memo, created_at, updated_at
+          FROM trip_places
+         WHERE id = #{id}
+           AND trip_plan_id = #{planId}
+    </select>
+
+    <select id="maxOrderIndex" resultType="int">
+        SELECT COALESCE(MAX(order_index), 0)
+          FROM trip_places
+         WHERE trip_plan_id = #{planId}
+           AND (
+                (#{visitDay} IS NULL AND visit_day IS NULL)
+                OR visit_day = #{visitDay}
+           )
+    </select>
+
+    <update id="updateSchedule">
+        UPDATE trip_places
+           SET visit_day = #{visitDay},
+               order_index = #{orderIndex}
+         WHERE id = #{id}
+           AND trip_plan_id = #{planId}
+    </update>
+
+    <update id="updateOrderIndex">
+        UPDATE trip_places
+           SET order_index = #{orderIndex}
+         WHERE id = #{id}
+           AND trip_plan_id = #{planId}
+    </update>
+
+    <delete id="deleteByIdAndPlanId">
+        DELETE FROM trip_places
+         WHERE id = #{id}
+           AND trip_plan_id = #{planId}
+    </delete>
+</mapper>
