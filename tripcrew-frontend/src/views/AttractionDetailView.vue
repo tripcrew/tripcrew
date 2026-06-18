@@ -5,24 +5,23 @@
     <main class="container detail-layout">
       <nav class="breadcrumb">
         관광지 › {{ attraction?.sido || '지역' }} › {{ attraction?.gugun || '전체' }} ›
-        <strong>{{ attraction?.title || '상세' }}</strong>
+        <strong>{{ cleanDisplayName(attraction?.title) || '상세' }}</strong>
       </nav>
 
       <div v-if="isLoading" class="detail-state">관광지 정보를 불러오는 중입니다.</div>
       <div v-else-if="errorMessage" class="detail-state">{{ errorMessage }}</div>
 
       <template v-else-if="attraction">
-        <section class="gallery">
+        <section class="gallery" :class="{ 'gallery--single': sideImages.length === 0 }">
           <div class="gallery__main">
-            <img v-if="attraction.firstImage1" :src="attraction.firstImage1" :alt="attraction.title" />
-          </div>
-          <div class="gallery__side">
-            <div class="gallery__thumb">
-              <img v-if="attraction.firstImage2" :src="attraction.firstImage2" :alt="`${attraction.title} 보조 이미지`" />
-            </div>
-            <div class="gallery__thumb"></div>
-            <div class="gallery__thumb gallery__thumb--more">
+            <img v-if="primaryImage" :src="primaryImage" :alt="cleanDisplayName(attraction.title)" />
+            <div v-else class="gallery__placeholder">
               <span>TripCrew</span>
+            </div>
+          </div>
+          <div v-if="sideImages.length" class="gallery__side">
+            <div v-for="(image, index) in sideImages" :key="image" class="gallery__thumb">
+              <img :src="image" :alt="`${cleanDisplayName(attraction.title)} 보조 이미지 ${index + 1}`" />
             </div>
           </div>
         </section>
@@ -30,15 +29,15 @@
         <div class="detail-grid">
           <article class="detail-main">
             <header class="detail-header">
-              <div>
-                <h1 class="t-h1">{{ attraction.title }}</h1>
+              <div class="detail-title">
+                <h1 class="t-h1">{{ cleanDisplayName(attraction.title) }}</h1>
                 <p class="t-body" style="color: var(--ink-3); margin-top: 4px;">
                   {{ attraction.sido }} {{ attraction.gugun }} · {{ attraction.contentType || '관광지' }}
                 </p>
               </div>
               <div class="header-actions">
-                <button class="icon-action" type="button">♡ 찜</button>
-                <button class="icon-action" type="button" @click="copyShareUrl">↗ 공유</button>
+                <button class="icon-action" type="button" aria-label="찜" title="찜">♡</button>
+                <button class="icon-action" type="button" aria-label="공유" title="공유" @click="copyShareUrl">↗</button>
               </div>
             </header>
 
@@ -74,9 +73,42 @@
             </dl>
 
             <div class="cta-row">
-              <BaseButton variant="primary" size="lg">+ 내 여행 계획에 추가</BaseButton>
+              <BaseButton variant="primary" size="lg" :disabled="planPanelLoading" @click="openPlanPanel">
+                {{ planPanelLoading ? '계획 불러오는 중' : '+ 내 여행 계획에 추가' }}
+              </BaseButton>
               <BaseButton variant="secondary" size="lg">지도에서 보기</BaseButton>
             </div>
+
+            <section v-if="showPlanPanel" class="add-plan-panel">
+              <div v-if="planOptions.length === 0" class="add-plan-empty">
+                <strong>추가할 여행 계획이 없습니다.</strong>
+                <p class="t-caption">먼저 여행 계획을 만든 뒤 관광지를 담아 주세요.</p>
+                <BaseButton variant="secondary" size="sm" @click="$router.push('/plans')">계획 만들기</BaseButton>
+              </div>
+              <template v-else>
+                <div class="field">
+                  <label>여행 계획</label>
+                  <select v-model="selectedPlanId">
+                    <option v-for="plan in planOptions" :key="plan.id" :value="plan.id">
+                      {{ plan.title || '제목 없음' }} · {{ formatDates(plan.startDate, plan.endDate) }}
+                    </option>
+                  </select>
+                </div>
+                <div class="field field--compact">
+                  <label>Day</label>
+                  <select v-model.number="visitDay">
+                    <option v-for="day in selectedPlanDayOptions" :key="day" :value="day">
+                      Day {{ day }}
+                    </option>
+                  </select>
+                </div>
+                <BaseButton variant="secondary" :disabled="addingToPlan" @click="addToPlan">
+                  {{ addingToPlan ? '추가 중…' : '추가' }}
+                </BaseButton>
+              </template>
+              <p v-if="planMessage" class="plan-message">{{ planMessage }}</p>
+              <p v-if="planError" class="plan-error">{{ planError }}</p>
+            </section>
 
             <section class="reviews-preview">
               <header class="block-head">
@@ -100,15 +132,15 @@
                 <span class="t-mono">Tour data</span>
               </header>
               <div class="location-box">
-                <strong>{{ attraction.latitude }}, {{ attraction.longitude }}</strong>
-                <p class="t-caption">{{ fullAddress || '주소 정보 없음' }}</p>
+                <strong>{{ fullAddress || '주소 정보 없음' }}</strong>
+                <p class="t-caption">{{ attraction.sido }} {{ attraction.gugun }}</p>
               </div>
             </section>
 
             <section class="info-card">
               <header class="info-head">
                 <h3>기본 정보</h3>
-                <span class="t-mono">contentId {{ attraction.contentId }}</span>
+                <span class="t-mono">Tour data</span>
               </header>
               <ul class="ev-list">
                 <li>
@@ -119,8 +151,8 @@
                 </li>
                 <li>
                   <div>
-                    <strong>지역 코드</strong>
-                    <p class="t-caption">{{ attraction.areaCode }} / {{ attraction.siGunGuCode }}</p>
+                    <strong>지역</strong>
+                    <p class="t-caption">{{ attraction.sido }} {{ attraction.gugun }}</p>
                   </div>
                 </li>
               </ul>
@@ -137,6 +169,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import { attractionApi } from '@/api/attractions'
+import { tripPlanApi } from '@/api/tripPlans'
 import AppHeader from '@/components/common/AppHeader.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
 
@@ -144,10 +177,34 @@ const route = useRoute()
 const attraction = ref(null)
 const isLoading = ref(false)
 const errorMessage = ref('')
+const showPlanPanel = ref(false)
+const planPanelLoading = ref(false)
+const addingToPlan = ref(false)
+const planOptions = ref([])
+const selectedPlanId = ref(null)
+const visitDay = ref(1)
+const planMessage = ref('')
+const planError = ref('')
 
 const fullAddress = computed(() =>
   [attraction.value?.addr1, attraction.value?.addr2].filter(Boolean).join(' '),
 )
+
+const galleryImages = computed(() =>
+  [attraction.value?.firstImage1, attraction.value?.firstImage2]
+    .map((image) => image?.trim())
+    .filter(Boolean),
+)
+
+const primaryImage = computed(() => galleryImages.value[0] || '')
+const sideImages = computed(() => galleryImages.value.slice(1))
+const selectedPlan = computed(() =>
+  planOptions.value.find((plan) => plan.id === selectedPlanId.value),
+)
+const selectedPlanDayOptions = computed(() => {
+  const count = getPlanDayCount(selectedPlan.value)
+  return Array.from({ length: count }, (_, index) => index + 1)
+})
 
 async function loadAttraction() {
   isLoading.value = true
@@ -171,6 +228,75 @@ async function copyShareUrl() {
     window.alert('링크 복사에 실패했습니다.')
   }
 }
+
+async function openPlanPanel() {
+  showPlanPanel.value = true
+  planMessage.value = ''
+  planError.value = ''
+  if (planOptions.value.length > 0) return
+
+  planPanelLoading.value = true
+  try {
+    planOptions.value = await tripPlanApi.list()
+    selectedPlanId.value = planOptions.value[0]?.id ?? null
+    visitDay.value = selectedPlanDayOptions.value[0] ?? 1
+  } catch (error) {
+    planError.value = error?.response?.data?.message || '여행 계획 목록을 불러오지 못했습니다.'
+  } finally {
+    planPanelLoading.value = false
+  }
+}
+
+async function addToPlan() {
+  if (!selectedPlanId.value || !attraction.value || addingToPlan.value) return
+  addingToPlan.value = true
+  planMessage.value = ''
+  planError.value = ''
+
+  try {
+    const allowedDays = selectedPlanDayOptions.value
+    if (!allowedDays.includes(visitDay.value)) {
+      visitDay.value = allowedDays[0] ?? 1
+    }
+    await tripPlanApi.addPlace(selectedPlanId.value, {
+      attractionId: attraction.value.no,
+      visitDay: visitDay.value || null,
+      memo: null,
+    })
+    planMessage.value = '여행 계획에 추가했습니다.'
+  } catch (error) {
+    planError.value = error?.response?.data?.message || '여행 계획에 추가하지 못했습니다.'
+  } finally {
+    addingToPlan.value = false
+  }
+}
+
+function formatDates(start, end) {
+  if (!start && !end) return '날짜 미정'
+  if (start && end) return `${start} ~ ${end}`
+  return start || end
+}
+
+function cleanDisplayName(value) {
+  return String(value || '')
+    .trim()
+    .replace(/(?:\s+\(?#?\d{5,}\)?)+\s*$/g, '')
+    .replace(/^\s*(?:\(?#?\d{5,}\)?\s+)+/g, '')
+}
+
+function getPlanDayCount(plan) {
+  if (!plan?.startDate || !plan?.endDate) return 1
+  const start = new Date(plan.startDate)
+  const end = new Date(plan.endDate)
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return 1
+  return Math.floor((end - start) / 86400000) + 1
+}
+
+watch(selectedPlanId, () => {
+  if (!selectedPlanDayOptions.value.includes(visitDay.value)) {
+    visitDay.value = selectedPlanDayOptions.value[0] ?? 1
+  }
+})
 
 watch(() => route.params.id, loadAttraction)
 onMounted(loadAttraction)
@@ -204,10 +330,14 @@ onMounted(loadAttraction)
 
 .gallery {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: minmax(0, 2fr) minmax(220px, 1fr);
   gap: 12px;
   margin-bottom: 32px;
-  height: 380px;
+  align-items: stretch;
+}
+
+.gallery--single {
+  grid-template-columns: 1fr;
 }
 
 .gallery__main,
@@ -215,10 +345,13 @@ onMounted(loadAttraction)
   background: linear-gradient(135deg, var(--teal-soft), var(--coral-tint));
   position: relative;
   overflow: hidden;
+  min-width: 0;
+  min-height: 0;
 }
 
 .gallery__main {
   border-radius: var(--r-lg);
+  height: clamp(280px, 31vw, 420px);
 }
 
 .gallery__main img,
@@ -231,16 +364,18 @@ onMounted(loadAttraction)
 
 .gallery__side {
   display: grid;
-  grid-template-rows: 1fr 1fr;
-  grid-template-columns: 1fr 1fr;
+  grid-auto-rows: minmax(0, 1fr);
   gap: 12px;
+  height: clamp(280px, 31vw, 420px);
 }
 
 .gallery__thumb {
   border-radius: var(--r-md);
 }
 
-.gallery__thumb--more {
+.gallery__placeholder {
+  width: 100%;
+  height: 100%;
   display: grid;
   place-items: center;
   background: rgba(15, 23, 42, 0.6);
@@ -266,24 +401,45 @@ onMounted(loadAttraction)
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  gap: 16px;
   margin-bottom: 20px;
+}
+
+.detail-title {
+  min-width: 0;
+  flex: 1;
+}
+
+.detail-title h1 {
+  overflow-wrap: anywhere;
 }
 
 .header-actions {
   display: flex;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .icon-action {
-  padding: 8px 14px;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
   background: var(--bg-soft);
   border: 1px solid var(--line);
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
+  border-radius: 10px;
+  color: var(--ink-2);
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
 }
 
-.icon-action:hover { background: var(--bg-2); }
+.icon-action:hover {
+  background: var(--bg-2);
+  border-color: var(--line-2);
+  transform: translateY(-1px);
+}
 
 .rating-block {
   display: flex;
@@ -351,6 +507,67 @@ onMounted(loadAttraction)
   gap: 10px;
   margin-bottom: 32px;
 }
+
+.add-plan-panel {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 96px auto;
+  gap: 10px;
+  align-items: end;
+  padding: 16px;
+  margin-bottom: 32px;
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.add-plan-empty {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.add-plan-empty strong {
+  font-size: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  color: var(--ink-3);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.field select,
+.field input {
+  width: 100%;
+  height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0 12px;
+  background: white;
+  font: inherit;
+}
+
+.field--compact {
+  min-width: 84px;
+}
+
+.plan-message,
+.plan-error {
+  grid-column: 1 / -1;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.plan-message { color: var(--success); }
+.plan-error { color: var(--coral); }
 
 .reviews-preview {
   border-top: 1px solid var(--line);
@@ -460,5 +677,40 @@ onMounted(loadAttraction)
 
 .ev-list p {
   font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .gallery {
+    grid-template-columns: 1fr;
+  }
+
+  .gallery__main,
+  .gallery__side {
+    height: auto;
+  }
+
+  .gallery__main {
+    aspect-ratio: 16 / 10;
+  }
+
+  .gallery__side {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+
+  .gallery__thumb {
+    aspect-ratio: 4 / 3;
+  }
+
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-header {
+    align-items: flex-start;
+  }
+
+  .add-plan-panel {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
