@@ -14,7 +14,7 @@
       </nav>
 
       <div class="app-header__actions">
-        <template v-if="loggedIn">
+        <template v-if="isLoggedIn">
           <button class="icon-btn" aria-label="알림">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M18 16v-5a6 6 0 1 0-12 0v5l-2 2h16l-2-2zM10 21a2 2 0 0 0 4 0"/>
@@ -39,12 +39,13 @@ import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 
 const props = defineProps({
-  loggedIn: { type: Boolean, default: true },
+  loggedIn: { type: Boolean, default: null },
   minimal: { type: Boolean, default: false }
 })
 
 const authStore = useAuthStore()
-const logoTo = computed(() => props.loggedIn ? '/home' : '/')
+const isLoggedIn = computed(() => props.loggedIn ?? authStore.isAuthenticated)
+const logoTo = computed(() => isLoggedIn.value ? '/home' : '/')
 const displayName = computed(() => authStore.user?.nickname || authStore.user?.email || '사용자')
 const avatarText = computed(() => displayName.value.trim().slice(0, 1).toUpperCase() || 'U')
 </script>

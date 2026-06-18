@@ -262,7 +262,7 @@ async function handleSignup() {
       nickname: signupForm.nickname,
     })
     await authStore.login(credentials)
-    router.push('/home')
+    router.push(getRedirectTarget())
   } catch (error) {
     signupError.value = getErrorMessage(error, '회원가입에 실패했습니다. 입력값을 확인해주세요.')
   } finally {
@@ -275,12 +275,20 @@ async function handleLogin() {
   isSubmitting.value = true
   try {
     await authStore.login(loginForm)
-    router.push('/home')
+    router.push(getRedirectTarget())
   } catch (error) {
     loginError.value = getErrorMessage(error, '이메일 또는 비밀번호를 확인해주세요.')
   } finally {
     isSubmitting.value = false
   }
+}
+
+function getRedirectTarget() {
+  const redirect = route.query.redirect
+  if (typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')) {
+    return redirect
+  }
+  return '/home'
 }
 </script>
 

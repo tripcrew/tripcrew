@@ -96,27 +96,21 @@
               >
                 보관함
               </button>
+
+              <button
+                type="button"
+                class="optimize-btn"
+                :disabled="selectedDay === null || visiblePlaces.length < 2 || optimizing"
+                @click="optimizeRoute"
+              >
+                {{ optimizing ? '최적화 중…' : '동선 최적화' }}
+              </button>
             </div>
 
             <form class="place-form" @submit.prevent="addCustomPlace">
-              <div class="field">
+              <div class="field place-form__name">
                 <label>직접 추가</label>
                 <input v-model.trim="placeForm.name" type="text" maxlength="255" placeholder="장소 이름" />
-              </div>
-              <div class="field field--small">
-                <label>Day</label>
-                <div class="day-field-control">
-                  <input
-                    v-model.number="placeForm.visitDay"
-                    type="number"
-                    min="1"
-                    :max="dayCount"
-                    :disabled="placeForm.visitDay === null"
-                  />
-                  <button type="button" class="storage-inline" @click="togglePlaceFormStorage">
-                    {{ placeForm.visitDay === null ? 'Day로' : '보관' }}
-                  </button>
-                </div>
               </div>
               <div class="field field--small">
                 <label>위도</label>
@@ -126,9 +120,11 @@
                 <label>경도</label>
                 <input v-model="placeForm.longitude" type="number" step="0.000001" placeholder="선택" />
               </div>
-              <BaseButton variant="secondary" :disabled="placeSaving" type="submit">
-                {{ placeSaving ? '추가 중…' : '추가' }}
-              </BaseButton>
+              <div class="place-form__actions">
+                <BaseButton variant="secondary" :disabled="placeSaving" type="submit">
+                  {{ placeSaving ? '추가 중…' : selectedDay === null ? '보관함에 추가' : `Day ${selectedDay}에 추가` }}
+                </BaseButton>
+              </div>
             </form>
             <p v-if="placeMsg" class="place-msg">{{ placeMsg }}</p>
             <p v-if="placeError" class="form-error">{{ placeError }}</p>
@@ -147,7 +143,10 @@
                   <div v-if="i < visiblePlaces.length - 1" class="time-line"></div>
                 </div>
                 <div class="item-col">
-                  <div class="item-card">
+                  <div
+                    :class="['item-card', { 'item-card--mappable': hasCoordinates(item) }]"
+                    @click="focusMapPlace(item)"
+                  >
                     <div class="item-body">
                       <h3>{{ cleanDisplayName(item.name) }}</h3>
                       <p class="t-caption">
@@ -155,7 +154,7 @@
                         <span v-if="item.memo"> · {{ item.memo }}</span>
                       </p>
                     </div>
-                    <div class="item-actions">
+                    <div class="item-actions" @click.stop>
                       <button type="button" class="mini-btn" @click="movePlace(item, 'up')" :disabled="i === 0">↑</button>
                       <button type="button" class="mini-btn" @click="movePlace(item, 'down')" :disabled="i === visiblePlaces.length - 1">↓</button>
                       <div v-if="selectedDay === null" class="assign-control">
@@ -182,20 +181,73 @@
           </section>
 
           <aside class="plan-map">
-            <div class="map-canvas"><div class="map-grad"></div></div>
+            <div ref="mapElement" class="map-canvas">
+              <div v-if="mapState !== 'ready'" class="map-fallback">
+                <strong>{{ mapFallbackTitle }}</strong>
+                <span>{{ mapFallbackText }}</span>
+              </div>
+              <button
+                v-else-if="mapPlaces.length > 1"
+                type="button"
+                class="map-fit-btn"
+                @click="fitMapToPlaces"
+              >
+                전체 보기
+              </button>
+            </div>
             <div class="map-info">
-              <h4>장소 {{ places.length }}개</h4>
+              <h4>{{ selectedMapPlaceName || `장소 ${visiblePlaces.length}개` }}</h4>
               <p class="t-mono">{{ selectedDay === null ? 'Storage' : `Day ${selectedDay}` }}</p>
             </div>
           </aside>
         </div>
       </template>
     </main>
+
+    <div v-if="optimizePanelVisible" class="optimize-overlay">
+      <section class="optimize-modal" role="status" aria-live="polite">
+        <div class="optimize-mark">
+          <span class="optimize-pulse"></span>
+          <svg width="34" height="34" viewBox="0 0 34 34" fill="none" aria-hidden="true">
+            <path d="M6 19h7l4-11 5 18 4-9h4" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+
+        <h2>{{ optimizePanelTitle }}</h2>
+        <p>
+          {{ optimizePanelDescription }}
+        </p>
+
+        <div class="optimize-progress">
+          <div class="optimize-progress__bar" :style="{ width: `${optimizeProgress}%` }"></div>
+        </div>
+
+        <div class="optimize-meta">
+          <span>{{ optimizeStageLabel }}</span>
+          <span>경과 {{ optimizeElapsedLabel }}</span>
+        </div>
+
+        <ol class="optimize-steps">
+          <li
+            v-for="(step, index) in optimizeSteps"
+            :key="step"
+            :class="{
+              done: index < optimizeActiveStep || optimizeCompleted,
+              active: index === optimizeActiveStep && !optimizeCompleted && !optimizeFailed,
+              failed: optimizeFailed && index === optimizeActiveStep,
+            }"
+          >
+            <span class="step-dot"></span>
+            <span>{{ step }}</span>
+          </li>
+        </ol>
+      </section>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, nextTick, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppHeader from '@/components/common/AppHeader.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
@@ -213,16 +265,28 @@ const formError = ref('')
 const saveMsg = ref('')
 const places = ref([])
 const placeSaving = ref(false)
+const optimizing = ref(false)
+const optimizePanelVisible = ref(false)
+const optimizeCompleted = ref(false)
+const optimizeFailed = ref(false)
+const optimizeElapsedMs = ref(0)
 const placeError = ref('')
 const placeMsg = ref('')
 const selectedDay = ref(1)
 const dayJumpValue = ref(1)
 const storageTargets = ref({})
+const mapElement = ref(null)
+const mapState = ref('idle')
+const mapInstance = ref(null)
+const mapMarkers = ref([])
+const routeLine = ref(null)
+const routeBounds = ref(null)
+const selectedMapPlaceName = ref('')
+let activeInfoWindow = null
 const placeForm = ref({
   name: '',
   latitude: '',
   longitude: '',
-  visitDay: 1,
   memo: '',
 })
 
@@ -235,6 +299,11 @@ const form = ref({
 })
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
+const DEFAULT_CENTER = { lat: 37.5666103, lng: 126.9783882 }
+const OPTIMIZE_ESTIMATE_MS = 2400
+let naverMapsScriptPromise = null
+let optimizeTimer = null
+let optimizeStartedAt = 0
 
 const dateLabel = computed(() => {
   const { startDate, endDate } = form.value
@@ -263,12 +332,70 @@ const visiblePlaces = computed(() =>
     .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0) || a.id - b.id),
 )
 
+const mapPlaces = computed(() =>
+  visiblePlaces.value
+    .map((place) => ({
+      ...place,
+      lat: Number(place.latitude),
+      lng: Number(place.longitude),
+    }))
+    .filter((place) => Number.isFinite(place.lat) && Number.isFinite(place.lng)),
+)
+
+const mapFallbackTitle = computed(() => {
+  if (mapState.value === 'missing-key') return '네이버 지도 키가 필요합니다'
+  if (mapState.value === 'error') return '지도를 불러오지 못했습니다'
+  return '지도를 준비하고 있습니다'
+})
+
+const mapFallbackText = computed(() => {
+  if (mapState.value === 'missing-key') return 'VITE_NAVER_MAP_CLIENT_ID 값을 .env.local에 등록해 주세요.'
+  if (mapState.value === 'error') return 'Client ID와 Web 서비스 URL 등록 상태를 확인해 주세요.'
+  return '잠시만 기다려 주세요.'
+})
+
+const optimizeSteps = [
+  '장소별 좌표 확인',
+  '네이버 Directions 5 거리행렬 호출',
+  '최단 이동시간 기준 경로 재정렬',
+  '결과를 일정과 지도에 반영',
+]
+
+const optimizeProgress = computed(() => {
+  if (optimizeCompleted.value || optimizeFailed.value) return 100
+  return Math.min(92, 12 + Math.round((optimizeElapsedMs.value / OPTIMIZE_ESTIMATE_MS) * 80))
+})
+
+const optimizeActiveStep = computed(() => {
+  if (optimizeCompleted.value) return optimizeSteps.length
+  if (optimizeProgress.value >= 78) return 3
+  if (optimizeProgress.value >= 48) return 2
+  if (optimizeProgress.value >= 24) return 1
+  return 0
+})
+
+const optimizeStageLabel = computed(() => {
+  if (optimizeFailed.value) return '최적화 실패'
+  if (optimizeCompleted.value) return '결과 반영 완료'
+  return optimizeSteps[optimizeActiveStep.value]
+})
+
+const optimizeElapsedLabel = computed(() => `${(optimizeElapsedMs.value / 1000).toFixed(1)}s`)
+const optimizePanelTitle = computed(() =>
+  optimizeFailed.value
+    ? '동선 최적화에 실패했습니다'
+    : optimizeCompleted.value
+      ? '동선을 최적화했어요'
+      : '동선을 최적화하고 있어요',
+)
+const optimizePanelDescription = computed(() => {
+  const dayLabel = selectedDay.value === null ? '보관함' : `Day ${selectedDay.value}`
+  return `${dayLabel}의 ${visiblePlaces.value.length}개 장소를 실제 자동차 이동시간 기준으로 재배열 중입니다.`
+})
+
 watch(dayCount, (maxDay) => {
   if (selectedDay.value != null && selectedDay.value > maxDay) {
     selectedDay.value = maxDay
-  }
-  if (placeForm.value.visitDay != null && placeForm.value.visitDay > maxDay) {
-    placeForm.value.visitDay = maxDay
   }
   dayJumpValue.value = clampDay(dayJumpValue.value)
 })
@@ -278,6 +405,10 @@ watch(selectedDay, (day) => {
     dayJumpValue.value = day
   }
 })
+
+watch(mapPlaces, () => {
+  renderMapPlaces()
+}, { flush: 'post' })
 
 function fill(plan) {
   form.value = {
@@ -325,10 +456,6 @@ function formatDayDate(day) {
   return formatReadableDate(addDays(start, day - 1))
 }
 
-function togglePlaceFormStorage() {
-  placeForm.value.visitDay = placeForm.value.visitDay === null ? defaultDay.value : null
-}
-
 function parseDate(value) {
   if (!value) return new Date(Number.NaN)
   const [year, month, day] = value.split('-').map(Number)
@@ -362,6 +489,194 @@ function formatReadableDate(value) {
   const date = value instanceof Date ? value : parseDate(value)
   if (Number.isNaN(date.getTime())) return '미정'
   return `${date.getMonth() + 1}월 ${date.getDate()}일 ${WEEKDAYS[date.getDay()]}요일`
+}
+
+function loadNaverMapsScript() {
+  const clientId = import.meta.env.VITE_NAVER_MAP_CLIENT_ID
+  if (!clientId || clientId === 'your_naver_map_client_id') {
+    mapState.value = 'missing-key'
+    return Promise.reject(new Error('missing naver map client id'))
+  }
+
+  if (window.naver?.maps) return Promise.resolve(window.naver.maps)
+  if (naverMapsScriptPromise) return naverMapsScriptPromise
+
+  naverMapsScriptPromise = new Promise((resolve, reject) => {
+    const existing = document.getElementById('naver-map-sdk')
+    if (existing) {
+      existing.addEventListener('load', () => resolve(window.naver.maps), { once: true })
+      existing.addEventListener('error', reject, { once: true })
+      return
+    }
+
+    const script = document.createElement('script')
+    script.id = 'naver-map-sdk'
+    script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${encodeURIComponent(clientId)}`
+    script.async = true
+    script.onload = () => resolve(window.naver.maps)
+    script.onerror = reject
+    document.head.appendChild(script)
+  })
+
+  return naverMapsScriptPromise
+}
+
+async function initNaverMap() {
+  if (!mapElement.value || mapInstance.value) return
+  mapState.value = 'loading'
+  try {
+    const maps = await loadNaverMapsScript()
+    mapInstance.value = new maps.Map(mapElement.value, {
+      center: new maps.LatLng(DEFAULT_CENTER.lat, DEFAULT_CENTER.lng),
+      zoom: 12,
+      minZoom: 6,
+      scaleControl: true,
+      mapDataControl: false,
+      logoControlOptions: {
+        position: maps.Position.BOTTOM_LEFT,
+      },
+    })
+    mapState.value = 'ready'
+    renderMapPlaces()
+    setTimeout(() => {
+      maps.Event.trigger(mapInstance.value, 'resize')
+      renderMapPlaces()
+    }, 0)
+  } catch (error) {
+    if (mapState.value !== 'missing-key') mapState.value = 'error'
+  }
+}
+
+function renderMapPlaces() {
+  const maps = window.naver?.maps
+  const map = mapInstance.value
+  if (!maps || !map) return
+
+  clearMapOverlays()
+
+  if (mapPlaces.value.length === 0) {
+    map.setCenter(new maps.LatLng(DEFAULT_CENTER.lat, DEFAULT_CENTER.lng))
+    map.setZoom(12)
+    return
+  }
+
+  const bounds = new maps.LatLngBounds()
+  const path = []
+
+  mapPlaces.value.forEach((place, index) => {
+    const position = new maps.LatLng(place.lat, place.lng)
+    bounds.extend(position)
+    path.push(position)
+
+    const marker = new maps.Marker({
+      map,
+      position,
+      title: cleanDisplayName(place.name),
+      icon: {
+        content: `<div class="naver-plan-marker">${index + 1}</div>`,
+        anchor: new maps.Point(14, 14),
+      },
+    })
+
+    maps.Event.addListener(marker, 'click', () => {
+      selectedMapPlaceName.value = cleanDisplayName(place.name)
+      map.morph(position, 15, {
+        duration: 250,
+        easing: 'easeOutCubic',
+      })
+    })
+    maps.Event.addListener(marker, 'mouseover', () => {
+      openMarkerInfoWindow(maps, map, marker, cleanDisplayName(place.name))
+    })
+    maps.Event.addListener(marker, 'mouseout', closeMarkerInfoWindow)
+
+    mapMarkers.value.push(marker)
+  })
+
+  if (path.length > 1) {
+    routeLine.value = new maps.Polyline({
+      map,
+      path,
+      strokeColor: '#109A8E',
+      strokeWeight: 4,
+      strokeOpacity: 0.82,
+      strokeStyle: 'solid',
+    })
+  }
+
+  if (mapPlaces.value.length === 1) {
+    map.setCenter(path[0])
+    map.setZoom(14)
+  } else {
+    routeBounds.value = bounds
+    fitMapToPlaces()
+  }
+}
+
+function fitMapToPlaces() {
+  const map = mapInstance.value
+  if (!map || !routeBounds.value) return
+  map.fitBounds(routeBounds.value, { top: 48, right: 48, bottom: 48, left: 48 })
+}
+
+function hasCoordinates(place) {
+  return Number.isFinite(Number(place.latitude)) && Number.isFinite(Number(place.longitude))
+}
+
+function focusMapPlace(place) {
+  if (!hasCoordinates(place)) {
+    placeError.value = '좌표가 없는 장소는 지도에서 이동할 수 없습니다.'
+    return
+  }
+
+  const maps = window.naver?.maps
+  const map = mapInstance.value
+  if (!maps || !map) return
+
+  placeError.value = ''
+  selectedMapPlaceName.value = cleanDisplayName(place.name)
+  const position = new maps.LatLng(Number(place.latitude), Number(place.longitude))
+  map.morph(position, 15, {
+    duration: 250,
+    easing: 'easeOutCubic',
+  })
+}
+
+function openMarkerInfoWindow(maps, map, marker, name) {
+  closeMarkerInfoWindow()
+  activeInfoWindow = new maps.InfoWindow({
+    content: `<div class="naver-plan-info">${escapeHtml(name)}</div>`,
+    borderWidth: 0,
+    anchorSize: new maps.Size(8, 8),
+  })
+  activeInfoWindow.open(map, marker)
+}
+
+function closeMarkerInfoWindow() {
+  if (!activeInfoWindow) return
+  activeInfoWindow.close()
+  activeInfoWindow = null
+}
+
+function clearMapOverlays() {
+  closeMarkerInfoWindow()
+  mapMarkers.value.forEach((marker) => marker.setMap(null))
+  mapMarkers.value = []
+  if (routeLine.value) {
+    routeLine.value.setMap(null)
+    routeLine.value = null
+  }
+  routeBounds.value = null
+  selectedMapPlaceName.value = ''
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
 }
 
 async function load() {
@@ -446,7 +761,7 @@ async function addCustomPlace() {
       name: placeForm.value.name,
       latitude: placeForm.value.latitude === '' ? null : placeForm.value.latitude,
       longitude: placeForm.value.longitude === '' ? null : placeForm.value.longitude,
-      visitDay: placeForm.value.visitDay || null,
+      visitDay: selectedDay.value === null ? null : selectedDay.value,
       memo: placeForm.value.memo || null,
     })
     placeForm.value.name = ''
@@ -521,6 +836,64 @@ async function removePlace(place) {
   }
 }
 
+async function optimizeRoute() {
+  if (optimizing.value || selectedDay.value === null) return
+  placeError.value = ''
+  placeMsg.value = ''
+
+  if (visiblePlaces.value.length < 2) {
+    placeError.value = '동선 최적화는 장소가 2개 이상일 때 가능합니다.'
+    return
+  }
+
+  optimizing.value = true
+  startOptimizePanel()
+  try {
+    places.value = await tripPlanApi.optimizePlaces(id, {
+      visitDay: selectedDay.value,
+    })
+    placeMsg.value = `Day ${selectedDay.value} 동선을 최적화했습니다.`
+    finishOptimizePanel(true)
+  } catch (e) {
+    placeError.value = e.response?.data?.message || '동선 최적화에 실패했습니다.'
+    finishOptimizePanel(false)
+  } finally {
+    optimizing.value = false
+  }
+}
+
+function startOptimizePanel() {
+  clearOptimizeTimer()
+  optimizePanelVisible.value = true
+  optimizeCompleted.value = false
+  optimizeFailed.value = false
+  optimizeElapsedMs.value = 0
+  optimizeStartedAt = Date.now()
+  optimizeTimer = window.setInterval(() => {
+    optimizeElapsedMs.value = Date.now() - optimizeStartedAt
+  }, 100)
+}
+
+function finishOptimizePanel(success) {
+  optimizeElapsedMs.value = Date.now() - optimizeStartedAt
+  optimizeCompleted.value = success
+  optimizeFailed.value = !success
+  clearOptimizeTimer()
+
+  const visibleFor = Math.max(700, 1100 - optimizeElapsedMs.value)
+  window.setTimeout(() => {
+    optimizePanelVisible.value = false
+    optimizeCompleted.value = false
+    optimizeFailed.value = false
+  }, visibleFor)
+}
+
+function clearOptimizeTimer() {
+  if (!optimizeTimer) return
+  window.clearInterval(optimizeTimer)
+  optimizeTimer = null
+}
+
 function cleanDisplayName(value) {
   return String(value || '')
     .trim()
@@ -528,7 +901,17 @@ function cleanDisplayName(value) {
     .replace(/^\s*(?:\(?#?\d{5,}\)?\s+)+/g, '')
 }
 
-onMounted(load)
+onMounted(async () => {
+  await load()
+  await nextTick()
+  if (!loadError.value) initNaverMap()
+})
+
+onBeforeUnmount(() => {
+  clearMapOverlays()
+  clearOptimizeTimer()
+  mapInstance.value = null
+})
 </script>
 
 <style scoped>
@@ -634,7 +1017,7 @@ onMounted(load)
 
 .plan-grid {
   display: grid;
-  grid-template-columns: 1.4fr 1fr;
+  grid-template-columns: minmax(0, 1.25fr) minmax(360px, 0.95fr);
   gap: 24px;
   align-items: start;
 }
@@ -695,7 +1078,8 @@ onMounted(load)
 }
 
 .day-go-btn,
-.storage-tab {
+.storage-tab,
+.optimize-btn {
   height: 38px;
   padding: 0 14px;
   background: var(--bg-soft);
@@ -712,12 +1096,24 @@ onMounted(load)
 }
 
 .day-go-btn:hover,
-.storage-tab:hover { border-color: var(--line-2); }
+.storage-tab:hover,
+.optimize-btn:hover:not(:disabled) { border-color: var(--line-2); }
 .storage-tab.active { background: var(--teal); color: white; }
+
+.optimize-btn {
+  margin-left: auto;
+  background: var(--teal);
+  color: white;
+}
+
+.optimize-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 .place-form {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) 142px 112px 112px auto;
+  grid-template-columns: repeat(2, minmax(120px, 1fr)) minmax(150px, auto);
   gap: 12px;
   align-items: end;
   padding: 16px;
@@ -727,34 +1123,23 @@ onMounted(load)
   border-radius: 12px;
 }
 
+.place-form__name {
+  grid-column: 1 / -1;
+}
+
 .field--small {
   flex: none;
-}
-
-.day-field-control {
-  display: grid;
-  grid-template-columns: minmax(54px, 1fr) 58px;
-}
-
-.day-field-control input {
-  border-radius: 10px 0 0 10px;
-  border-right: 0;
-  min-width: 0;
-}
-
-.field--small .storage-inline {
-  height: 40px;
-  border: 1px solid var(--line-2);
-  border-radius: 0 10px 10px 0;
-  background: var(--bg-soft);
-  color: var(--ink-3);
-  font-size: 12px;
-  font-weight: 800;
 }
 
 .field--small input:disabled {
   background: var(--bg-2);
   color: var(--ink-soft);
+}
+
+.place-form__actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
 }
 
 .timeline {
@@ -833,6 +1218,15 @@ onMounted(load)
   border-radius: 10px;
 }
 
+.item-card--mappable {
+  cursor: pointer;
+}
+
+.item-card--mappable:hover {
+  border-color: var(--teal);
+  box-shadow: var(--sh-1);
+}
+
 .item-body { flex: 1; }
 .item-body h3 { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
 
@@ -894,7 +1288,7 @@ onMounted(load)
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
   overflow: hidden;
-  height: 320px;
+  height: clamp(460px, calc(100vh - 128px), 680px);
   display: flex;
   flex-direction: column;
 }
@@ -906,12 +1300,76 @@ onMounted(load)
   overflow: hidden;
 }
 
-.map-grad {
+.map-fallback {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(circle at 30% 40%, var(--teal-soft) 0%, transparent 50%),
-    radial-gradient(circle at 70% 70%, var(--coral-tint) 0%, transparent 50%);
+  z-index: 1;
+  display: grid;
+  place-content: center;
+  gap: 6px;
+  padding: 24px;
+  text-align: center;
+  background: var(--bg-soft);
+  color: var(--ink-soft);
+}
+
+.map-fallback strong {
+  color: var(--ink-3);
+  font-size: 14px;
+}
+
+.map-fallback span {
+  font-size: 12px;
+}
+
+.map-fit-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--line-2);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--ink-3);
+  box-shadow: var(--sh-1);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.map-fit-btn:hover {
+  border-color: var(--teal);
+  color: var(--teal-3);
+}
+
+:global(.naver-plan-marker) {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 2px solid white;
+  border-radius: 50%;
+  background: var(--teal);
+  color: white;
+  box-shadow: 0 4px 12px rgba(20, 38, 46, 0.22);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+:global(.naver-plan-info) {
+  max-width: 180px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+  box-shadow: var(--sh-2);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  pointer-events: none;
 }
 
 .map-info {
@@ -923,12 +1381,191 @@ onMounted(load)
   align-items: center;
 }
 
-.map-info h4 { font-size: 14px; font-weight: 700; }
+.map-info h4 {
+  min-width: 0;
+  padding-right: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.map-info p {
+  flex-shrink: 0;
+}
+
+.optimize-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(22, 34, 40, 0.55);
+  backdrop-filter: blur(3px);
+}
+
+.optimize-modal {
+  width: min(760px, 100%);
+  padding: 54px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 26px;
+  background: white;
+  box-shadow: 0 24px 80px rgba(20, 38, 46, 0.24);
+}
+
+.optimize-mark {
+  position: relative;
+  width: 86px;
+  height: 86px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 28px;
+  border-radius: 24px;
+  background: var(--coral-tint);
+  color: var(--coral);
+}
+
+.optimize-pulse {
+  position: absolute;
+  inset: 15px;
+  border-radius: 18px;
+  background: rgba(224, 91, 58, 0.16);
+  animation: optimizePulse 1.35s ease-in-out infinite;
+}
+
+.optimize-mark svg {
+  position: relative;
+  z-index: 1;
+}
+
+.optimize-modal h2 {
+  margin-bottom: 10px;
+  color: var(--ink);
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.optimize-modal p {
+  max-width: 620px;
+  margin-bottom: 34px;
+  color: var(--ink-soft);
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.optimize-progress {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--bg-2);
+}
+
+.optimize-progress__bar {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--coral);
+  transition: width 0.22s ease;
+}
+
+.optimize-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 14px 0 28px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.optimize-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  padding-top: 26px;
+  border-top: 1px solid var(--line);
+}
+
+.optimize-steps li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--ink-soft);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.step-dot {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 18px;
+  border: 2px solid var(--line-2);
+  border-radius: 50%;
+}
+
+.optimize-steps li.done {
+  color: var(--ink-2);
+}
+
+.optimize-steps li.done .step-dot {
+  border-color: var(--success);
+  background: var(--success);
+}
+
+.optimize-steps li.done .step-dot::after {
+  content: '';
+  width: 8px;
+  height: 5px;
+  border-left: 2px solid white;
+  border-bottom: 2px solid white;
+  transform: rotate(-45deg) translateY(-1px);
+}
+
+.optimize-steps li.active {
+  color: var(--ink);
+}
+
+.optimize-steps li.active .step-dot {
+  border-color: var(--coral);
+}
+
+.optimize-steps li.active .step-dot::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--coral);
+}
+
+.optimize-steps li.failed {
+  color: var(--coral);
+}
+
+.optimize-steps li.failed .step-dot {
+  border-color: var(--coral);
+  background: var(--coral);
+}
+
+@keyframes optimizePulse {
+  0%, 100% { transform: scale(0.86); opacity: 0.45; }
+  50% { transform: scale(1.22); opacity: 0.9; }
+}
 
 @media (max-width: 1000px) {
   .plan-grid { grid-template-columns: 1fr; }
-  .plan-map { position: static; }
+  .plan-map {
+    position: static;
+    height: clamp(360px, 58vh, 520px);
+  }
   .place-form { grid-template-columns: minmax(220px, 1fr) 142px; }
+  .place-form__name,
+  .place-form__actions {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 700px) {
@@ -957,17 +1594,24 @@ onMounted(load)
   .day-nav-btn,
   .day-jump,
   .day-go-btn,
-  .storage-tab {
+  .storage-tab,
+  .optimize-btn {
     width: 100%;
-  }
-
-  .day-field-control {
-    grid-template-columns: 1fr 64px;
   }
 
   .time-col,
   .dot-col {
     display: none;
+  }
+
+  .optimize-modal {
+    padding: 34px 24px;
+    border-radius: 20px;
+  }
+
+  .optimize-meta {
+    flex-direction: column;
+    gap: 6px;
   }
 }
 </style>
