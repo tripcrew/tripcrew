@@ -40,6 +40,7 @@ public class TripPlaceService {
     private final TripPlanMapper tripPlanMapper;
     private final TripPlaceMapper tripPlaceMapper;
     private final AttractionMapper attractionMapper;
+    private final NaverDirectionsService naverDirectionsService;
 
     @Transactional(readOnly = true)
     public List<TripPlaceResponse> list(Long planId, Long userId) {
@@ -116,7 +117,9 @@ public class TripPlaceService {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "좌표가 없는 장소는 동선 최적화할 수 없습니다.");
         }
 
-        List<TripPlace> optimized = twoOpt(nearestNeighbor(places));
+        List<TripPlace> optimized = naverDirectionsService.isConfigured()
+                ? optimizeByDrivingDuration(places)
+                : twoOpt(nearestNeighbor(places));
         int order = 1;
         for (TripPlace place : optimized) {
             tripPlaceMapper.updateOrderIndex(place.getId(), planId, order++);
@@ -229,6 +232,54 @@ public class TripPlaceService {
         return route;
     }
 
+    private List<TripPlace> optimizeByDrivingDuration(List<TripPlace> places) {
+        List<TripPlace> ordered = orderedPlaces(places);
+        long[][] durations = drivingDurationMatrix(ordered);
+        return twoOpt(nearestNeighbor(ordered, durations), ordered, durations);
+    }
+
+    private long[][] drivingDurationMatrix(List<TripPlace> places) {
+        int size = places.size();
+        long[][] durations = new long[size][size];
+        for (int from = 0; from < size; from++) {
+            for (int to = 0; to < size; to++) {
+                if (from == to) {
+                    continue;
+                }
+                TripPlace start = places.get(from);
+                TripPlace goal = places.get(to);
+                durations[from][to] = naverDirectionsService.drivingDurationMillis(
+                        start.getLatitude(),
+                        start.getLongitude(),
+                        goal.getLatitude(),
+                        goal.getLongitude()
+                );
+            }
+        }
+        return durations;
+    }
+
+    private List<TripPlace> nearestNeighbor(List<TripPlace> places, long[][] durations) {
+        List<Integer> remaining = new ArrayList<>();
+        for (int i = 1; i < places.size(); i++) {
+            remaining.add(i);
+        }
+
+        List<TripPlace> route = new ArrayList<>();
+        int current = 0;
+        route.add(places.get(current));
+        while (!remaining.isEmpty()) {
+            final int from = current;
+            int next = remaining.stream()
+                    .min(Comparator.comparingLong((index) -> durations[from][index]))
+                    .orElseThrow();
+            route.add(places.get(next));
+            remaining.remove(Integer.valueOf(next));
+            current = next;
+        }
+        return route;
+    }
+
     private List<TripPlace> twoOpt(List<TripPlace> route) {
         List<TripPlace> best = new ArrayList<>(route);
         boolean improved = true;
@@ -248,6 +299,31 @@ public class TripPlaceService {
         return best;
     }
 
+    private List<TripPlace> twoOpt(List<TripPlace> route, List<TripPlace> original, long[][] durations) {
+        List<TripPlace> best = new ArrayList<>(route);
+        boolean improved = true;
+
+        while (improved) {
+            improved = false;
+            for (int i = 1; i < best.size() - 1; i++) {
+                for (int k = i + 1; k < best.size(); k++) {
+                    List<TripPlace> candidate = twoOptSwap(best, i, k);
+                    if (routeDuration(candidate, original, durations) < routeDuration(best, original, durations)) {
+                        best = candidate;
+                        improved = true;
+                    }
+                }
+            }
+        }
+        return best;
+    }
+
+    private List<TripPlace> orderedPlaces(List<TripPlace> places) {
+        return places.stream()
+                .sorted(Comparator.comparing(TripPlace::getOrderIndex).thenComparing(TripPlace::getId))
+                .toList();
+    }
+
     private List<TripPlace> twoOptSwap(List<TripPlace> route, int i, int k) {
         List<TripPlace> result = new ArrayList<>();
         result.addAll(route.subList(0, i));
@@ -264,6 +340,21 @@ public class TripPlaceService {
         double total = 0;
         for (int i = 0; i < route.size() - 1; i++) {
             total += distanceKm(route.get(i), route.get(i + 1));
+        }
+        return total;
+    }
+
+    private long routeDuration(List<TripPlace> route, List<TripPlace> original, long[][] durations) {
+        Map<Long, Integer> indexById = new java.util.HashMap<>();
+        for (int i = 0; i < original.size(); i++) {
+            indexById.put(original.get(i).getId(), i);
+        }
+
+        long total = 0;
+        for (int i = 0; i < route.size() - 1; i++) {
+            int from = indexById.get(route.get(i).getId());
+            int to = indexById.get(route.get(i + 1).getId());
+            total += durations[from][to];
         }
         return total;
     }

@@ -233,13 +233,13 @@ function openPlan(planId) {
 function startPlanDrag(event) {
   const rail = planRail.value
   if (!rail) return
+  suppressPlanClick.value = false
   planDrag.value = {
     active: true,
     moved: false,
     startX: event.clientX,
     scrollLeft: rail.scrollLeft,
   }
-  rail.setPointerCapture?.(event.pointerId)
 }
 
 function movePlanDrag(event) {
