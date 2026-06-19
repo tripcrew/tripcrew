@@ -12,7 +12,7 @@
         <span class="status-item"><span class="sd sd--ok"></span>API · 정상</span>
         <span class="status-item"><span class="sd sd--ok"></span>Redis · 정상</span>
         <span class="status-item"><span class="sd sd--warn"></span>TourAPI · HALF-OPEN</span>
-        <span class="status-item"><span class="sd sd--ok"></span>OpenAI · 정상</span>
+        <span class="status-item"><span class="sd sd--ok"></span>Gemini · 정상</span>
       </div>
 
       <div class="admin-user">
