@@ -149,7 +149,6 @@ public class ChatService implements InitializingBean {
                 .flatMap(content -> content.parts().stream())
                 .map(GeminiPart::text)
                 .filter(text -> text != null && !text.isBlank())
-                .filter(text -> !text.isBlank())
                 .collect(Collectors.joining("\n\n"));
     }
 

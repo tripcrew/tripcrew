@@ -59,7 +59,6 @@
 | Security | Spring Security · JWT (Refresh Token Rotation) |
 | Resilience | Resilience4j (Circuit Breaker · Retry · TimeLimiter) |
 | Real-time | WebSocket (STOMP) · Redis Pub/Sub |
-| Rate Limit | Bucket4j |
 
 ### Frontend
 
@@ -81,7 +80,7 @@
 
 ### External APIs
 
-한국관광공사 **TourAPI** · **OpenWeatherMap** · **한국천문연구원**(일출/일몰) · **한국환경공단**(전기차 충전소) · **Kakao Mobility** · **OpenAI**
+한국관광공사 **TourAPI** · **OpenWeatherMap** · **한국천문연구원**(일출/일몰) · **한국환경공단**(전기차 충전소) · **Kakao Mobility** · **Gemini API**
 
 <br/>
 
@@ -112,7 +111,7 @@
 flowchart TB
     Vue["🖥️ Vue 3 SPA<br/>Pinia · Vue Router"]
 
-    Filter["🛡️ Spring Security Filter<br/>JWT · Rate Limit · CORS"]
+    Filter["🛡️ Spring Security Filter<br/>JWT · CORS"]
 
     Controller["📡 Controller<br/>REST + STOMP WebSocket"]
     Service["⚙️ Service<br/>Transactional · Async · Resilience4j"]
@@ -121,7 +120,7 @@ flowchart TB
     MySQL[("💾 MySQL 8<br/>MyBatis")]
     Adapter["🔌 External API Adapter<br/>+ Circuit Breaker"]
 
-    Ext["🌐 TourAPI · Weather<br/>Kakao · OpenAI"]
+    Ext["🌐 TourAPI · Weather<br/>Kakao · Gemini"]
 
     Vue -->|HTTPS / WSS| Filter
     Filter --> Controller
@@ -226,7 +225,7 @@ sequenceDiagram
 | 랜딩 페이지 | `/` | 인기 랭킹 (Redis ZSet) |
 | 회원가입 / 로그인 | `/auth` | JWT 발급 |
 | 메인 대시보드 | `/home` | 추천 + 활동 피드 |
-| AI 챗봇 | `/chat` | OpenAI + Rate Limit |
+| AI 챗봇 | `/chat` | Gemini API |
 | 관광지 검색 | `/attractions` | Cache-Aside + 스켈레톤 |
 | 관광지 상세 | `/attractions/:id` | 다중 외부 API |
 | 여행 계획 편집 | `/plans/:id/edit` | @Async 동선 최적화 |
