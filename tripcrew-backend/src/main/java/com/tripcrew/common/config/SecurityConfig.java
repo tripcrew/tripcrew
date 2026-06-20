@@ -16,6 +16,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import com.tripcrew.auth.jwt.JwtAccessDeniedHandler;
 import com.tripcrew.auth.jwt.JwtAuthenticationEntryPoint;
 import com.tripcrew.auth.jwt.JwtAuthenticationFilter;
 import com.tripcrew.auth.jwt.JwtProvider;
@@ -34,6 +35,7 @@ public class SecurityConfig {
 
     private final JwtProvider jwtProvider;
     private final JwtAuthenticationEntryPoint authenticationEntryPoint;
+    private final JwtAccessDeniedHandler accessDeniedHandler;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -49,9 +51,13 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/reissue").permitAll()
                         // 공개 조회(관광지 등 GET)는 기능 구현 시 개별 permitAll 추가
                         .requestMatchers(HttpMethod.GET, "/api/attractions/**").permitAll()
+                        // 관리자 전용(F09): ROLE_ADMIN 필요. anyRequest 보다 반드시 위에 둔다.
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         // 그 외는 인증 필요
                         .anyRequest().authenticated())
-                .exceptionHandling(e -> e.authenticationEntryPoint(authenticationEntryPoint))
+                .exceptionHandling(e -> e
+                        .authenticationEntryPoint(authenticationEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler))
                 .addFilterBefore(new JwtAuthenticationFilter(jwtProvider),
                         UsernamePasswordAuthenticationFilter.class);
         return http.build();

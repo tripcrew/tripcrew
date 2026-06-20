@@ -12,11 +12,11 @@
         <span class="status-item"><span class="sd sd--ok"></span>API · 정상</span>
         <span class="status-item"><span class="sd sd--ok"></span>Redis · 정상</span>
         <span class="status-item"><span class="sd sd--warn"></span>TourAPI · HALF-OPEN</span>
-        <span class="status-item"><span class="sd sd--ok"></span>OpenAI · 정상</span>
+        <span class="status-item"><span class="sd sd--ok"></span>Gemini · 정상</span>
       </div>
 
       <div class="admin-user">
-        <div class="avatar" style="background: var(--teal-3);">A</div>
+        <div class="avatar" style="background: var(--teal-3);">{{ userInitial }}</div>
       </div>
     </header>
 
@@ -65,102 +65,118 @@
         <header class="admin-page-head">
           <h1 class="t-h1">회원 관리</h1>
           <div class="head-actions">
-            <BaseButton variant="secondary">CSV 내보내기</BaseButton>
-            <BaseButton variant="primary">+ 회원 추가</BaseButton>
+            <BaseButton variant="secondary" :disabled="loading" @click="load">새로고침</BaseButton>
           </div>
         </header>
 
-        <!-- Stat cards -->
+        <!-- Stat cards (실제 목록에서 집계) -->
         <div class="stat-grid">
           <article class="stat-card">
             <span class="stat-label">전체 회원</span>
-            <strong class="stat-value">12,482</strong>
-            <span class="stat-delta delta--up">+1.2% 이번 주</span>
+            <strong class="stat-value">{{ users.length }}</strong>
+            <span class="stat-delta">GET /api/admin/users</span>
           </article>
           <article class="stat-card">
-            <span class="stat-label">활성 (30일)</span>
-            <strong class="stat-value">8,140</strong>
-            <span class="stat-delta delta--up">+3.4%</span>
+            <span class="stat-label">관리자 (ADMIN)</span>
+            <strong class="stat-value">{{ adminCount }}</strong>
           </article>
           <article class="stat-card">
-            <span class="stat-label">신규 (7일)</span>
-            <strong class="stat-value">320</strong>
-            <span class="stat-delta delta--up">+12%</span>
+            <span class="stat-label">일반 회원 (USER)</span>
+            <strong class="stat-value">{{ userCount }}</strong>
           </article>
-          <article class="stat-card stat-card--alert">
-            <span class="stat-label">잠금 / 신고</span>
-            <strong class="stat-value">4</strong>
-            <span class="stat-delta delta--alert">처리 대기</span>
+          <article class="stat-card">
+            <span class="stat-label">표시 중</span>
+            <strong class="stat-value">{{ filteredUsers.length }}</strong>
           </article>
         </div>
 
+        <!-- 403: 일반 USER 가 접근한 경우 (서버 인가 거부) -->
+        <section v-if="forbidden" class="state-panel state-panel--error">
+          <strong>접근 권한이 없습니다 (403)</strong>
+          <p>이 화면은 ADMIN 전용입니다. 서버 인가 규칙(<span class="t-mono">/api/admin/**</span>)이
+            요청을 거부했습니다.</p>
+        </section>
+
+        <!-- 그 외 로드 실패 -->
+        <section v-else-if="error" class="state-panel state-panel--error">
+          <strong>목록을 불러오지 못했습니다</strong>
+          <p>{{ error }}</p>
+          <BaseButton variant="secondary" @click="load">다시 시도</BaseButton>
+        </section>
+
         <!-- Table -->
-        <section class="table-card">
+        <section v-else class="table-card">
           <div class="table-head">
             <div class="table-search">
               <span>🔍</span>
-              <input type="text" placeholder="이메일 또는 닉네임 검색" />
+              <input v-model="query" type="text" placeholder="이메일 또는 닉네임 검색" />
             </div>
             <div class="table-filters">
-              <select><option>전체</option><option>USER</option><option>ADMIN</option></select>
-              <select><option>상태</option><option>활성</option><option>잠금</option><option>휴면</option></select>
+              <select v-model="roleFilter">
+                <option value="">전체</option>
+                <option value="USER">USER</option>
+                <option value="ADMIN">ADMIN</option>
+              </select>
             </div>
-            <span class="t-caption table-count">12,482개 중 1–10</span>
+            <span class="t-caption table-count">
+              {{ users.length }}명 중 {{ filteredUsers.length }}명 표시
+            </span>
           </div>
 
           <table class="admin-table">
             <thead>
               <tr>
-                <th><input type="checkbox" /></th>
                 <th>ID</th>
                 <th>이메일</th>
                 <th>닉네임</th>
                 <th>role</th>
-                <th>상태</th>
                 <th>가입일</th>
-                <th>최근 접속</th>
-                <th></th>
+                <th>권한 변경</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="u in users" :key="u.id" :class="{ 'is-selected': u.selected }">
-                <td><input type="checkbox" :checked="u.selected" /></td>
+              <tr v-if="loading">
+                <td colspan="6" class="table-empty">불러오는 중…</td>
+              </tr>
+              <tr v-else-if="filteredUsers.length === 0">
+                <td colspan="6" class="table-empty">표시할 회원이 없습니다.</td>
+              </tr>
+              <tr v-for="u in filteredUsers" :key="u.id">
                 <td class="t-mono">{{ u.id }}</td>
                 <td>{{ u.email }}</td>
                 <td><strong>{{ u.nickname }}</strong></td>
                 <td>
                   <span :class="['role-chip', `role--${u.role.toLowerCase()}`]">{{ u.role }}</span>
                 </td>
+                <td class="t-mono">{{ formatDate(u.createdAt) }}</td>
                 <td>
-                  <span :class="['status-chip', `status--${u.statusKey}`]">{{ u.status }}</span>
-                </td>
-                <td class="t-mono">{{ u.signedUp }}</td>
-                <td class="t-mono muted">{{ u.lastSeen }}</td>
-                <td>
-                  <button v-if="u.statusKey === 'locked'" class="action-btn action-btn--danger">제재</button>
-                  <button v-else class="action-btn">⋯</button>
+                  <button
+                    v-if="u.id === currentUserId"
+                    class="action-btn"
+                    disabled
+                    title="본인 권한은 변경할 수 없습니다"
+                  >본인</button>
+                  <button
+                    v-else
+                    class="action-btn"
+                    :class="u.role === 'ADMIN' ? 'action-btn--danger' : 'action-btn--promote'"
+                    :disabled="savingId === u.id"
+                    @click="toggleRole(u)"
+                  >
+                    {{ savingId === u.id ? '변경 중…' : (u.role === 'ADMIN' ? '→ USER 강등' : '→ ADMIN 승격') }}
+                  </button>
                 </td>
               </tr>
             </tbody>
           </table>
-
-          <footer class="table-foot">
-            <div class="bulk-info">
-              <strong>선택 1개</strong> · <a href="#" class="link-teal">일괄 작업</a>
-            </div>
-            <nav class="pagination">
-              <button>‹</button>
-              <button class="active">1</button>
-              <button>2</button>
-              <button>3</button>
-              <span>…</span>
-              <button>›</button>
-            </nav>
-          </footer>
         </section>
 
+        <p v-if="notice" :class="['toast', notice.type === 'error' ? 'toast--error' : 'toast--ok']">
+          {{ notice.text }}
+        </p>
+
         <p class="api-note t-mono">
-          GET /api/admin/users?role=&amp;status=&amp;q= · @PreAuthorize ADMIN
+          GET /api/admin/users · PATCH /api/admin/users/{id}/role · ROLE_ADMIN 전용
         </p>
       </main>
     </div>
@@ -168,17 +184,88 @@
 </template>
 
 <script setup>
-import BaseButton from '@/components/common/BaseButton.vue'
+import { computed, onMounted, ref } from 'vue'
 
-const users = [
-  { id: 10482, email: 'minji@crew.kr', nickname: '민지', role: 'USER', status: '활성', statusKey: 'active', signedUp: '2026.01.14', lastSeen: '방금 전', selected: true },
-  { id: 10481, email: 'spammer@xyz.com', nickname: '스팸유저', role: 'USER', status: '잠금', statusKey: 'locked', signedUp: '2026.05.18', lastSeen: '2시간 전' },
-  { id: 10480, email: 'jiwon@crew.kr', nickname: '지원', role: 'ADMIN', status: '활성', statusKey: 'active', signedUp: '2025.11.02', lastSeen: '5분 전' },
-  { id: 10479, email: 'hyunwoo@crew.kr', nickname: '현우', role: 'USER', status: '활성', statusKey: 'active', signedUp: '2026.03.18', lastSeen: '어제' },
-  { id: 10478, email: 'test@example.com', nickname: '테스트', role: 'USER', status: '휴면', statusKey: 'dormant', signedUp: '2025.06.21', lastSeen: '90일 전' },
-  { id: 10477, email: 'hyemi@crew.kr', nickname: '혜미', role: 'USER', status: '활성', statusKey: 'active', signedUp: '2026.02.04', lastSeen: '3시간 전' },
-  { id: 10476, email: 'park@crew.kr', nickname: '박지원', role: 'USER', status: '활성', statusKey: 'active', signedUp: '2025.09.30', lastSeen: '1일 전' }
-]
+import { adminApi } from '@/api/admin'
+import BaseButton from '@/components/common/BaseButton.vue'
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
+
+const users = ref([])
+const loading = ref(false)
+const error = ref('')
+const forbidden = ref(false)
+const savingId = ref(null)
+const notice = ref(null)
+
+const query = ref('')
+const roleFilter = ref('')
+
+const currentUserId = computed(() => auth.user && auth.user.id)
+const userInitial = computed(() => (auth.user && auth.user.nickname ? auth.user.nickname : 'A').charAt(0))
+
+const adminCount = computed(() => users.value.filter((u) => u.role === 'ADMIN').length)
+const userCount = computed(() => users.value.filter((u) => u.role === 'USER').length)
+
+const filteredUsers = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  return users.value.filter((u) => {
+    if (roleFilter.value && u.role !== roleFilter.value) return false
+    if (!q) return true
+    return (
+      u.email?.toLowerCase().includes(q) || u.nickname?.toLowerCase().includes(q)
+    )
+  })
+})
+
+function formatDate(value) {
+  if (!value) return '-'
+  // 백엔드 LocalDateTime("2026-01-14T10:00:00") → "2026.01.14"
+  return String(value).slice(0, 10).replaceAll('-', '.')
+}
+
+function flash(type, text) {
+  notice.value = { type, text }
+}
+
+async function load() {
+  loading.value = true
+  error.value = ''
+  forbidden.value = false
+  try {
+    users.value = await adminApi.listUsers()
+  } catch (e) {
+    if (e.response?.status === 403) {
+      forbidden.value = true
+    } else {
+      error.value = e.response?.data?.message || e.message || '알 수 없는 오류'
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+async function toggleRole(user) {
+  const nextRole = user.role === 'ADMIN' ? 'USER' : 'ADMIN'
+  savingId.value = user.id
+  notice.value = null
+  try {
+    await adminApi.updateRole(user.id, nextRole)
+    user.role = nextRole // 204 (본문 없음) → 로컬 반영
+    flash('ok', `${user.nickname}님의 권한을 ${nextRole}로 변경했습니다.`)
+  } catch (e) {
+    const status = e.response?.status
+    const msg = e.response?.data?.message
+    if (status === 403) flash('error', '권한이 없어 변경할 수 없습니다 (403).')
+    else if (status === 404) flash('error', '대상 사용자를 찾을 수 없습니다 (404).')
+    else flash('error', msg || `변경 실패 (${status || e.message})`)
+  } finally {
+    savingId.value = null
+  }
+}
+
+onMounted(load)
 </script>
 
 <style scoped>
@@ -544,12 +631,62 @@ const users = [
 
 .action-btn:hover { background: var(--bg-2); }
 
+.action-btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .action-btn--danger {
   background: var(--danger);
   color: white;
 }
 
 .action-btn--danger:hover { background: #B12C3A; }
+
+.action-btn--promote {
+  background: var(--teal);
+  color: white;
+}
+
+.action-btn--promote:hover { background: var(--teal-3); }
+
+.table-empty {
+  text-align: center;
+  padding: 40px 16px;
+  color: var(--muted);
+}
+
+/* 상태 패널 (403 / 에러) */
+.state-panel {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.state-panel--error {
+  border-color: #FBEAE2;
+  background: linear-gradient(135deg, #FFF5F5 0%, white 100%);
+}
+
+.state-panel strong { font-size: 16px; color: var(--ink); }
+.state-panel p { font-size: 13px; color: var(--ink-soft); }
+
+/* 작업 결과 토스트 */
+.toast {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.toast--ok { background: #E1F5EA; color: #1A7A4A; }
+.toast--error { background: #FFE5E8; color: #B12C3A; }
 
 .table-foot {
   display: flex;
