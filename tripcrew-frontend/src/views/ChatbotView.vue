@@ -5,15 +5,19 @@
     <main class="container chat-layout">
       <!-- Sidebar -->
       <aside class="chat-sidebar">
-        <button class="new-chat-btn">
+        <button class="new-chat-btn" type="button" @click="resetChat">
           <span>＋</span> 새 대화
         </button>
-        <div class="recent-label">RECENT</div>
+        <div class="recent-label">SUGGESTIONS</div>
         <ul class="recent-list">
-          <li class="active">여수 2박3일 바다 위주</li>
-          <li>강릉 카페 투어 1박</li>
-          <li>제주 가족여행 3박4일</li>
-          <li>부산 야경 데이트</li>
+          <li
+            v-for="prompt in suggestedPrompts"
+            :key="prompt"
+            :class="{ active: input === prompt }"
+            @click="usePrompt(prompt)"
+          >
+            {{ prompt }}
+          </li>
         </ul>
       </aside>
 
@@ -24,91 +28,54 @@
             <div class="bot-avatar">🤖</div>
             <div>
               <strong>TripBot</strong>
-              <span class="t-mono"><span class="dot-pulse"></span> OpenAI · 응답 중...</span>
+              <span class="t-mono">
+                <span class="dot-pulse" :class="{ 'dot-pulse--idle': !loading }"></span>
+                Gemini · {{ loading ? '응답 중...' : '대기 중' }}
+              </span>
             </div>
           </div>
         </header>
 
-        <div class="chat-body">
-          <!-- User message -->
-          <div class="msg msg--user">
-            <div class="msg__bubble">
-              여수 2박3일, 바다 위주에 카페 1~2개. 차 없이 대중교통으로 다닐 거예요.
+        <div ref="chatBodyRef" class="chat-body">
+          <div v-for="message in messages" :key="message.id" class="msg" :class="messageClass(message.role)">
+            <div v-if="message.role === 'ASSISTANT'" class="msg__avatar">🤖</div>
+            <div class="msg__content">
+              <div class="msg__bubble">
+                <p>{{ message.content }}</p>
+              </div>
             </div>
           </div>
 
-          <!-- Bot message -->
-          <div class="msg msg--bot">
+          <div v-if="loading" class="msg msg--bot">
             <div class="msg__avatar">🤖</div>
             <div class="msg__content">
-              <div class="msg__bubble">
-                <p>
-                  <strong>대중교통 위주의 여수 바다 코스 5개</strong>를 준비했어요.
-                  <span class="weather-note">☔ 우천 예보(둘째날 오후)</span>가 있어 실내 코스를 한 곳 섞었어요.
-                </p>
-              </div>
-
-              <div class="course-cards">
-                <article class="course-card">
-                  <header>
-                    <span class="course-label">코스 A</span>
-                    <span class="course-meta">★ 4.7 · 8시간</span>
-                  </header>
-                  <h4>바다와 동백 명소 코스</h4>
-                  <p class="t-caption">오동도 → 하멜등대 → 케이블카 → 돌산공원</p>
-                </article>
-
-                <article class="course-card course-card--featured">
-                  <header>
-                    <span class="course-label">코스 B</span>
-                    <span class="recommend-badge">추천</span>
-                    <span class="course-meta">★ 4.8 · 7시간</span>
-                  </header>
-                  <h4>우천 대비 실내+바다 믹스</h4>
-                  <p class="t-caption">박물관 → 동백숲 → 카페거리 → 야경 케이블카</p>
-                </article>
-
-                <article class="course-card">
-                  <header>
-                    <span class="course-label">코스 C</span>
-                    <span class="course-meta">★ 4.5 · 6시간</span>
-                  </header>
-                  <h4>여유로운 바다 산책 코스</h4>
-                </article>
-
-                <article class="course-card">
-                  <header>
-                    <span class="course-label">코스 D</span>
-                    <span class="course-meta">★ 4.4 · 9시간</span>
-                  </header>
-                  <h4>맛집 중심 + 바다</h4>
-                </article>
-              </div>
-
-              <div class="stream-status">
-                <span class="t-mono">stream · token 247 / ~400</span>
-                <div class="stream-bar">
-                  <div class="stream-fill" style="width: 62%"></div>
-                </div>
-              </div>
-
-              <div class="msg__actions">
-                <BaseButton variant="primary" @click="$router.push('/plans/42/edit')">
-                  코스 B로 계획 시작하기 →
-                </BaseButton>
-                <BaseButton variant="secondary">다른 추천 받기</BaseButton>
+              <div class="msg__bubble typing-bubble">
+                <span></span>
+                <span></span>
+                <span></span>
               </div>
             </div>
+          </div>
+
+          <div v-if="errorMessage" class="chat-error">
+            {{ errorMessage }}
           </div>
         </div>
 
         <!-- Input -->
         <footer class="chat-input">
-          <div class="input-wrap">
-            <input type="text" placeholder="예: 2박3일, 부모님 모시고, 휠체어 접근 가능한 곳..." />
-            <button class="send-btn">↑ 전송</button>
-          </div>
-          <p class="api-note t-mono">POST /api/chat/messages (text/event-stream)</p>
+          <form class="input-wrap" @submit.prevent="sendMessage">
+            <input
+              v-model="input"
+              type="text"
+              placeholder="예: 2박3일, 부모님 모시고, 휠체어 접근 가능한 곳..."
+              :disabled="loading"
+            />
+            <button class="send-btn" type="submit" :disabled="!canSend">
+              {{ loading ? '응답 중' : '전송' }}
+            </button>
+          </form>
+          <p class="api-note t-mono">POST /api/chat/messages (application/json)</p>
         </footer>
       </section>
     </main>
@@ -116,8 +83,88 @@
 </template>
 
 <script setup>
+import { computed, nextTick, ref } from 'vue'
+
+import { chatApi } from '@/api/chat'
 import AppHeader from '@/components/common/AppHeader.vue'
-import BaseButton from '@/components/common/BaseButton.vue'
+
+const input = ref('')
+const loading = ref(false)
+const errorMessage = ref('')
+const chatBodyRef = ref(null)
+const suggestedPrompts = [
+  '여수 2박3일 바다 위주, 대중교통으로 이동',
+  '강릉 카페 투어 1박2일',
+  '제주 가족여행 3박4일, 부모님과 함께',
+  '부산 야경 데이트 코스 추천',
+  '비 오는 날 갈만한 서울 실내 코스',
+  '휠체어 접근 가능한 여행지 추천',
+]
+const messages = ref([
+  {
+    id: crypto.randomUUID(),
+    role: 'ASSISTANT',
+    content: '안녕하세요. 여행 기간, 지역, 동행자, 이동수단을 알려주시면 코스를 추천해드릴게요.',
+  },
+])
+
+const canSend = computed(() => input.value.trim().length > 0 && !loading.value)
+
+function messageClass(role) {
+  return role === 'USER' ? 'msg--user' : 'msg--bot'
+}
+
+function usePrompt(prompt) {
+  input.value = prompt
+}
+
+function resetChat() {
+  input.value = ''
+  errorMessage.value = ''
+  messages.value = [
+    {
+      id: crypto.randomUUID(),
+      role: 'ASSISTANT',
+      content: '새 대화를 시작할게요. 원하는 여행 조건을 편하게 입력해주세요.',
+    },
+  ]
+}
+
+async function sendMessage() {
+  const text = input.value.trim()
+  if (!text || loading.value) return
+
+  messages.value.push({
+    id: crypto.randomUUID(),
+    role: 'USER',
+    content: text,
+  })
+  input.value = ''
+  errorMessage.value = ''
+  loading.value = true
+  await scrollToBottom()
+
+  try {
+    const response = await chatApi.send({ message: text })
+    messages.value.push({
+      id: crypto.randomUUID(),
+      role: 'ASSISTANT',
+      content: response.answer || '답변을 가져오지 못했어요.',
+    })
+  } catch (error) {
+    errorMessage.value = error?.response?.data?.message || '챗봇 응답 중 오류가 발생했습니다.'
+  } finally {
+    loading.value = false
+    await scrollToBottom()
+  }
+}
+
+async function scrollToBottom() {
+  await nextTick()
+  if (chatBodyRef.value) {
+    chatBodyRef.value.scrollTop = chatBodyRef.value.scrollHeight
+  }
+}
 </script>
 
 <style scoped>
@@ -130,11 +177,14 @@ import BaseButton from '@/components/common/BaseButton.vue'
 
 .chat-layout {
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
   gap: 24px;
   padding: 24px var(--space-6);
   flex: 1;
+  width: 100%;
+  max-width: 1440px;
   min-height: 0;
+  box-sizing: border-box;
 }
 
 /* Sidebar */
@@ -198,6 +248,7 @@ import BaseButton from '@/components/common/BaseButton.vue'
   border-radius: var(--r-xl);
   display: flex;
   flex-direction: column;
+  min-width: 0;
   overflow: hidden;
 }
 
@@ -243,6 +294,11 @@ import BaseButton from '@/components/common/BaseButton.vue'
   animation: pulse 1.4s ease-in-out infinite;
 }
 
+.dot-pulse--idle {
+  animation: none;
+  opacity: 0.65;
+}
+
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
@@ -266,6 +322,11 @@ import BaseButton from '@/components/common/BaseButton.vue'
   justify-content: flex-end;
 }
 
+.msg--user .msg__content {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .msg--user .msg__bubble {
   background: var(--teal);
   color: white;
@@ -285,6 +346,7 @@ import BaseButton from '@/components/common/BaseButton.vue'
 
 .msg__content {
   flex: 1;
+  min-width: 0;
   max-width: 760px;
 }
 
@@ -293,123 +355,55 @@ import BaseButton from '@/components/common/BaseButton.vue'
   border-radius: 16px;
   font-size: 15px;
   line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .msg--bot .msg__bubble {
+  display: inline-block;
+  max-width: 100%;
   background: var(--bg-soft);
   color: var(--ink);
   border-radius: 4px 16px 16px 16px;
 }
 
-.weather-note {
-  display: inline-block;
-  padding: 2px 8px;
-  background: var(--info);
-  color: white;
-  border-radius: 999px;
-  font-size: 12px;
-  margin: 0 4px;
+.typing-bubble {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.course-cards {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-top: 16px;
+.typing-bubble span {
+  width: 7px;
+  height: 7px;
+  background: var(--muted);
+  border-radius: 50%;
+  animation: typing 1s ease-in-out infinite;
 }
 
-.course-card {
-  padding: 16px;
-  background: white;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.15s;
+.typing-bubble span:nth-child(2) {
+  animation-delay: 0.12s;
 }
 
-.course-card:hover {
-  border-color: var(--teal);
-  box-shadow: var(--sh-1);
+.typing-bubble span:nth-child(3) {
+  animation-delay: 0.24s;
 }
 
-.course-card--featured {
-  border-color: var(--coral);
+@keyframes typing {
+  0%, 100% { transform: translateY(0); opacity: 0.45; }
+  50% { transform: translateY(-3px); opacity: 1; }
+}
+
+.chat-error {
+  align-self: center;
+  max-width: 620px;
+  padding: 10px 14px;
   background: var(--coral-tint);
-}
-
-.course-card header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.course-label {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--ink-3);
-  background: var(--bg-2);
-  padding: 2px 8px;
-  border-radius: 4px;
-}
-
-.recommend-badge {
-  font-size: 11px;
-  font-weight: 700;
-  background: var(--coral);
-  color: white;
-  padding: 2px 8px;
-  border-radius: 999px;
-}
-
-.course-meta {
-  margin-left: auto;
-  font-size: 12px;
-  color: var(--ink-soft);
-}
-
-.course-card h4 {
+  border: 1px solid var(--coral);
+  border-radius: 8px;
+  color: var(--ink);
   font-size: 14px;
-  font-weight: 700;
-  margin-bottom: 4px;
-}
-
-.stream-status {
-  margin-top: 16px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.stream-status .t-mono {
-  font-size: 11px;
-  color: var(--muted);
-}
-
-.stream-bar {
-  flex: 1;
-  height: 2px;
-  background: var(--line);
-  border-radius: 1px;
-  overflow: hidden;
-}
-
-.stream-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--teal), var(--coral));
-  animation: stream 2s ease-in-out infinite;
-}
-
-@keyframes stream {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
-}
-
-.msg__actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 16px;
 }
 
 /* Input */
@@ -445,9 +439,29 @@ import BaseButton from '@/components/common/BaseButton.vue'
   font-weight: 600;
 }
 
+.send-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .api-note {
   margin-top: 10px;
   font-size: 11px;
   color: var(--muted);
+}
+
+@media (max-width: 860px) {
+  .chat-layout {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+
+  .chat-sidebar {
+    display: none;
+  }
+
+  .msg--user .msg__bubble {
+    max-width: 86%;
+  }
 }
 </style>
