@@ -314,11 +314,26 @@ cd tripcrew-backend
 # → http://localhost:8080
 ```
 
-### Docker Compose *(예정)*
+### Docker Compose (권장)
+
+MySQL · 백엔드 · 프론트를 한 번에 컨테이너로 띄운다. Docker 엔진은 Docker Desktop 또는 colima 중 택1.
 
 ```bash
-docker-compose up -d
+# 1) 시크릿 준비 (.env 는 gitignore — 커밋 금지)
+cp .env.example .env
+#    .env 에서 최소 DB_PASSWORD / JWT_SECRET / GEMINI_API_KEY 채우기
+#    JWT_SECRET 예: openssl rand -base64 32
+
+# 2) 빌드 + 기동
+docker compose up -d --build
+#    backend  → http://localhost:8080  (/api/health 로 확인, Flyway 가 스키마 자동 생성)
+#    frontend → http://localhost:5173
+#    mysql    → localhost:${MYSQL_PORT:-3306} (컨테이너 내부는 mysql:3306)
 ```
+
+> ⚠️ 셸(`~/.zshrc`)에 `DB_PASSWORD` 를 export 해 두면 compose 치환에서 `.env` 보다 **우선**한다.
+> mysql 과 백엔드 모두 `DB_PASSWORD` 한 소스로 초기화하므로 값이 같이 바뀌어 불일치는 없지만,
+> 컨테이너 DB 는 그 값으로 초기화된다. 비번을 바꾸면 `docker compose down -v` 후 재기동(볼륨 재생성).
 
 <br/>
 
