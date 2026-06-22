@@ -71,7 +71,7 @@ const routes = [
     path: '/admin/users',
     name: 'admin',
     component: () => import('@/views/AdminView.vue'),
-    meta: { title: '관리자 (SC-11)', requiresAuth: true }
+    meta: { title: '관리자 (SC-11)', requiresAuth: true, roles: ['ADMIN', 'SUPER_ADMIN'] }
   },
   {
     path: '/errors/:type?',
@@ -93,14 +93,30 @@ const router = createRouter({
   }
 })
 
+function storedRole() {
+  try {
+    return JSON.parse(localStorage.getItem('tripcrew.user'))?.role || null
+  } catch {
+    return null
+  }
+}
+
 router.beforeEach((to) => {
   if (!to.meta?.requiresAuth) return true
+
   const hasToken = !!localStorage.getItem('tripcrew.accessToken')
-  if (hasToken) return true
-  return {
-    path: '/auth',
-    query: { mode: 'login', redirect: to.fullPath }
+  if (!hasToken) {
+    return { path: '/auth', query: { mode: 'login', redirect: to.fullPath } }
   }
+
+  // 역할 제한 라우트(예: 관리자): 권한 없는 사용자는 관리자 화면 노출 없이 403 으로.
+  // 서버 인가가 진짜 방어선이고, 이건 화면 자체를 안 보여주기 위한 UX 가드.
+  const roles = to.meta?.roles
+  if (roles && !roles.includes(storedRole())) {
+    return { path: '/errors/403' }
+  }
+
+  return true
 })
 
 router.afterEach((to) => {
