@@ -131,16 +131,18 @@
                 <th>이메일</th>
                 <th>닉네임</th>
                 <th>role</th>
+                <th>상태</th>
                 <th>가입일</th>
                 <th>권한 변경</th>
+                <th>제재</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="loading">
-                <td colspan="6" class="table-empty">불러오는 중…</td>
+                <td colspan="8" class="table-empty">불러오는 중…</td>
               </tr>
               <tr v-else-if="filteredUsers.length === 0">
-                <td colspan="6" class="table-empty">표시할 회원이 없습니다.</td>
+                <td colspan="8" class="table-empty">표시할 회원이 없습니다.</td>
               </tr>
               <tr v-for="u in filteredUsers" :key="u.id">
                 <td class="t-mono">{{ u.id }}</td>
@@ -148,6 +150,11 @@
                 <td><strong>{{ u.nickname }}</strong></td>
                 <td>
                   <span :class="['role-chip', `role--${u.role.toLowerCase()}`]">{{ u.role }}</span>
+                </td>
+                <td>
+                  <span :class="['status-chip', u.status === 'BANNED' ? 'status--locked' : 'status--active']">
+                    {{ u.status === 'BANNED' ? '정지' : '정상' }}
+                  </span>
                 </td>
                 <td class="t-mono">{{ formatDate(u.createdAt) }}</td>
                 <td>
@@ -179,6 +186,26 @@
                     {{ savingId === u.id ? '변경 중…' : (u.role === 'ADMIN' ? '→ USER 강등' : '→ ADMIN 승격') }}
                   </button>
                 </td>
+                <td>
+                  <button
+                    v-if="!canModerate(u)"
+                    class="action-btn"
+                    disabled
+                    :title="banDisabledReason(u)"
+                  >—</button>
+                  <button
+                    v-else-if="u.status === 'BANNED'"
+                    class="action-btn action-btn--promote"
+                    :disabled="banningId === u.id"
+                    @click="toggleBan(u)"
+                  >{{ banningId === u.id ? '처리 중…' : '제재 해제' }}</button>
+                  <button
+                    v-else
+                    class="action-btn action-btn--danger"
+                    :disabled="banningId === u.id"
+                    @click="toggleBan(u)"
+                  >{{ banningId === u.id ? '처리 중…' : '정지' }}</button>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -189,7 +216,8 @@
         </p>
 
         <p class="api-note t-mono">
-          GET /api/admin/users (ROLE_ADMIN) · PATCH /api/admin/users/{id}/role (ROLE_SUPER_ADMIN) · USER↔ADMIN 토글만
+          GET /api/admin/users (ROLE_ADMIN) · PATCH /{id}/role (ROLE_SUPER_ADMIN, USER↔ADMIN) ·
+          PATCH /{id}/ban·/unban (ROLE_ADMIN, 본인·SUPER_ADMIN 제외 / ADMIN 제재는 SUPER_ADMIN만)
         </p>
       </main>
     </div>
@@ -210,6 +238,7 @@ const loading = ref(false)
 const error = ref('')
 const forbidden = ref(false)
 const savingId = ref(null)
+const banningId = ref(null)
 const notice = ref(null)
 
 const query = ref('')
@@ -219,6 +248,29 @@ const currentUserId = computed(() => auth.user && auth.user.id)
 const userInitial = computed(() => (auth.user && auth.user.nickname ? auth.user.nickname : 'A').charAt(0))
 // role 변경은 SUPER_ADMIN 만(서버 인가와 짝). ADMIN 은 목록만 보고 토글은 '읽기 전용'.
 const canManageRoles = computed(() => !!(auth.user && auth.user.role === 'SUPER_ADMIN'))
+// 제재(밴)는 ADMIN + SUPER_ADMIN. 단 대상 제한은 canModerate 에서(서버 가드와 짝).
+const myRole = computed(() => (auth.user && auth.user.role) || null)
+const isSuperAdmin = computed(() => myRole.value === 'SUPER_ADMIN')
+
+/**
+ * 이 행(u)을 현재 관리자가 제재/해제할 수 있는지. 서버 가드(AdminUserService.ban)와 동일 규칙 —
+ * 프론트는 UX 편의일 뿐, 서버가 진짜 방어선이다.
+ *   - 본인 불가 / SUPER_ADMIN 대상 불가 / ADMIN 대상은 SUPER_ADMIN 만.
+ */
+function canModerate(u) {
+  if (myRole.value !== 'ADMIN' && myRole.value !== 'SUPER_ADMIN') return false
+  if (u.id === currentUserId.value) return false
+  if (u.role === 'SUPER_ADMIN') return false
+  if (u.role === 'ADMIN' && !isSuperAdmin.value) return false
+  return true
+}
+
+function banDisabledReason(u) {
+  if (u.id === currentUserId.value) return '본인 계정은 제재할 수 없습니다'
+  if (u.role === 'SUPER_ADMIN') return '최고관리자는 제재할 수 없습니다'
+  if (u.role === 'ADMIN') return 'ADMIN 제재는 최고관리자(SUPER_ADMIN)만 가능합니다'
+  return '제재할 수 없습니다'
+}
 
 const adminCount = computed(() => users.value.filter((u) => u.role === 'ADMIN').length)
 const userCount = computed(() => users.value.filter((u) => u.role === 'USER').length)
@@ -277,6 +329,27 @@ async function toggleRole(user) {
     else flash('error', msg || `변경 실패 (${status || e.message})`)
   } finally {
     savingId.value = null
+  }
+}
+
+async function toggleBan(user) {
+  const willBan = user.status !== 'BANNED'
+  banningId.value = user.id
+  notice.value = null
+  try {
+    if (willBan) await adminApi.ban(user.id)
+    else await adminApi.unban(user.id)
+    user.status = willBan ? 'BANNED' : 'ACTIVE' // 204 (본문 없음) → 로컬 반영
+    flash('ok', `${user.nickname}님을 ${willBan ? '제재' : '제재 해제'}했습니다.`)
+  } catch (e) {
+    const status = e.response?.status
+    const msg = e.response?.data?.message
+    if (status === 403) flash('error', '권한이 없어 처리할 수 없습니다 (403).')
+    else if (status === 404) flash('error', '대상 사용자를 찾을 수 없습니다 (404).')
+    else if (status === 400) flash('error', msg || '제재할 수 없는 대상입니다 (400).')
+    else flash('error', msg || `처리 실패 (${status || e.message})`)
+  } finally {
+    banningId.value = null
   }
 }
 

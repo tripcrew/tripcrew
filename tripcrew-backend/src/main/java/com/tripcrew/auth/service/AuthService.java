@@ -7,6 +7,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.tripcrew.auth.exception.BannedUserException;
 import com.tripcrew.auth.exception.DuplicateEmailException;
 import com.tripcrew.auth.exception.InvalidCredentialsException;
 import com.tripcrew.auth.exception.InvalidTokenException;
@@ -18,6 +19,7 @@ import com.tripcrew.auth.model.dto.TokenResponse;
 import com.tripcrew.auth.model.dto.UserResponse;
 import com.tripcrew.auth.model.mapper.RefreshTokenMapper;
 import com.tripcrew.user.model.Role;
+import com.tripcrew.user.model.Status;
 import com.tripcrew.user.model.dto.User;
 import com.tripcrew.user.model.mapper.UserMapper;
 
@@ -56,6 +58,9 @@ public class AuthService {
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new InvalidCredentialsException();
         }
+        if (user.getStatus() == Status.BANNED) {
+            throw new BannedUserException();
+        }
         return issueTokens(user);
     }
 
@@ -73,6 +78,10 @@ public class AuthService {
         }
         User user = userMapper.findById(stored.getUserId())
                 .orElseThrow(InvalidTokenException::new);
+        if (user.getStatus() == Status.BANNED) {
+            refreshTokenMapper.deleteByToken(refreshToken);
+            throw new BannedUserException();
+        }
         return issueTokens(user);
     }
 

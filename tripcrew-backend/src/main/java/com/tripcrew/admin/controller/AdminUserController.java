@@ -41,4 +41,19 @@ public class AdminUserController {
                            @Valid @RequestBody UpdateRoleRequest request) {
         adminUserService.updateRole(requesterId, id, request.role());
     }
+
+    /** 사용자 밴(제재). ADMIN/SUPER_ADMIN 가능, 대상 제한은 서비스 가드 참고. */
+    @PatchMapping("/{id}/ban")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void ban(@AuthenticationPrincipal Long requesterId,
+                    @PathVariable Long id) {
+        adminUserService.ban(requesterId, id);
+    }
+
+    /** 사용자 밴 해제. */
+    @PatchMapping("/{id}/unban")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void unban(@PathVariable Long id) {
+        adminUserService.unban(id);
+    }
 }

@@ -3,6 +3,7 @@ package com.tripcrew.user.model.dto;
 import java.time.LocalDateTime;
 
 import com.tripcrew.user.model.Role;
+import com.tripcrew.user.model.Status;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,6 +27,7 @@ public class User {
     private String password;   // BCrypt 해시
     private String nickname;
     private Role role;
+    private Status status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
