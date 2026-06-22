@@ -13,6 +13,7 @@ public record AdminUserResponse(
         String nickname,
         String role,
         String status,
+        Integer reportCount,
         LocalDateTime createdAt
 ) {
     public static AdminUserResponse from(User user) {
@@ -22,6 +23,7 @@ public record AdminUserResponse(
                 user.getNickname(),
                 user.getRole().name(),
                 user.getStatus().name(),
+                user.getReportCount(),
                 user.getCreatedAt()
         );
     }

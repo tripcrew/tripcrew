@@ -28,6 +28,7 @@ public class User {
     private String nickname;
     private Role role;
     private Status status;
+    private Integer reportCount;   // 처리완료된 신고 누적 횟수(3회 이상 자동 제재)
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
