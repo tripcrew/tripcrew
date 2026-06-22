@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.tripcrew.review.model.mapper.ReviewMapper">
+
+    <!-- created_at / updated_at 은 DB DEFAULT 로 채워진다 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO reviews (user_id, target_type, target_id, rating, content)
+        VALUES (#{userId}, #{targetType}, #{targetId}, #{rating}, #{content})
+    </insert>
+
+    <select id="findById" resultType="Review">
+        SELECT id, user_id, target_type, target_id, rating, content, created_at, updated_at
+          FROM reviews
+         WHERE id = #{id}
+    </select>
+
+    <!-- 대상별 후기 목록(최신순). 작성자 닉네임을 함께 내려보낸다. -->
+    <select id="findByTarget" resultType="Review">
+        SELECT r.id, r.user_id, r.target_type, r.target_id, r.rating, r.content,
+               r.created_at, r.updated_at,
+               u.nickname AS author_nickname
+          FROM reviews r
+          JOIN users u ON u.id = r.user_id
+         WHERE r.target_type = #{targetType}
+           AND r.target_id = #{targetId}
+         ORDER BY r.created_at DESC, r.id DESC
+    </select>
+
+    <select id="existsAttraction" resultType="boolean">
+        SELECT EXISTS (SELECT 1 FROM attractions WHERE no = #{targetId})
+    </select>
+
+    <select id="existsTripPlan" resultType="boolean">
+        SELECT EXISTS (SELECT 1 FROM trip_plans WHERE id = #{targetId})
+    </select>
+
+</mapper>
