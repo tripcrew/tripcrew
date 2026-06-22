@@ -99,4 +99,22 @@ public class AdminUserService {
         User target = userMapper.findById(targetId).orElseThrow(UserNotFoundException::new);
         userMapper.updateStatus(target.getId(), Status.ACTIVE);
     }
+
+    /**
+     * 신고 누적에 의한 자동 제재(시스템 호출). 신고 처리완료가 임계치를 넘었을 때 호출된다.
+     * 일반 USER 만 대상 — ADMIN/SUPER_ADMIN 은 자동 제재 대상이 아니며, 이미 BANNED 면 무시한다.
+     * 밴 메커니즘은 Phase 1 과 동일(상태 BANNED + refresh token 폐기).
+     *
+     * @return 실제로 제재가 적용됐으면 true
+     */
+    @Transactional
+    public boolean sanctionIfEligible(Long userId) {
+        User user = userMapper.findById(userId).orElse(null);
+        if (user == null || user.getRole() != Role.USER || user.getStatus() == Status.BANNED) {
+            return false;
+        }
+        userMapper.updateStatus(userId, Status.BANNED);
+        refreshTokenMapper.deleteByUserId(userId);
+        return true;
+    }
 }

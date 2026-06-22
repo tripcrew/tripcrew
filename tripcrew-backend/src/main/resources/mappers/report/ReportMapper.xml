@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.tripcrew.report.model.mapper.ReportMapper">
+
+    <!-- status / created_at / updated_at 는 DB DEFAULT 로 채워진다 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO reports (reporter_id, target_type, target_id, reason, detail)
+        VALUES (#{reporterId}, #{targetType}, #{targetId}, #{reason}, #{detail})
+    </insert>
+
+    <select id="findById" resultType="Report">
+        SELECT id, reporter_id, target_type, target_id, reason, detail, status, created_at, updated_at
+          FROM reports
+         WHERE id = #{id}
+    </select>
+
+    <select id="existsByReporterAndTarget" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1 FROM reports
+             WHERE reporter_id = #{reporterId}
+               AND target_type = #{targetType}
+               AND target_id = #{targetId}
+        )
+    </select>
+
+    <select id="existsReview" resultType="boolean">
+        SELECT EXISTS (SELECT 1 FROM reviews WHERE id = #{targetId})
+    </select>
+
+    <select id="existsUser" resultType="boolean">
+        SELECT EXISTS (SELECT 1 FROM users WHERE id = #{targetId})
+    </select>
+
+    <!--
+      신고가 가리키는 "피신고 유저"(제재 대상)의 id.
+      REVIEW=후기 작성자, USER=대상 사용자. 후기가 삭제됐으면 null 가능.
+    -->
+    <select id="findReportedUserId" resultType="java.lang.Long">
+        SELECT CASE
+                   WHEN rp.target_type = 'REVIEW' THEN rv.user_id
+                   WHEN rp.target_type = 'USER'   THEN rp.target_id
+               END
+          FROM reports rp
+          LEFT JOIN reviews rv ON rp.target_type = 'REVIEW' AND rv.id = rp.target_id
+         WHERE rp.id = #{id}
+    </select>
+
+    <!--
+      관리자 신고 목록. 사람은 이메일로 식별해 내려준다.
+        - 신고자 이메일
+        - (REVIEW 신고) 신고된 후기 내용
+        - 피신고 유저(밴 대상) 이메일: REVIEW=후기 작성자, USER=대상 사용자
+      status 가 null 이면 전체, 아니면 해당 상태만(보통 OPEN 만 노출).
+    -->
+    <select id="findAllForAdmin" resultType="AdminReportRow">
+        SELECT
+            rp.id,
+            rp.created_at,
+            rp.target_type,
+            rp.reason,
+            rp.detail,
+            reporter.email AS reporter_email,
+            rv.content     AS review_content,
+            ru.email       AS reported_user_email
+          FROM reports rp
+          JOIN users reporter ON reporter.id = rp.reporter_id
+          LEFT JOIN reviews rv ON rp.target_type = 'REVIEW' AND rv.id = rp.target_id
+          LEFT JOIN users ru
+                 ON ru.id = CASE
+                                WHEN rp.target_type = 'REVIEW' THEN rv.user_id
+                                WHEN rp.target_type = 'USER'   THEN rp.target_id
+                            END
+        <where>
+            <if test="status != null">
+                rp.status = #{status}
+            </if>
+        </where>
+         ORDER BY rp.created_at DESC, rp.id DESC
+    </select>
+
+    <update id="updateStatus">
+        UPDATE reports
+           SET status = #{status}
+         WHERE id = #{id}
+    </update>
+
+</mapper>

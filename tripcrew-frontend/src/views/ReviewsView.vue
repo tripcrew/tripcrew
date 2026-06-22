@@ -4,7 +4,7 @@
 
     <main class="container reviews-layout">
       <nav class="breadcrumb">
-        관광지 › 전남 › 여수시 › <strong>오동도 동백숲</strong> › 후기
+        관광지 › <strong>{{ attractionTitle }}</strong> › 후기
       </nav>
 
       <div class="reviews-grid">
@@ -12,7 +12,7 @@
         <section class="write-form">
           <header class="form-head">
             <h2 class="t-h2">후기 작성</h2>
-            <p class="t-caption">오동도 동백숲</p>
+            <p class="t-caption">{{ attractionTitle }}</p>
           </header>
 
           <div class="form-block">
@@ -24,21 +24,13 @@
           </div>
 
           <div class="form-block">
-            <label class="form-label">사진 첨부 <span class="t-caption">(최대 10장)</span></label>
-            <div class="upload-area">
-              <div class="upload-icon">📷</div>
-              <p>여기로 드래그 또는 <a href="#" class="link-teal">파일 선택</a></p>
-              <p class="t-mono muted">Presigned URL · 서버 거치지 않고 S3로 직접 업로드</p>
-            </div>
-          </div>
-
-          <div class="form-block">
             <label class="form-label">후기 내용</label>
             <textarea
               v-model="content"
               class="review-textarea"
               placeholder="이 곳에서의 경험을 자유롭게 작성해주세요."
               rows="6"
+              maxlength="1000"
             />
             <div class="textarea-foot">
               <span class="t-caption">최소 20자 이상 권장</span>
@@ -46,12 +38,15 @@
             </div>
           </div>
 
+          <p v-if="formError" class="form-error">{{ formError }}</p>
+
           <div class="form-actions">
-            <BaseButton variant="secondary">임시 저장</BaseButton>
-            <BaseButton variant="primary" full>후기 등록</BaseButton>
+            <BaseButton variant="primary" full :disabled="submitting" @click="submitReview">
+              {{ submitting ? '등록 중…' : '후기 등록' }}
+            </BaseButton>
           </div>
 
-          <p class="api-note t-mono">POST /api/reviews · /api/reviews/upload-url</p>
+          <p v-if="!isAuthenticated" class="api-note t-mono">로그인 후 후기를 작성할 수 있어요.</p>
         </section>
 
         <!-- Right: Reviews list -->
@@ -59,14 +54,14 @@
           <header class="list-head">
             <div class="rating-summary">
               <div class="rating-big">
-                <strong>4.7</strong>
-                <div class="stars">★★★★★</div>
-                <span class="t-caption">382 후기</span>
+                <strong>{{ averageRating.toFixed(1) }}</strong>
+                <div class="stars">{{ averageStars }}</div>
+                <span class="t-caption">{{ reviewCount }} 후기</span>
               </div>
 
               <div class="rating-bars">
-                <div v-for="(b, i) in bars" :key="i" class="bar-row">
-                  <span class="bar-label">{{ 5 - i }}★</span>
+                <div v-for="b in bars" :key="b.star" class="bar-row">
+                  <span class="bar-label">{{ b.star }}★</span>
                   <div class="bar">
                     <div class="bar-fill" :style="{ width: b.pct + '%' }"></div>
                   </div>
@@ -74,81 +69,229 @@
                 </div>
               </div>
             </div>
-
-            <div class="list-controls">
-              <select class="sort-select">
-                <option>도움순</option>
-                <option>최신순</option>
-                <option>평점 높은순</option>
-                <option>평점 낮은순</option>
-              </select>
-            </div>
           </header>
 
-          <ul class="reviews">
+          <p v-if="loading" class="empty-note">불러오는 중…</p>
+          <p v-else-if="listError" class="empty-note">{{ listError }}</p>
+          <p v-else-if="reviewCount === 0" class="empty-note">아직 후기가 없어요. 첫 후기를 남겨보세요!</p>
+
+          <ul v-else class="reviews">
             <li v-for="r in reviews" :key="r.id" class="review-item">
               <header class="review-head">
-                <div class="avatar" :style="{ background: r.color }">{{ r.letter }}</div>
+                <div class="avatar" :style="{ background: avatarColor(r.userId) }">{{ avatarLetter(r.authorNickname) }}</div>
                 <div class="reviewer-info">
-                  <strong>{{ r.author }}</strong>
-                  <span class="t-caption">{{ r.level }}</span>
+                  <strong>{{ r.authorNickname }}</strong>
                 </div>
                 <div class="review-meta">
-                  <span class="stars">{{ '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating) }}</span>
+                  <span class="stars">{{ starText(r.rating) }}</span>
                   <span class="rating-text">{{ r.rating.toFixed(1) }}</span>
-                  <span class="t-caption">· {{ r.date }}</span>
+                  <span class="t-caption">· {{ formatDate(r.createdAt) }}</span>
                 </div>
               </header>
               <p class="review-content">{{ r.content }}</p>
               <footer class="review-foot">
-                <button class="helpful-btn">
-                  👍 도움됐어요 <span>{{ r.helpful }}</span>
+                <button
+                  v-if="r.userId !== currentUserId"
+                  class="report-btn"
+                  :disabled="reportedIds.includes(r.id)"
+                  @click="openReport(r)"
+                >
+                  {{ reportedIds.includes(r.id) ? '신고됨' : '신고' }}
                 </button>
-                <button class="report-btn">신고</button>
+                <span v-else class="own-tag">내 후기</span>
               </footer>
             </li>
           </ul>
-
-          <button class="load-more">더 보기</button>
         </section>
       </div>
     </main>
+
+    <!-- 신고 모달 -->
+    <div v-if="reportModal.open" class="modal-backdrop" @click.self="closeReport">
+      <div class="modal">
+        <h3 class="t-h3">후기 신고</h3>
+        <p class="modal-sub t-caption">신고 사유를 선택해주세요. 관리자가 검토 후 조치합니다.</p>
+
+        <div class="reason-list">
+          <label v-for="opt in REPORT_REASONS" :key="opt.code" class="reason-item">
+            <input type="radio" :value="opt.code" v-model="reportModal.reason" />
+            <span>{{ opt.label }}</span>
+          </label>
+        </div>
+
+        <textarea
+          v-model="reportModal.detail"
+          class="review-textarea"
+          placeholder="상세 사유(선택)"
+          rows="3"
+          maxlength="500"
+        />
+
+        <p v-if="reportModal.error" class="form-error">{{ reportModal.error }}</p>
+
+        <div class="modal-actions">
+          <BaseButton variant="secondary" @click="closeReport">취소</BaseButton>
+          <BaseButton variant="primary" :disabled="reportModal.submitting" @click="submitReport">
+            {{ reportModal.submitting ? '신고 중…' : '신고하기' }}
+          </BaseButton>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+
 import AppHeader from '@/components/common/AppHeader.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
+import { reviewApi } from '@/api/reviews'
+import { reportApi } from '@/api/reports'
+import { attractionApi } from '@/api/attractions'
+import { useAuthStore } from '@/stores/auth'
 
-const rating = ref(4)
-const content = ref('동백꽃이 만개한 시기에 방문했어요. 산책로가 잘 정비되어 있어서 부모님 모시고 다녀오기에 정말 좋았습니다. 다만 주말이라 그런지 사람이 너무 많아서 케이블카는 거의 한 시간 기다렸어요.')
+const route = useRoute()
+const router = useRouter()
+const auth = useAuthStore()
 
-const bars = [
-  { count: 275, pct: 72 },
-  { count: 82, pct: 21 },
-  { count: 19, pct: 5 },
-  { count: 4, pct: 1 },
-  { count: 2, pct: 1 }
-]
+const TARGET_TYPE = 'ATTRACTION'
+const targetId = computed(() => Number(route.params.id))
 
-const reviews = [
-  {
-    id: 1, author: '현우', letter: '현', color: 'var(--violet)', level: 'Lv.3 트레블러',
-    rating: 5, date: '3일 전', helpful: 24,
-    content: '동백꽃 시즌에 정말 예뻤어요. 산책로도 잘 정비되어 있고, 야간에 조명 켜지는 것도 인상적이었습니다. 케이블카까지 같이 보면 시간이 빠르게 가요.'
-  },
-  {
-    id: 2, author: '지원', letter: '지', color: 'var(--coral)', level: 'Lv.5 어드벤처러',
-    rating: 4, date: '1주 전', helpful: 18,
-    content: '풍경은 좋은데 케이블카 대기가 1시간 넘어요. 평일에 가시는 걸 추천합니다. 동백숲 산책로는 1시간 정도면 충분합니다.'
-  },
-  {
-    id: 3, author: '하늘', letter: '하', color: 'var(--info)', level: 'Lv.2 익스플로러',
-    rating: 5, date: '2주 전', helpful: 12,
-    content: '여수 여행 중 가장 좋았던 곳이에요. 아침 일찍 가면 사람도 많지 않고 사진 찍기 정말 좋습니다.'
+const attraction = ref(null)
+const reviews = ref([])
+const reportedIds = ref([])
+const loading = ref(false)
+const listError = ref('')
+
+// 작성 폼
+const rating = ref(5)
+const content = ref('')
+const submitting = ref(false)
+const formError = ref('')
+
+const isAuthenticated = computed(() => auth.isAuthenticated)
+const currentUserId = computed(() => (auth.user ? auth.user.id : null))
+const attractionTitle = computed(() => (attraction.value ? attraction.value.title : '관광지'))
+
+const reviewCount = computed(() => reviews.value.length)
+const averageRating = computed(() => {
+  if (!reviews.value.length) return 0
+  const sum = reviews.value.reduce((acc, r) => acc + r.rating, 0)
+  return sum / reviews.value.length
+})
+const averageStars = computed(() => starText(Math.round(averageRating.value)))
+// 5★ ~ 1★ 분포
+const bars = computed(() =>
+  [5, 4, 3, 2, 1].map((star) => {
+    const count = reviews.value.filter((r) => r.rating === star).length
+    const pct = reviews.value.length ? Math.round((count / reviews.value.length) * 100) : 0
+    return { star, count, pct }
+  }),
+)
+
+const PALETTE = ['var(--violet)', 'var(--coral)', 'var(--info)', 'var(--teal)', 'var(--warning)']
+function avatarColor(userId) {
+  return PALETTE[(userId || 0) % PALETTE.length]
+}
+function avatarLetter(nickname) {
+  return nickname ? nickname.charAt(0) : '?'
+}
+function starText(n) {
+  const filled = Math.max(0, Math.min(5, n))
+  return '★'.repeat(filled) + '☆'.repeat(5 - filled)
+}
+function formatDate(iso) {
+  return iso ? iso.slice(0, 10) : ''
+}
+
+async function loadAll() {
+  loading.value = true
+  listError.value = ''
+  try {
+    const [list, detail] = await Promise.all([
+      reviewApi.listByTarget(TARGET_TYPE, targetId.value),
+      attractionApi.get(targetId.value).catch(() => null),
+    ])
+    reviews.value = list
+    attraction.value = detail
+  } catch (e) {
+    listError.value = '후기를 불러오지 못했어요.'
+  } finally {
+    loading.value = false
   }
+}
+
+function requireLogin() {
+  if (!isAuthenticated.value) {
+    router.push({ path: '/auth', query: { mode: 'login', redirect: route.fullPath } })
+    return false
+  }
+  return true
+}
+
+async function submitReview() {
+  if (!requireLogin()) return
+  if (content.value.trim().length === 0) {
+    formError.value = '후기 내용을 입력해주세요.'
+    return
+  }
+  submitting.value = true
+  formError.value = ''
+  try {
+    await reviewApi.create({
+      targetType: TARGET_TYPE,
+      targetId: targetId.value,
+      rating: rating.value,
+      content: content.value.trim(),
+    })
+    content.value = ''
+    rating.value = 5
+    await loadAll()
+  } catch (e) {
+    formError.value = e?.response?.data?.message || '후기 등록에 실패했어요.'
+  } finally {
+    submitting.value = false
+  }
+}
+
+// 신고 모달
+const REPORT_REASONS = [
+  { code: 'SPAM', label: '스팸/도배' },
+  { code: 'ABUSE', label: '욕설/비방' },
+  { code: 'ADVERTISING', label: '광고/홍보' },
+  { code: 'INAPPROPRIATE', label: '부적절한 내용' },
+  { code: 'OTHER', label: '기타' },
 ]
+const reportModal = ref({ open: false, reviewId: null, reason: 'SPAM', detail: '', submitting: false, error: '' })
+
+function openReport(review) {
+  if (!requireLogin()) return
+  reportModal.value = { open: true, reviewId: review.id, reason: 'SPAM', detail: '', submitting: false, error: '' }
+}
+function closeReport() {
+  reportModal.value.open = false
+}
+async function submitReport() {
+  reportModal.value.submitting = true
+  reportModal.value.error = ''
+  try {
+    await reportApi.create({
+      targetType: 'REVIEW',
+      targetId: reportModal.value.reviewId,
+      reason: reportModal.value.reason,
+      detail: reportModal.value.detail.trim() || null,
+    })
+    reportedIds.value = [...reportedIds.value, reportModal.value.reviewId]
+    reportModal.value.open = false
+  } catch (e) {
+    reportModal.value.error = e?.response?.data?.message || '신고에 실패했어요.'
+  } finally {
+    reportModal.value.submitting = false
+  }
+}
+
+onMounted(loadAll)
 </script>
 
 <style scoped>
@@ -229,40 +372,6 @@ const reviews = [
   color: var(--warning);
 }
 
-/* Upload area */
-.upload-area {
-  padding: 32px 24px;
-  background: var(--bg-soft);
-  border: 1.5px dashed var(--line-2);
-  border-radius: 12px;
-  text-align: center;
-  transition: all 0.15s;
-}
-
-.upload-area:hover {
-  border-color: var(--teal);
-  background: var(--teal-tint);
-}
-
-.upload-icon {
-  font-size: 36px;
-  margin-bottom: 10px;
-}
-
-.upload-area p {
-  font-size: 14px;
-  color: var(--ink-3);
-  margin-bottom: 4px;
-}
-
-.upload-area .muted {
-  font-size: 11px;
-  color: var(--muted);
-  margin-top: 8px;
-}
-
-.link-teal { color: var(--teal); font-weight: 700; }
-
 /* Textarea */
 .review-textarea {
   width: 100%;
@@ -301,6 +410,12 @@ const reviews = [
   margin-top: 8px;
 }
 
+.form-error {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--danger);
+}
+
 .api-note {
   margin-top: 16px;
   font-size: 11px;
@@ -328,7 +443,6 @@ const reviews = [
   display: grid;
   grid-template-columns: 200px 1fr;
   gap: 32px;
-  margin-bottom: 20px;
 }
 
 .rating-big {
@@ -395,17 +509,11 @@ const reviews = [
   text-align: right;
 }
 
-.list-controls {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.sort-select {
-  background: white;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 13px;
+.empty-note {
+  padding: 32px 0;
+  text-align: center;
+  font-size: 14px;
+  color: var(--ink-soft);
 }
 
 /* Review items */
@@ -453,12 +561,6 @@ const reviews = [
   font-weight: 700;
 }
 
-.reviewer-info .t-caption {
-  font-size: 11px;
-  color: var(--coral);
-  font-weight: 600;
-}
-
 .review-meta {
   display: flex;
   align-items: center;
@@ -480,35 +582,13 @@ const reviews = [
   line-height: 1.6;
   color: var(--ink-2);
   margin-bottom: 12px;
+  white-space: pre-wrap;
 }
 
 .review-foot {
   display: flex;
   gap: 8px;
-}
-
-.helpful-btn {
-  padding: 6px 12px;
-  background: white;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ink-3);
-  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  transition: all 0.15s;
-}
-
-.helpful-btn:hover {
-  border-color: var(--teal);
-  color: var(--teal);
-}
-
-.helpful-btn span {
-  font-family: var(--font-mono);
-  color: var(--muted);
 }
 
 .report-btn {
@@ -517,25 +597,64 @@ const reviews = [
   color: var(--ink-soft);
 }
 
-.report-btn:hover { color: var(--danger); }
+.report-btn:hover:not(:disabled) { color: var(--danger); }
+.report-btn:disabled { color: var(--muted); cursor: default; }
 
-.load-more {
+.own-tag {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* 신고 모달 */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: grid;
+  place-items: center;
+  z-index: 100;
+  padding: 16px;
+}
+
+.modal {
+  background: white;
+  border-radius: var(--r-xl);
+  padding: 28px;
   width: 100%;
-  margin-top: 24px;
-  padding: 14px;
-  background: var(--bg-soft);
+  max-width: 420px;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.2);
+}
+
+.modal-sub {
+  margin: 8px 0 20px;
+  color: var(--ink-soft);
+}
+
+.reason-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.reason-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: 10px;
   font-size: 14px;
-  font-weight: 600;
-  color: var(--ink-3);
+  cursor: pointer;
 }
 
-.load-more:hover {
-  background: white;
-  border-color: var(--teal);
-  color: var(--teal);
+.reason-item:hover { border-color: var(--teal); }
+
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
 }
 
-.muted { color: var(--muted); }
+.modal-actions :deep(button) { flex: 1; }
 </style>
