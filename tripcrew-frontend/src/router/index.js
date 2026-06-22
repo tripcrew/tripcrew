@@ -68,10 +68,28 @@ const routes = [
     meta: { title: '후기 (SC-10)' }
   },
   {
+    path: '/notices',
+    name: 'notices',
+    component: () => import('@/views/NoticesView.vue'),
+    meta: { title: '공지사항' }
+  },
+  {
+    path: '/notices/:id',
+    name: 'notice-detail',
+    component: () => import('@/views/NoticeDetailView.vue'),
+    meta: { title: '공지 상세' }
+  },
+  {
     path: '/admin/users',
     name: 'admin',
     component: () => import('@/views/AdminView.vue'),
     meta: { title: '관리자 (SC-11)', requiresAuth: true, roles: ['ADMIN', 'SUPER_ADMIN'] }
+  },
+  {
+    path: '/admin/notices',
+    name: 'admin-notices',
+    component: () => import('@/views/AdminNoticesView.vue'),
+    meta: { title: '관리자 · 공지 관리', requiresAuth: true, roles: ['ADMIN', 'SUPER_ADMIN'] }
   },
   {
     path: '/admin/reports',
