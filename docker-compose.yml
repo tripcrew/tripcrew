@@ -3,7 +3,9 @@ services:
     image: mysql:8.4
     container_name: tripcrew-mysql
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}
+      # 백엔드(DB_PASSWORD)와 같은 소스로 초기화한다. 셸에 DB_PASSWORD 가 export 돼 있으면
+      # compose 치환에서 .env 보다 우선하는데, mysql 도 같은 값을 쓰므로 비번 불일치가 생기지 않는다.
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-tripcrew}
       TZ: Asia/Seoul
     ports:
