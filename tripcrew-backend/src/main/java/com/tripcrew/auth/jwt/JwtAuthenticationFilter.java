@@ -1,9 +1,11 @@
 package com.tripcrew.auth.jwt;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -34,11 +36,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (token != null && jwtProvider.validate(token)) {
             Long userId = jwtProvider.getUserId(token);
             String role = jwtProvider.getRole(token);
-            var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role));
-            var authentication = new UsernamePasswordAuthenticationToken(userId, null, authorities);
+            var authentication = new UsernamePasswordAuthenticationToken(userId, null, toAuthorities(role));
             SecurityContextHolder.getContext().setAuthentication(authentication);
         }
         filterChain.doFilter(request, response);
+    }
+
+    /**
+     * 토큰의 role 을 권한 목록으로 변환한다. 역할 위계를 여기서 직접 펼친다
+     * (Spring Security 6.2 는 RoleHierarchy 빈을 웹 인가에 자동 적용하지 않으므로):
+     * SUPER_ADMIN 은 ADMIN 권한도 함께 가져 {@code /api/admin/**}(ROLE_ADMIN) 을 통과한다.
+     */
+    private List<GrantedAuthority> toAuthorities(String role) {
+        List<GrantedAuthority> authorities = new ArrayList<>();
+        authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
+        if ("SUPER_ADMIN".equals(role)) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+        }
+        return authorities;
     }
 
     private String resolveToken(HttpServletRequest request) {

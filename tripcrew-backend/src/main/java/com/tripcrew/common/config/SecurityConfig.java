@@ -51,7 +51,11 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/reissue").permitAll()
                         // 공개 조회(관광지 등 GET)는 기능 구현 시 개별 permitAll 추가
                         .requestMatchers(HttpMethod.GET, "/api/attractions/**").permitAll()
+                        // 역할 변경은 최고 책임자 전용: SUPER_ADMIN 만 다른 사용자 권한을 바꾼다.
+                        // 더 좁은 규칙이므로 아래 /api/admin/** 규칙보다 반드시 위에 둔다.
+                        .requestMatchers(HttpMethod.PATCH, "/api/admin/users/*/role").hasRole("SUPER_ADMIN")
                         // 관리자 전용(F09): ROLE_ADMIN 필요. anyRequest 보다 반드시 위에 둔다.
+                        // (SUPER_ADMIN 은 JWT 필터에서 ROLE_ADMIN 도 함께 부여받아 통과한다.)
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         // 그 외는 인증 필요
                         .anyRequest().authenticated())
