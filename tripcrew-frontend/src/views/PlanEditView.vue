@@ -281,6 +281,7 @@ const mapInstance = ref(null)
 const mapMarkers = ref([])
 const routeLine = ref(null)
 const routeBounds = ref(null)
+const drivingRoutePath = ref([])
 const selectedMapPlaceName = ref('')
 let activeInfoWindow = null
 const placeForm = ref({
@@ -304,6 +305,7 @@ const OPTIMIZE_ESTIMATE_MS = 2400
 let naverMapsScriptPromise = null
 let optimizeTimer = null
 let optimizeStartedAt = 0
+let drivingRouteRequest = 0
 
 const dateLabel = computed(() => {
   const { startDate, endDate } = form.value
@@ -408,6 +410,10 @@ watch(selectedDay, (day) => {
 
 watch(mapPlaces, () => {
   renderMapPlaces()
+}, { flush: 'post' })
+
+watch([selectedDay, mapPlaces], () => {
+  loadDrivingRoute()
 }, { flush: 'post' })
 
 function fill(plan) {
@@ -593,10 +599,15 @@ function renderMapPlaces() {
     mapMarkers.value.push(marker)
   })
 
-  if (path.length > 1) {
+  const routePath = drivingRoutePath.value.length > 1
+    ? drivingRoutePath.value.map((point) => new maps.LatLng(point.latitude, point.longitude))
+    : path
+
+  routePath.forEach((position) => bounds.extend(position))
+  if (routePath.length > 1) {
     routeLine.value = new maps.Polyline({
       map,
-      path,
+      path: routePath,
       strokeColor: '#109A8E',
       strokeWeight: 4,
       strokeOpacity: 0.82,
@@ -610,6 +621,26 @@ function renderMapPlaces() {
   } else {
     routeBounds.value = bounds
     fitMapToPlaces()
+  }
+}
+
+async function loadDrivingRoute() {
+  const request = ++drivingRouteRequest
+  drivingRoutePath.value = []
+  renderMapPlaces()
+  if (selectedDay.value === null || mapPlaces.value.length < 2) return
+
+  try {
+    const route = await tripPlanApi.getDrivingRoute(id, selectedDay.value)
+    if (request !== drivingRouteRequest) return
+    drivingRoutePath.value = Array.isArray(route.path) ? route.path : []
+    renderMapPlaces()
+  } catch {
+    // Directions를 사용할 수 없는 개발 환경에서는 기존 좌표 연결선으로 표시한다.
+    if (request === drivingRouteRequest) {
+      drivingRoutePath.value = []
+      renderMapPlaces()
+    }
   }
 }
 

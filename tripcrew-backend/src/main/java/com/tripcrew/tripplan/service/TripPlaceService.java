@@ -21,6 +21,8 @@ import com.tripcrew.tripplan.exception.TripPlanAccessDeniedException;
 import com.tripcrew.tripplan.exception.TripPlanNotFoundException;
 import com.tripcrew.tripplan.model.dto.TripPlace;
 import com.tripcrew.tripplan.model.dto.TripPlaceCreateRequest;
+import com.tripcrew.tripplan.model.dto.DrivingRouteResponse;
+import com.tripcrew.tripplan.model.dto.DrivingRouteResponse.RoutePoint;
 import com.tripcrew.tripplan.model.dto.TripPlaceOptimizeRequest;
 import com.tripcrew.tripplan.model.dto.TripPlaceReorderRequest;
 import com.tripcrew.tripplan.model.dto.TripPlaceResponse;
@@ -128,6 +130,33 @@ public class TripPlaceService {
         return tripPlaceMapper.findByPlanIdAndVisitDay(planId, request.visitDay()).stream()
                 .map(TripPlaceResponse::from)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public DrivingRouteResponse drivingRoute(Long planId, Long userId, Integer visitDay) {
+        TripPlan plan = ensureOwner(planId, userId);
+        validateVisitDay(plan, visitDay);
+        List<TripPlace> places = tripPlaceMapper.findByPlanIdAndVisitDay(planId, visitDay);
+        if (places.size() < 2) {
+            return new DrivingRouteResponse(List.of());
+        }
+        if (places.stream().anyMatch(place -> place.getLatitude() == null || place.getLongitude() == null)) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "좌표가 없는 장소는 도로 경로를 표시할 수 없습니다.");
+        }
+        if (!naverDirectionsService.isConfigured()) {
+            throw new BusinessException(HttpStatus.SERVICE_UNAVAILABLE, "네이버 Directions 설정이 필요합니다.");
+        }
+
+        List<TripPlace> ordered = orderedPlaces(places);
+        List<RoutePoint> path = new ArrayList<>();
+        for (int index = 0; index < ordered.size() - 1; index++) {
+            TripPlace from = ordered.get(index);
+            TripPlace to = ordered.get(index + 1);
+            List<RoutePoint> segment = naverDirectionsService.drivingPath(
+                    from.getLatitude(), from.getLongitude(), to.getLatitude(), to.getLongitude());
+            path.addAll(index == 0 ? segment : segment.subList(1, segment.size()));
+        }
+        return new DrivingRouteResponse(path);
     }
 
     @Transactional

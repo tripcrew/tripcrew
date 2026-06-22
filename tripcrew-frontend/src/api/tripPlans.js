@@ -8,6 +8,7 @@ import { http } from './http'
  *   PUT    /api/trip-plans/{id}   수정 (낙관적 락: payload 에 version 포함)
  *   DELETE /api/trip-plans/{id}   삭제
  *   GET    /api/trip-plans/{id}/places
+ *   GET    /api/trip-plans/{id}/places/driving-route?visitDay={day}
  *   POST   /api/trip-plans/{id}/places
  *   PUT    /api/trip-plans/{id}/places/{placeId}/schedule
  *   PUT    /api/trip-plans/{id}/places/reorder
@@ -24,6 +25,8 @@ export const tripPlanApi = {
   update: (id, payload) => http.put(`/trip-plans/${id}`, payload).then((r) => r.data),
   remove: (id) => http.delete(`/trip-plans/${id}`),
   listPlaces: (id) => http.get(`/trip-plans/${id}/places`).then((r) => r.data),
+  getDrivingRoute: (id, visitDay) =>
+    http.get(`/trip-plans/${id}/places/driving-route`, { params: { visitDay } }).then((r) => r.data),
   addPlace: (id, payload) => http.post(`/trip-plans/${id}/places`, payload).then((r) => r.data),
   schedulePlace: (id, placeId, payload) =>
     http.put(`/trip-plans/${id}/places/${placeId}/schedule`, payload).then((r) => r.data),
