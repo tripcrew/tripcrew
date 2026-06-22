@@ -12,6 +12,7 @@ public record AdminUserResponse(
         String email,
         String nickname,
         String role,
+        String status,
         LocalDateTime createdAt
 ) {
     public static AdminUserResponse from(User user) {
@@ -20,6 +21,7 @@ public record AdminUserResponse(
                 user.getEmail(),
                 user.getNickname(),
                 user.getRole().name(),
+                user.getStatus().name(),
                 user.getCreatedAt()
         );
     }

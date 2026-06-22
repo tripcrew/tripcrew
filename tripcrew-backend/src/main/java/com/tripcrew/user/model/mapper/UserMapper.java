@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import com.tripcrew.user.model.Role;
+import com.tripcrew.user.model.Status;
 import com.tripcrew.user.model.dto.User;
 
 @Mapper
@@ -26,4 +27,7 @@ public interface UserMapper {
 
     /** 관리자용 role 변경. affected rows 0 이면 대상 없음. */
     int updateRole(@Param("id") Long id, @Param("role") Role role);
+
+    /** 관리자용 계정 상태(밴/해제) 변경. affected rows 0 이면 대상 없음. */
+    int updateStatus(@Param("id") Long id, @Param("status") Status status);
 }
