@@ -11,10 +11,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.tripcrew.tripplan.model.dto.TripPlaceCreateRequest;
+import com.tripcrew.tripplan.model.dto.DrivingRouteResponse;
 import com.tripcrew.tripplan.model.dto.TripPlaceOptimizeRequest;
 import com.tripcrew.tripplan.model.dto.TripPlaceReorderRequest;
 import com.tripcrew.tripplan.model.dto.TripPlaceResponse;
@@ -35,6 +37,13 @@ public class TripPlaceController {
     public List<TripPlaceResponse> list(@AuthenticationPrincipal Long userId,
                                         @PathVariable Long planId) {
         return tripPlaceService.list(planId, userId);
+    }
+
+    @GetMapping("/driving-route")
+    public DrivingRouteResponse drivingRoute(@AuthenticationPrincipal Long userId,
+                                             @PathVariable Long planId,
+                                             @RequestParam @jakarta.validation.constraints.Min(1) Integer visitDay) {
+        return tripPlaceService.drivingRoute(planId, userId, visitDay);
     }
 
     @PostMapping
