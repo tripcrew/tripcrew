@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.tripcrew.notice.model.mapper.NoticeMapper">
+
+    <!-- is_pinned 는 boolean 필드명(pinned)과 달라 명시적으로 alias 한다.
+         view_count / created_at / updated_at 은 underscore→camelCase 자동 매핑. -->
+
+    <!-- view_count / created_at / updated_at 은 DB DEFAULT 로 채워진다 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO notices (author_id, title, content, is_pinned)
+        VALUES (#{authorId}, #{title}, #{content}, #{pinned})
+    </insert>
+
+    <select id="findById" resultType="Notice">
+        SELECT n.id, n.author_id, n.title, n.content,
+               n.is_pinned AS pinned, n.view_count,
+               n.created_at, n.updated_at,
+               u.nickname AS author_nickname
+          FROM notices n
+          LEFT JOIN users u ON u.id = n.author_id
+         WHERE n.id = #{id}
+    </select>
+
+    <!-- 고정 공지 먼저, 그다음 최신순 -->
+    <select id="findAll" resultType="Notice">
+        SELECT n.id, n.author_id, n.title, n.content,
+               n.is_pinned AS pinned, n.view_count,
+               n.created_at, n.updated_at,
+               u.nickname AS author_nickname
+          FROM notices n
+          LEFT JOIN users u ON u.id = n.author_id
+         ORDER BY n.is_pinned DESC, n.created_at DESC, n.id DESC
+    </select>
+
+    <update id="update">
+        UPDATE notices
+           SET title = #{title},
+               content = #{content},
+               is_pinned = #{pinned}
+         WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM notices WHERE id = #{id}
+    </delete>
+
+    <update id="incrementViewCount">
+        UPDATE notices SET view_count = view_count + 1 WHERE id = #{id}
+    </update>
+
+</mapper>

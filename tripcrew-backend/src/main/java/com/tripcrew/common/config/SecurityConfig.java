@@ -53,6 +53,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/attractions/**").permitAll()
                         // 후기 목록 조회는 공개(작성은 인증 필요 → anyRequest 로 커버)
                         .requestMatchers(HttpMethod.GET, "/api/reviews").permitAll()
+                        // 공지 목록/상세 조회는 공개(작성/수정/삭제는 /api/admin/notices → ADMIN 로 커버)
+                        .requestMatchers(HttpMethod.GET, "/api/notices", "/api/notices/**").permitAll()
                         // 역할 변경은 최고 책임자 전용: SUPER_ADMIN 만 다른 사용자 권한을 바꾼다.
                         // 더 좁은 규칙이므로 아래 /api/admin/** 규칙보다 반드시 위에 둔다.
                         .requestMatchers(HttpMethod.PATCH, "/api/admin/users/*/role").hasRole("SUPER_ADMIN")
