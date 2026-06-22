@@ -116,6 +116,7 @@
                 <option value="">전체</option>
                 <option value="USER">USER</option>
                 <option value="ADMIN">ADMIN</option>
+                <option value="SUPER_ADMIN">SUPER_ADMIN</option>
               </select>
             </div>
             <span class="t-caption table-count">
@@ -151,11 +152,23 @@
                 <td class="t-mono">{{ formatDate(u.createdAt) }}</td>
                 <td>
                   <button
-                    v-if="u.id === currentUserId"
+                    v-if="!canManageRoles"
+                    class="action-btn"
+                    disabled
+                    title="권한 변경은 최고관리자(SUPER_ADMIN)만 가능합니다"
+                  >읽기 전용</button>
+                  <button
+                    v-else-if="u.id === currentUserId"
                     class="action-btn"
                     disabled
                     title="본인 권한은 변경할 수 없습니다"
                   >본인</button>
+                  <button
+                    v-else-if="u.role === 'SUPER_ADMIN'"
+                    class="action-btn"
+                    disabled
+                    title="최고관리자 권한은 API로 변경할 수 없습니다 (DB 직접 지정만)"
+                  >최고관리자</button>
                   <button
                     v-else
                     class="action-btn"
@@ -176,7 +189,7 @@
         </p>
 
         <p class="api-note t-mono">
-          GET /api/admin/users · PATCH /api/admin/users/{id}/role · ROLE_ADMIN 전용
+          GET /api/admin/users (ROLE_ADMIN) · PATCH /api/admin/users/{id}/role (ROLE_SUPER_ADMIN) · USER↔ADMIN 토글만
         </p>
       </main>
     </div>
@@ -204,6 +217,8 @@ const roleFilter = ref('')
 
 const currentUserId = computed(() => auth.user && auth.user.id)
 const userInitial = computed(() => (auth.user && auth.user.nickname ? auth.user.nickname : 'A').charAt(0))
+// role 변경은 SUPER_ADMIN 만(서버 인가와 짝). ADMIN 은 목록만 보고 토글은 '읽기 전용'.
+const canManageRoles = computed(() => !!(auth.user && auth.user.role === 'SUPER_ADMIN'))
 
 const adminCount = computed(() => users.value.filter((u) => u.role === 'ADMIN').length)
 const userCount = computed(() => users.value.filter((u) => u.role === 'USER').length)
@@ -608,6 +623,7 @@ onMounted(load)
 
 .role--user { background: var(--bg-2); color: var(--ink-3); }
 .role--admin { background: var(--coral); color: white; }
+.role--super_admin { background: var(--ink); color: white; }
 
 .status-chip {
   display: inline-block;
