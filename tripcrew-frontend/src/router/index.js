@@ -74,6 +74,18 @@ const routes = [
     meta: { title: '관리자 (SC-11)', requiresAuth: true, roles: ['ADMIN', 'SUPER_ADMIN'] }
   },
   {
+    path: '/admin/reports',
+    name: 'admin-reports',
+    component: () => import('@/views/AdminReportsView.vue'),
+    meta: { title: '관리자 · 신고 관리', requiresAuth: true, roles: ['ADMIN', 'SUPER_ADMIN'] }
+  },
+  {
+    path: '/admin/banned',
+    name: 'admin-banned',
+    component: () => import('@/views/AdminBannedView.vue'),
+    meta: { title: '관리자 · 정지된 계정', requiresAuth: true, roles: ['ADMIN', 'SUPER_ADMIN'] }
+  },
+  {
     path: '/errors/:type?',
     name: 'errors',
     component: () => import('@/views/ErrorView.vue'),

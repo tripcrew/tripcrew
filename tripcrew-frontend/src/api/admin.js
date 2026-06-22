@@ -6,6 +6,9 @@ import { http } from './http'
  *   PATCH /api/admin/users/{id}/role   권한 변경 (USER ↔ ADMIN) → 204 — ROLE_SUPER_ADMIN 전용
  *   PATCH /api/admin/users/{id}/ban    계정 제재 → 204 — ROLE_ADMIN 전용
  *   PATCH /api/admin/users/{id}/unban  제재 해제 → 204 — ROLE_ADMIN 전용
+ *   GET   /api/admin/reports                신고 목록(이메일+후기내용, 보통 OPEN만) — ROLE_ADMIN 전용
+ *   PATCH /api/admin/reports/{id}/resolve   처리완료(누적+1, 3회시 자동제재) → 204 — ROLE_ADMIN 전용
+ *   PATCH /api/admin/reports/{id}/dismiss   기각(카운트 없음) → 204 — ROLE_ADMIN 전용
  *
  * /api/admin/** 은 서버 SecurityConfig 에서 ROLE_ADMIN 전용, 그중 role 변경은
  * SUPER_ADMIN 전용이라 일반 USER 는 401/403, ADMIN 도 role 변경엔 403 이 떨어진다
@@ -17,4 +20,8 @@ export const adminApi = {
   updateRole: (id, role) => http.patch(`/admin/users/${id}/role`, { role }),
   ban: (id) => http.patch(`/admin/users/${id}/ban`),
   unban: (id) => http.patch(`/admin/users/${id}/unban`),
+  listReports: (status) =>
+    http.get('/admin/reports', { params: status ? { status } : {} }).then((r) => r.data),
+  resolveReport: (id) => http.patch(`/admin/reports/${id}/resolve`),
+  dismissReport: (id) => http.patch(`/admin/reports/${id}/dismiss`),
 }

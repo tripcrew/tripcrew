@@ -1,66 +1,8 @@
 <template>
-  <div class="admin-app">
-    <!-- Top bar -->
-    <header class="admin-top">
-      <div class="admin-brand">
-        <span class="logo">TripCrew<span class="dot">.</span></span>
-        <span class="admin-badge">Admin <span class="t-mono">v.2026.05</span></span>
-      </div>
-
-      <div class="system-status">
-        <span class="status-label">SYSTEM</span>
-        <span class="status-item"><span class="sd sd--ok"></span>API · 정상</span>
-        <span class="status-item"><span class="sd sd--ok"></span>Redis · 정상</span>
-        <span class="status-item"><span class="sd sd--warn"></span>TourAPI · HALF-OPEN</span>
-        <span class="status-item"><span class="sd sd--ok"></span>Gemini · 정상</span>
-      </div>
-
-      <div class="admin-user">
-        <div class="avatar" style="background: var(--teal-3);">{{ userInitial }}</div>
-      </div>
-    </header>
-
-    <div class="admin-layout">
-      <!-- Sidebar -->
-      <aside class="admin-sidebar">
-        <nav class="admin-nav">
-          <h4 class="nav-title">관리</h4>
-          <a class="nav-item active">
-            <span class="nav-icon">👥</span>
-            회원 관리
-            <span class="nav-count">12,482</span>
-          </a>
-          <a class="nav-item">
-            <span class="nav-icon">📝</span>
-            후기 모더레이션
-            <span class="nav-count nav-count--alert">4</span>
-          </a>
-          <a class="nav-item">
-            <span class="nav-icon">📢</span>
-            공지사항
-          </a>
-          <a class="nav-item">
-            <span class="nav-icon">📍</span>
-            관광지 관리
-          </a>
-
-          <h4 class="nav-title">모니터링</h4>
-          <a class="nav-item">
-            <span class="nav-icon">📊</span>
-            통계 대시보드
-          </a>
-          <a class="nav-item">
-            <span class="nav-icon">⚙️</span>
-            시스템 상태
-          </a>
-        </nav>
-      </aside>
-
-      <!-- Main -->
-      <main class="admin-main">
-        <nav class="admin-breadcrumb">
-          관리자 › <strong>회원 관리</strong>
-        </nav>
+  <AdminLayout active="users">
+    <nav class="admin-breadcrumb">
+      관리자 › <strong>회원 관리</strong>
+    </nav>
 
         <header class="admin-page-head">
           <h1 class="t-h1">회원 관리</h1>
@@ -134,15 +76,14 @@
                 <th>상태</th>
                 <th>가입일</th>
                 <th>권한 변경</th>
-                <th>제재</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="loading">
-                <td colspan="8" class="table-empty">불러오는 중…</td>
+                <td colspan="7" class="table-empty">불러오는 중…</td>
               </tr>
               <tr v-else-if="filteredUsers.length === 0">
-                <td colspan="8" class="table-empty">표시할 회원이 없습니다.</td>
+                <td colspan="7" class="table-empty">표시할 회원이 없습니다.</td>
               </tr>
               <tr v-for="u in filteredUsers" :key="u.id">
                 <td class="t-mono">{{ u.id }}</td>
@@ -186,26 +127,6 @@
                     {{ savingId === u.id ? '변경 중…' : (u.role === 'ADMIN' ? '→ USER 강등' : '→ ADMIN 승격') }}
                   </button>
                 </td>
-                <td>
-                  <button
-                    v-if="!canModerate(u)"
-                    class="action-btn"
-                    disabled
-                    :title="banDisabledReason(u)"
-                  >—</button>
-                  <button
-                    v-else-if="u.status === 'BANNED'"
-                    class="action-btn action-btn--promote"
-                    :disabled="banningId === u.id"
-                    @click="toggleBan(u)"
-                  >{{ banningId === u.id ? '처리 중…' : '제재 해제' }}</button>
-                  <button
-                    v-else
-                    class="action-btn action-btn--danger"
-                    :disabled="banningId === u.id"
-                    @click="toggleBan(u)"
-                  >{{ banningId === u.id ? '처리 중…' : '정지' }}</button>
-                </td>
               </tr>
             </tbody>
           </table>
@@ -217,17 +138,16 @@
 
         <p class="api-note t-mono">
           GET /api/admin/users (ROLE_ADMIN) · PATCH /{id}/role (ROLE_SUPER_ADMIN, USER↔ADMIN) ·
-          PATCH /{id}/ban·/unban (ROLE_ADMIN, 본인·SUPER_ADMIN 제외 / ADMIN 제재는 SUPER_ADMIN만)
+          제재는 [신고 관리]에서 처리(누적 3회 자동) · 해제는 [정지된 계정]에서
         </p>
-      </main>
-    </div>
-  </div>
+  </AdminLayout>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 
 import { adminApi } from '@/api/admin'
+import AdminLayout from '@/components/admin/AdminLayout.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
 import { useAuthStore } from '@/stores/auth'
 
@@ -238,52 +158,36 @@ const loading = ref(false)
 const error = ref('')
 const forbidden = ref(false)
 const savingId = ref(null)
-const banningId = ref(null)
 const notice = ref(null)
 
 const query = ref('')
 const roleFilter = ref('')
 
 const currentUserId = computed(() => auth.user && auth.user.id)
-const userInitial = computed(() => (auth.user && auth.user.nickname ? auth.user.nickname : 'A').charAt(0))
 // role 변경은 SUPER_ADMIN 만(서버 인가와 짝). ADMIN 은 목록만 보고 토글은 '읽기 전용'.
 const canManageRoles = computed(() => !!(auth.user && auth.user.role === 'SUPER_ADMIN'))
-// 제재(밴)는 ADMIN + SUPER_ADMIN. 단 대상 제한은 canModerate 에서(서버 가드와 짝).
-const myRole = computed(() => (auth.user && auth.user.role) || null)
-const isSuperAdmin = computed(() => myRole.value === 'SUPER_ADMIN')
-
-/**
- * 이 행(u)을 현재 관리자가 제재/해제할 수 있는지. 서버 가드(AdminUserService.ban)와 동일 규칙 —
- * 프론트는 UX 편의일 뿐, 서버가 진짜 방어선이다.
- *   - 본인 불가 / SUPER_ADMIN 대상 불가 / ADMIN 대상은 SUPER_ADMIN 만.
- */
-function canModerate(u) {
-  if (myRole.value !== 'ADMIN' && myRole.value !== 'SUPER_ADMIN') return false
-  if (u.id === currentUserId.value) return false
-  if (u.role === 'SUPER_ADMIN') return false
-  if (u.role === 'ADMIN' && !isSuperAdmin.value) return false
-  return true
-}
-
-function banDisabledReason(u) {
-  if (u.id === currentUserId.value) return '본인 계정은 제재할 수 없습니다'
-  if (u.role === 'SUPER_ADMIN') return '최고관리자는 제재할 수 없습니다'
-  if (u.role === 'ADMIN') return 'ADMIN 제재는 최고관리자(SUPER_ADMIN)만 가능합니다'
-  return '제재할 수 없습니다'
-}
 
 const adminCount = computed(() => users.value.filter((u) => u.role === 'ADMIN').length)
 const userCount = computed(() => users.value.filter((u) => u.role === 'USER').length)
 
+// 정렬 우선순위: SUPER_ADMIN → ADMIN → USER, 동일 role 은 id 오름차순
+const ROLE_RANK = { SUPER_ADMIN: 0, ADMIN: 1, USER: 2 }
 const filteredUsers = computed(() => {
   const q = query.value.trim().toLowerCase()
-  return users.value.filter((u) => {
-    if (roleFilter.value && u.role !== roleFilter.value) return false
-    if (!q) return true
-    return (
-      u.email?.toLowerCase().includes(q) || u.nickname?.toLowerCase().includes(q)
-    )
-  })
+  return users.value
+    .filter((u) => {
+      if (roleFilter.value && u.role !== roleFilter.value) return false
+      if (!q) return true
+      return (
+        u.email?.toLowerCase().includes(q) || u.nickname?.toLowerCase().includes(q)
+      )
+    })
+    .slice()
+    .sort((a, b) => {
+      const ra = ROLE_RANK[a.role] ?? 99
+      const rb = ROLE_RANK[b.role] ?? 99
+      return ra !== rb ? ra - rb : a.id - b.id
+    })
 })
 
 function formatDate(value) {
@@ -332,201 +236,10 @@ async function toggleRole(user) {
   }
 }
 
-async function toggleBan(user) {
-  const willBan = user.status !== 'BANNED'
-  banningId.value = user.id
-  notice.value = null
-  try {
-    if (willBan) await adminApi.ban(user.id)
-    else await adminApi.unban(user.id)
-    user.status = willBan ? 'BANNED' : 'ACTIVE' // 204 (본문 없음) → 로컬 반영
-    flash('ok', `${user.nickname}님을 ${willBan ? '제재' : '제재 해제'}했습니다.`)
-  } catch (e) {
-    const status = e.response?.status
-    const msg = e.response?.data?.message
-    if (status === 403) flash('error', '권한이 없어 처리할 수 없습니다 (403).')
-    else if (status === 404) flash('error', '대상 사용자를 찾을 수 없습니다 (404).')
-    else if (status === 400) flash('error', msg || '제재할 수 없는 대상입니다 (400).')
-    else flash('error', msg || `처리 실패 (${status || e.message})`)
-  } finally {
-    banningId.value = null
-  }
-}
-
 onMounted(load)
 </script>
 
 <style scoped>
-.admin-app {
-  min-height: 100vh;
-  background: var(--bg-soft);
-  font-size: 14px;
-}
-
-/* Top bar */
-.admin-top {
-  height: 60px;
-  background: var(--ink);
-  color: white;
-  padding: 0 24px;
-  display: flex;
-  align-items: center;
-  gap: 32px;
-  border-bottom: 1px solid #2A323D;
-}
-
-.admin-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.logo {
-  font-size: 18px;
-  font-weight: 800;
-  color: white;
-  letter-spacing: -0.5px;
-}
-
-.logo .dot { color: var(--coral); }
-
-.admin-badge {
-  padding: 4px 10px;
-  background: var(--coral);
-  color: white;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.admin-badge .t-mono {
-  font-size: 10px;
-  opacity: 0.75;
-}
-
-.system-status {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  font-size: 12px;
-}
-
-.status-label {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  color: rgba(255,255,255,0.4);
-  letter-spacing: 1.2px;
-}
-
-.status-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: rgba(255,255,255,0.78);
-}
-
-.sd {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-}
-
-.sd--ok { background: var(--success); animation: blink 2s infinite; }
-.sd--warn { background: var(--warning); animation: blink 1.4s infinite; }
-
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
-.admin-user .avatar {
-  width: 36px; height: 36px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  color: white;
-  font-weight: 700;
-  font-size: 14px;
-  border: 2px solid white;
-}
-
-/* Layout */
-.admin-layout {
-  display: grid;
-  grid-template-columns: 240px 1fr;
-  min-height: calc(100vh - 60px);
-}
-
-/* Sidebar */
-.admin-sidebar {
-  background: white;
-  border-right: 1px solid var(--line);
-  padding: 24px 16px;
-}
-
-.nav-title {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--muted);
-  letter-spacing: 1.2px;
-  margin: 16px 12px 8px;
-  text-transform: uppercase;
-}
-
-.nav-title:first-child { margin-top: 0; }
-
-.admin-nav {
-  display: flex;
-  flex-direction: column;
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ink-3);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.nav-item:hover { background: var(--bg-soft); color: var(--ink); }
-
-.nav-item.active {
-  background: var(--teal-soft);
-  color: var(--teal-3);
-}
-
-.nav-icon { font-size: 16px; }
-
-.nav-count {
-  margin-left: auto;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--muted);
-  background: var(--bg-2);
-  padding: 2px 7px;
-  border-radius: 999px;
-}
-
-.nav-count--alert {
-  background: var(--coral);
-  color: white;
-  font-weight: 700;
-}
-
-/* Main */
-.admin-main {
-  padding: 32px 40px;
-}
-
 .admin-breadcrumb {
   font-size: 13px;
   color: var(--ink-soft);
