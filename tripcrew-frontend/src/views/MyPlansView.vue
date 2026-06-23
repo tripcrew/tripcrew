@@ -33,7 +33,12 @@
             @click="$router.push(`/plans/${p.id}/edit`)"
           >
             <div class="plan-card__top">
-              <span class="status-chip status--draft">계획</span>
+              <div class="chip-group">
+                <span class="status-chip status--draft">계획</span>
+                <span v-if="p.myRole && p.myRole !== 'OWNER'" class="status-chip status--shared">
+                  {{ roleText(p.myRole) }} · 공유받음
+                </span>
+              </div>
               <span class="t-mono muted">v.{{ p.version }}</span>
             </div>
             <span class="updated t-caption">수정 {{ formatRelative(p.updatedAt) }}</span>
@@ -87,6 +92,12 @@ async function createPlan() {
   } finally {
     creating.value = false
   }
+}
+
+function roleText(role) {
+  if (role === 'EDITOR') return '편집자'
+  if (role === 'VIEWER') return '뷰어'
+  return role
 }
 
 function formatDates(start, end) {
@@ -188,6 +199,14 @@ onMounted(load)
 }
 
 .status--draft { background: var(--bg-2); color: var(--ink-3); }
+.status--shared { background: var(--coral-tint, #fff1ec); color: var(--coral, #e06a4f); }
+
+.chip-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
 
 .updated {
   display: block;

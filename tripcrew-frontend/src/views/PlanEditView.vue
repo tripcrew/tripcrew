@@ -20,33 +20,38 @@
 
           <div class="header-right">
             <BaseButton variant="ghost" @click="$router.push('/plans')">← 목록</BaseButton>
-            <BaseButton variant="secondary" :disabled="deleting" @click="removePlan">삭제</BaseButton>
-            <BaseButton variant="primary" :disabled="saving" @click="save">
+            <BaseButton v-if="myRole" variant="ghost" @click="openShare">공유</BaseButton>
+            <BaseButton v-if="isOwner" variant="secondary" :disabled="deleting" @click="removePlan">삭제</BaseButton>
+            <BaseButton v-if="canEdit" variant="primary" :disabled="saving" @click="save">
               {{ saving ? '저장 중…' : '저장' }}
             </BaseButton>
           </div>
         </header>
 
+        <p v-if="myRole && !canEdit" class="readonly-banner">
+          읽기 전용(뷰어)입니다. 편집하려면 소유자에게 권한을 요청하세요.
+        </p>
+
         <!-- F03 편집 폼 -->
         <section class="edit-card">
           <div class="field">
             <label>제목</label>
-            <input v-model="form.title" type="text" maxlength="150" placeholder="여행 제목" />
+            <input v-model="form.title" type="text" maxlength="150" placeholder="여행 제목" :disabled="!canEdit" />
           </div>
 
           <div class="field">
             <label>설명</label>
-            <textarea v-model="form.description" rows="4" placeholder="이번 여행에 대한 메모"></textarea>
+            <textarea v-model="form.description" rows="4" placeholder="이번 여행에 대한 메모" :disabled="!canEdit"></textarea>
           </div>
 
           <div class="field-row">
             <div class="field">
               <label>시작일</label>
-              <input v-model="form.startDate" type="date" />
+              <input v-model="form.startDate" type="date" :disabled="!canEdit" />
             </div>
             <div class="field">
               <label>종료일</label>
-              <input v-model="form.endDate" type="date" />
+              <input v-model="form.endDate" type="date" :disabled="!canEdit" />
             </div>
           </div>
 
@@ -98,6 +103,7 @@
               </button>
 
               <button
+                v-if="canEdit"
                 type="button"
                 class="optimize-btn"
                 :disabled="selectedDay === null || visiblePlaces.length < 2 || optimizing"
@@ -107,7 +113,7 @@
               </button>
             </div>
 
-            <form class="place-form" @submit.prevent="addCustomPlace">
+            <form v-if="canEdit" class="place-form" @submit.prevent="addCustomPlace">
               <div class="field place-form__name">
                 <label>직접 추가</label>
                 <input v-model.trim="placeForm.name" type="text" maxlength="255" placeholder="장소 이름" />
@@ -154,7 +160,7 @@
                         <span v-if="item.memo"> · {{ item.memo }}</span>
                       </p>
                     </div>
-                    <div class="item-actions" @click.stop>
+                    <div v-if="canEdit" class="item-actions" @click.stop>
                       <button type="button" class="mini-btn" @click="movePlace(item, 'up')" :disabled="i === 0">↑</button>
                       <button type="button" class="mini-btn" @click="movePlace(item, 'down')" :disabled="i === visiblePlaces.length - 1">↓</button>
                       <div v-if="selectedDay === null" class="assign-control">
@@ -204,6 +210,75 @@
       </template>
     </main>
 
+    <!-- F06 공동편집 — 공유/멤버 다이얼로그 -->
+    <div v-if="shareOpen" class="share-overlay" @click.self="closeShare">
+      <section class="share-modal">
+        <header class="share-modal__head">
+          <h2 class="t-h3">공유 · 멤버</h2>
+          <button type="button" class="share-close" @click="closeShare">✕</button>
+        </header>
+
+        <p v-if="membersLoading" class="state-msg">불러오는 중…</p>
+        <p v-else-if="membersError" class="form-error">{{ membersError }}</p>
+
+        <ul v-else class="member-list">
+          <li v-for="member in members" :key="member.userId" class="member-row">
+            <div class="member-info">
+              <strong>{{ member.email }}</strong>
+              <span v-if="member.userId === myUserId" class="member-me">나</span>
+              <span class="member-role">{{ roleText(member.role) }}</span>
+            </div>
+            <div class="member-actions">
+              <select
+                v-if="isOwner && member.role !== 'OWNER'"
+                :value="member.role"
+                @change="changeMemberRole(member, $event.target.value)"
+              >
+                <option value="EDITOR">편집자</option>
+                <option value="VIEWER">뷰어</option>
+              </select>
+              <button
+                v-if="isOwner && member.role !== 'OWNER'"
+                type="button"
+                class="mini-btn mini-btn--danger"
+                @click="kickMember(member)"
+              >
+                내보내기
+              </button>
+              <button
+                v-else-if="!isOwner && member.userId === myUserId"
+                type="button"
+                class="mini-btn mini-btn--danger"
+                @click="kickMember(member)"
+              >
+                나가기
+              </button>
+            </div>
+          </li>
+        </ul>
+
+        <form v-if="isOwner" class="invite-form" @submit.prevent="submitInvite">
+          <h3 class="t-caption">멤버 초대</h3>
+          <div class="invite-row">
+            <input
+              v-model.trim="inviteEmail"
+              type="email"
+              placeholder="초대할 사용자 이메일"
+              autocomplete="off"
+            />
+            <select v-model="inviteRole">
+              <option value="EDITOR">편집자</option>
+              <option value="VIEWER">뷰어</option>
+            </select>
+            <BaseButton variant="primary" type="submit" :disabled="inviteBusy">
+              {{ inviteBusy ? '초대 중…' : '초대' }}
+            </BaseButton>
+          </div>
+          <p v-if="inviteError" class="form-error">{{ inviteError }}</p>
+        </form>
+      </section>
+    </div>
+
     <div v-if="optimizePanelVisible" class="optimize-overlay">
       <section class="optimize-modal" role="status" aria-live="polite">
         <div class="optimize-mark">
@@ -252,9 +327,11 @@ import { useRoute, useRouter } from 'vue-router'
 import AppHeader from '@/components/common/AppHeader.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
 import { tripPlanApi } from '@/api/tripPlans'
+import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
 const router = useRouter()
+const auth = useAuthStore()
 const id = route.params.id
 
 const loading = ref(true)
@@ -299,6 +376,17 @@ const form = ref({
   version: 0,
 })
 
+// F06 공동편집 — 내 역할 + 멤버 공유 다이얼로그
+const myRole = ref(null)
+const shareOpen = ref(false)
+const members = ref([])
+const membersLoading = ref(false)
+const membersError = ref('')
+const inviteEmail = ref('')
+const inviteRole = ref('EDITOR')
+const inviteBusy = ref(false)
+const inviteError = ref('')
+
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 const DEFAULT_CENTER = { lat: 37.5666103, lng: 126.9783882 }
 const OPTIMIZE_ESTIMATE_MS = 2400
@@ -306,6 +394,10 @@ let naverMapsScriptPromise = null
 let optimizeTimer = null
 let optimizeStartedAt = 0
 let drivingRouteRequest = 0
+
+const myUserId = computed(() => (auth.user ? auth.user.id : null))
+const isOwner = computed(() => myRole.value === 'OWNER')
+const canEdit = computed(() => myRole.value === 'OWNER' || myRole.value === 'EDITOR')
 
 const dateLabel = computed(() => {
   const { startDate, endDate } = form.value
@@ -423,6 +515,83 @@ function fill(plan) {
     startDate: plan.startDate ?? '',
     endDate: plan.endDate ?? '',
     version: plan.version,
+  }
+  if (plan.myRole !== undefined) myRole.value = plan.myRole
+}
+
+// F06 공동편집 — 멤버(협업자) 관리
+function roleText(role) {
+  if (role === 'OWNER') return '소유자'
+  if (role === 'EDITOR') return '편집자'
+  if (role === 'VIEWER') return '뷰어'
+  return role
+}
+
+async function openShare() {
+  shareOpen.value = true
+  inviteError.value = ''
+  await loadMembers()
+}
+
+function closeShare() {
+  shareOpen.value = false
+}
+
+async function loadMembers() {
+  membersLoading.value = true
+  membersError.value = ''
+  try {
+    members.value = await tripPlanApi.listMembers(id)
+  } catch (e) {
+    membersError.value = '멤버를 불러오지 못했습니다.'
+  } finally {
+    membersLoading.value = false
+  }
+}
+
+async function submitInvite() {
+  if (inviteBusy.value) return
+  const email = inviteEmail.value.trim()
+  if (!email) {
+    inviteError.value = '이메일을 입력하세요.'
+    return
+  }
+  inviteBusy.value = true
+  inviteError.value = ''
+  try {
+    await tripPlanApi.inviteMember(id, { email, role: inviteRole.value })
+    inviteEmail.value = ''
+    await loadMembers()
+  } catch (e) {
+    const status = e.response?.status
+    if (status === 404) inviteError.value = '해당 이메일의 사용자를 찾을 수 없습니다.'
+    else if (status === 409) inviteError.value = '이미 참여 중인 멤버입니다.'
+    else if (status === 400) inviteError.value = e.response?.data?.message || '초대할 수 없습니다.'
+    else if (status === 403) inviteError.value = '초대 권한이 없습니다.'
+    else inviteError.value = '초대에 실패했습니다.'
+  } finally {
+    inviteBusy.value = false
+  }
+}
+
+async function changeMemberRole(member, role) {
+  membersError.value = ''
+  try {
+    await tripPlanApi.updateMemberRole(id, member.userId, role)
+    await loadMembers()
+  } catch (e) {
+    membersError.value = '역할 변경에 실패했습니다.'
+  }
+}
+
+async function kickMember(member) {
+  if (!window.confirm(`${member.email} 님을 내보낼까요?`)) return
+  membersError.value = ''
+  try {
+    await tripPlanApi.removeMember(id, member.userId)
+    await loadMembers()
+  } catch (e) {
+    membersError.value = '멤버 제거에 실패했습니다.'
   }
 }
 
@@ -734,7 +903,7 @@ async function loadPlaces() {
 }
 
 async function save() {
-  if (saving.value) return
+  if (saving.value || !canEdit.value) return
   formError.value = ''
   saveMsg.value = ''
   saving.value = true
@@ -765,7 +934,7 @@ async function save() {
 }
 
 async function removePlan() {
-  if (deleting.value) return
+  if (deleting.value || !isOwner.value) return
   if (!window.confirm('이 여행계획을 삭제할까요?')) return
   deleting.value = true
   try {
@@ -1424,6 +1593,132 @@ onBeforeUnmount(() => {
 
 .map-info p {
   flex-shrink: 0;
+}
+
+/* F06 공동편집 — 읽기 전용 배너 + 공유/멤버 다이얼로그 */
+.readonly-banner {
+  margin: 0 0 16px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--coral-tint, #fff1ec);
+  color: var(--coral, #e06a4f);
+  font-size: 14px;
+}
+
+.share-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(22, 34, 40, 0.55);
+  backdrop-filter: blur(3px);
+}
+
+.share-modal {
+  width: min(520px, 100%);
+  padding: 28px;
+  border-radius: 22px;
+  background: white;
+  box-shadow: 0 24px 80px rgba(20, 38, 46, 0.24);
+}
+
+.share-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.share-close {
+  border: none;
+  background: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: var(--muted, #7b8a91);
+}
+
+.member-list {
+  list-style: none;
+  margin: 0 0 20px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid rgba(20, 38, 46, 0.08);
+  border-radius: 12px;
+}
+
+.member-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.member-info strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.member-me {
+  flex-shrink: 0;
+  padding: 1px 7px;
+  border-radius: 8px;
+  background: var(--coral-tint, #fff1ec);
+  color: var(--coral, #e06a4f);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.member-role {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--muted, #7b8a91);
+}
+
+.member-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.member-actions select,
+.invite-row select {
+  padding: 4px 6px;
+  border: 1px solid rgba(20, 38, 46, 0.16);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.invite-form {
+  border-top: 1px solid rgba(20, 38, 46, 0.08);
+  padding-top: 16px;
+}
+
+.invite-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.invite-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid rgba(20, 38, 46, 0.16);
+  border-radius: 10px;
 }
 
 .optimize-overlay {

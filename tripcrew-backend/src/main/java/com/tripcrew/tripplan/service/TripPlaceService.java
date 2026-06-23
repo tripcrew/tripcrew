@@ -17,8 +17,6 @@ import com.tripcrew.attraction.model.dto.AttractionDetailResponse;
 import com.tripcrew.attraction.model.mapper.AttractionMapper;
 import com.tripcrew.common.exception.BusinessException;
 import com.tripcrew.tripplan.exception.TripPlaceNotFoundException;
-import com.tripcrew.tripplan.exception.TripPlanAccessDeniedException;
-import com.tripcrew.tripplan.exception.TripPlanNotFoundException;
 import com.tripcrew.tripplan.model.dto.TripPlace;
 import com.tripcrew.tripplan.model.dto.TripPlaceCreateRequest;
 import com.tripcrew.tripplan.model.dto.DrivingRouteResponse;
@@ -43,10 +41,11 @@ public class TripPlaceService {
     private final TripPlaceMapper tripPlaceMapper;
     private final AttractionMapper attractionMapper;
     private final NaverDirectionsService naverDirectionsService;
+    private final TripPlanAccessService accessService;
 
     @Transactional(readOnly = true)
     public List<TripPlaceResponse> list(Long planId, Long userId) {
-        ensureOwner(planId, userId);
+        accessService.requireMember(planId, userId);
         return tripPlaceMapper.findByPlanId(planId).stream()
                 .map(TripPlaceResponse::from)
                 .toList();
@@ -54,7 +53,7 @@ public class TripPlaceService {
 
     @Transactional
     public TripPlaceResponse create(Long planId, Long userId, TripPlaceCreateRequest request) {
-        TripPlan plan = ensureOwner(planId, userId);
+        TripPlan plan = accessService.requireEditor(planId, userId);
         validateVisitDay(plan, request.visitDay());
         TripPlace place = buildPlace(planId, request);
         Integer visitDay = place.getVisitDay();
@@ -66,7 +65,7 @@ public class TripPlaceService {
 
     @Transactional
     public TripPlaceResponse updateSchedule(Long planId, Long placeId, Long userId, TripPlaceScheduleRequest request) {
-        TripPlan plan = ensureOwner(planId, userId);
+        TripPlan plan = accessService.requireEditor(planId, userId);
         validateVisitDay(plan, request.visitDay());
         findPlaceOrThrow(placeId, planId);
 
@@ -82,7 +81,7 @@ public class TripPlaceService {
 
     @Transactional
     public List<TripPlaceResponse> reorder(Long planId, Long userId, TripPlaceReorderRequest request) {
-        TripPlan plan = ensureOwner(planId, userId);
+        TripPlan plan = accessService.requireEditor(planId, userId);
         validateVisitDay(plan, request.visitDay());
         Integer visitDay = request.visitDay();
         List<TripPlace> places = tripPlaceMapper.findByPlanId(planId);
@@ -109,7 +108,7 @@ public class TripPlaceService {
 
     @Transactional
     public List<TripPlaceResponse> optimize(Long planId, Long userId, TripPlaceOptimizeRequest request) {
-        TripPlan plan = ensureOwner(planId, userId);
+        TripPlan plan = accessService.requireEditor(planId, userId);
         validateVisitDay(plan, request.visitDay());
         List<TripPlace> places = tripPlaceMapper.findByPlanIdAndVisitDay(planId, request.visitDay());
         if (places.size() < 2) {
@@ -134,7 +133,7 @@ public class TripPlaceService {
 
     @Transactional(readOnly = true)
     public DrivingRouteResponse drivingRoute(Long planId, Long userId, Integer visitDay) {
-        TripPlan plan = ensureOwner(planId, userId);
+        TripPlan plan = accessService.requireMember(planId, userId);
         validateVisitDay(plan, visitDay);
         List<TripPlace> places = tripPlaceMapper.findByPlanIdAndVisitDay(planId, visitDay);
         if (places.size() < 2) {
@@ -161,7 +160,7 @@ public class TripPlaceService {
 
     @Transactional
     public void delete(Long planId, Long placeId, Long userId) {
-        ensureOwner(planId, userId);
+        accessService.requireEditor(planId, userId);
         int affected = tripPlaceMapper.deleteByIdAndPlanId(placeId, planId);
         if (affected == 0) {
             throw new TripPlaceNotFoundException();
@@ -211,15 +210,6 @@ public class TripPlaceService {
         return value.trim()
                 .replaceAll("(?:\\s+\\(?#?\\d{5,}\\)?)+\\s*$", "")
                 .replaceAll("^\\s*(?:\\(?#?\\d{5,}\\)?\\s+)+", "");
-    }
-
-    private TripPlan ensureOwner(Long planId, Long userId) {
-        TripPlan plan = tripPlanMapper.findById(planId)
-                .orElseThrow(TripPlanNotFoundException::new);
-        if (!plan.getOwnerId().equals(userId)) {
-            throw new TripPlanAccessDeniedException();
-        }
-        return plan;
     }
 
     private void validateVisitDay(TripPlan plan, Integer visitDay) {

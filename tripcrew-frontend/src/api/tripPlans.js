@@ -14,6 +14,10 @@ import { http } from './http'
  *   PUT    /api/trip-plans/{id}/places/reorder
  *   POST   /api/trip-plans/{id}/places/optimize
  *   DELETE /api/trip-plans/{id}/places/{placeId}
+ *   GET    /api/trip-plans/{id}/members            멤버 목록(공동편집)
+ *   POST   /api/trip-plans/{id}/members            이메일 초대 {email, role}
+ *   PATCH  /api/trip-plans/{id}/members/{userId}   역할 변경 {role}
+ *   DELETE /api/trip-plans/{id}/members/{userId}   멤버 제거 / 본인 탈퇴
  *
  * 수정 시 마지막으로 읽은 version 을 함께 보내야 하며, 서버 version 과
  * 다르면 409(OptimisticLockConflict) 가 떨어진다. 호출측에서 처리한다.
@@ -35,4 +39,11 @@ export const tripPlanApi = {
   optimizePlaces: (id, payload) =>
     http.post(`/trip-plans/${id}/places/optimize`, payload).then((r) => r.data),
   removePlace: (id, placeId) => http.delete(`/trip-plans/${id}/places/${placeId}`),
+
+  // F06 공동편집 — 멤버(협업자) 관리
+  listMembers: (id) => http.get(`/trip-plans/${id}/members`).then((r) => r.data),
+  inviteMember: (id, payload) => http.post(`/trip-plans/${id}/members`, payload).then((r) => r.data),
+  updateMemberRole: (id, userId, role) =>
+    http.patch(`/trip-plans/${id}/members/${userId}`, { role }),
+  removeMember: (id, userId) => http.delete(`/trip-plans/${id}/members/${userId}`),
 }
