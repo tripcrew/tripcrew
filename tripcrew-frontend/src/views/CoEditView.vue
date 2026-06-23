@@ -194,6 +194,11 @@
 </template>
 
 <script setup>
+/*
+ * F06 — 라우트에서 분리됨(P2a). 편집기를 PlanEditView 로 일원화하면서 /plans/:id/co 는
+ * /plans/:id/edit 로 리다이렉트한다. 이 파일은 충돌 모달 마크업(showConflictMock)을
+ * P2b(메타 동시수정 409 충돌 처리)에서 PlanEditView 로 이식하기 위한 참고용으로 보존한다.
+ */
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 

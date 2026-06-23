@@ -19,8 +19,21 @@
           </div>
 
           <div class="header-right">
+            <div v-if="myRole && roster.length" class="presence-cluster" :title="presenceNames">
+              <div class="presence-avatars">
+                <span
+                  v-for="u in roster"
+                  :key="u.userId"
+                  class="presence-avatar"
+                  :style="{ background: avatarColor(u.userId) }"
+                >{{ avatarLetter(u.nickname) }}</span>
+              </div>
+              <span class="presence-label">
+                <span class="presence-dot" :class="{ 'presence-dot--off': !connected }"></span>
+                {{ roster.length }}명 편집 중
+              </span>
+            </div>
             <BaseButton variant="ghost" @click="$router.push('/plans')">← 목록</BaseButton>
-            <BaseButton v-if="myRole" variant="ghost" @click="$router.push(`/plans/${id}/co`)">공동편집</BaseButton>
             <BaseButton v-if="myRole" variant="ghost" @click="openShare">공유</BaseButton>
             <BaseButton v-if="isOwner" variant="secondary" :disabled="deleting" @click="removePlan">삭제</BaseButton>
             <BaseButton v-if="canEdit" variant="primary" :disabled="saving" @click="save">
@@ -377,6 +390,11 @@
         </ol>
       </section>
     </div>
+
+    <!-- F06 P2a — 공동 편집 실시간 알림 토스트 -->
+    <transition name="edit-toast">
+      <div v-if="toastVisible" class="edit-toast" role="status" aria-live="polite">{{ toastMsg }}</div>
+    </transition>
   </div>
 </template>
 
@@ -388,6 +406,7 @@ import BaseButton from '@/components/common/BaseButton.vue'
 import { attractionApi } from '@/api/attractions'
 import { tripPlanApi } from '@/api/tripPlans'
 import { useAuthStore } from '@/stores/auth'
+import { usePresence } from '@/composables/usePresence'
 
 const route = useRoute()
 const router = useRouter()
@@ -461,6 +480,76 @@ let drivingRouteRequest = 0
 const myUserId = computed(() => (auth.user ? auth.user.id : null))
 const isOwner = computed(() => myRole.value === 'OWNER')
 const canEdit = computed(() => myRole.value === 'OWNER' || myRole.value === 'EDITOR')
+
+// F06 P2a — 실시간 협업: 접속자 프레즌스 + 장소 변경 동기화(broadcast-refetch)
+const PRESENCE_PALETTE = ['var(--teal)', 'var(--coral)', 'var(--violet)', 'var(--info)', 'var(--warning)']
+const PLACE_ACTION_TEXT = {
+  ADDED: '장소를 추가했어요',
+  SCHEDULED: '장소 배치를 변경했어요',
+  REORDERED: '장소 순서를 변경했어요',
+  OPTIMIZED: '동선을 최적화했어요',
+  REMOVED: '장소를 삭제했어요',
+}
+const toastMsg = ref('')
+const toastVisible = ref(false)
+let toastTimer = null
+
+const presenceNames = computed(() =>
+  roster.value
+    .map((u) => (u.userId === myUserId.value ? `${u.nickname} (나)` : u.nickname))
+    .join(', '),
+)
+
+function avatarColor(userId) {
+  return PRESENCE_PALETTE[(userId || 0) % PRESENCE_PALETTE.length]
+}
+
+function avatarLetter(nickname) {
+  return nickname ? nickname.charAt(0) : '?'
+}
+
+function showToast(message) {
+  toastMsg.value = message
+  toastVisible.value = true
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = window.setTimeout(() => {
+    toastVisible.value = false
+  }, 3600)
+}
+
+// 내가 직접 장소를 조작(드래그/순서변경·추가삭제 저장·동선 최적화)하는 동안에는
+// 원격 갱신으로 목록을 갈아끼우지 않는다(조작이 어긋나는 것 방지). 끝나면 미뤄둔 갱신을 반영.
+const localBusy = computed(
+  () => placeReordering.value || placeSaving.value || optimizing.value || draggedPlaceId.value !== null,
+)
+let pendingRefetch = false
+
+async function applyRemoteRefetch() {
+  pendingRefetch = false
+  try {
+    await loadPlaces()
+  } catch {
+    // 재조회 실패는 조용히 무시 — 다음 변경/새로고침 때 다시 동기화된다.
+  }
+}
+
+watch(localBusy, (busy) => {
+  if (!busy && pendingRefetch) applyRemoteRefetch()
+})
+
+// 다른 접속자의 장소 변경 알림 → 목록을 다시 불러오고 누가 바꿨는지 토스트로 안내.
+async function handlePlaceChange(event) {
+  if (!event || event.actorId === myUserId.value) return // 내 변경은 이미 반영됨
+  const text = PLACE_ACTION_TEXT[event.action] || '계획을 수정했어요'
+  showToast(`${event.actorNickname}님이 ${text}`)
+  if (localBusy.value) {
+    pendingRefetch = true // 내 조작이 끝나면 watch 에서 한 번에 반영
+    return
+  }
+  await applyRemoteRefetch()
+}
+
+const { connected, roster, connect } = usePresence(id, { onPlaceChange: handlePlaceChange })
 
 const dateLabel = computed(() => {
   const { startDate, endDate } = form.value
@@ -1250,11 +1339,14 @@ onMounted(async () => {
   await load()
   await nextTick()
   if (!loadError.value) initNaverMap()
+  // 멤버일 때만 실시간 협업 연결(프레즌스 + 장소 동기화). 비멤버는 load()에서 이미 막힘.
+  if (!loadError.value && myRole.value) connect()
 })
 
 onBeforeUnmount(() => {
   clearMapOverlays()
   clearOptimizeTimer()
+  if (toastTimer) clearTimeout(toastTimer)
   mapInstance.value = null
 })
 </script>
@@ -1300,6 +1392,94 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+/* F06 P2a — 실시간 접속자 클러스터 */
+.presence-cluster {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 6px;
+  margin-right: 4px;
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.presence-avatars {
+  display: flex;
+}
+
+.presence-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  border: 2px solid white;
+  margin-left: -8px;
+}
+
+.presence-avatar:first-child {
+  margin-left: 0;
+}
+
+.presence-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.presence-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success);
+  animation: presence-pulse 1.6s ease-in-out infinite;
+}
+
+.presence-dot--off {
+  background: var(--ink-soft);
+  animation: none;
+}
+
+@keyframes presence-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* F06 P2a — 변경 알림 토스트 */
+.edit-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  z-index: 700;
+  padding: 11px 20px;
+  border-radius: 999px;
+  background: var(--ink, #16242a);
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 8px 28px rgba(20, 38, 46, 0.28);
+}
+
+.edit-toast-enter-active,
+.edit-toast-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.edit-toast-enter-from,
+.edit-toast-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(10px);
 }
 
 /* 편집 폼 */

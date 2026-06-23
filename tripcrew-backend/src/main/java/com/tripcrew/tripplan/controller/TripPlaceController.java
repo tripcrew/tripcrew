@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.tripcrew.coedit.dto.PlaceChangeAction;
+import com.tripcrew.coedit.edit.PlaceChangeBroadcaster;
 import com.tripcrew.tripplan.model.dto.TripPlaceCreateRequest;
 import com.tripcrew.tripplan.model.dto.DrivingRouteResponse;
 import com.tripcrew.tripplan.model.dto.TripPlaceOptimizeRequest;
@@ -32,6 +34,8 @@ import lombok.RequiredArgsConstructor;
 public class TripPlaceController {
 
     private final TripPlaceService tripPlaceService;
+    // F06 P2a — 장소 변경을 같은 계획 편집 중인 다른 접속자에게 실시간 알림(트랜잭션 커밋 후 호출).
+    private final PlaceChangeBroadcaster placeChangeBroadcaster;
 
     @GetMapping
     public List<TripPlaceResponse> list(@AuthenticationPrincipal Long userId,
@@ -51,7 +55,9 @@ public class TripPlaceController {
     public TripPlaceResponse create(@AuthenticationPrincipal Long userId,
                                     @PathVariable Long planId,
                                     @Valid @RequestBody TripPlaceCreateRequest request) {
-        return tripPlaceService.create(planId, userId, request);
+        TripPlaceResponse created = tripPlaceService.create(planId, userId, request);
+        placeChangeBroadcaster.broadcast(planId, userId, PlaceChangeAction.ADDED);
+        return created;
     }
 
     @PutMapping("/{placeId}/schedule")
@@ -59,21 +65,27 @@ public class TripPlaceController {
                                             @PathVariable Long planId,
                                             @PathVariable Long placeId,
                                             @Valid @RequestBody TripPlaceScheduleRequest request) {
-        return tripPlaceService.updateSchedule(planId, placeId, userId, request);
+        TripPlaceResponse updated = tripPlaceService.updateSchedule(planId, placeId, userId, request);
+        placeChangeBroadcaster.broadcast(planId, userId, PlaceChangeAction.SCHEDULED);
+        return updated;
     }
 
     @PutMapping("/reorder")
     public List<TripPlaceResponse> reorder(@AuthenticationPrincipal Long userId,
                                            @PathVariable Long planId,
                                            @Valid @RequestBody TripPlaceReorderRequest request) {
-        return tripPlaceService.reorder(planId, userId, request);
+        List<TripPlaceResponse> reordered = tripPlaceService.reorder(planId, userId, request);
+        placeChangeBroadcaster.broadcast(planId, userId, PlaceChangeAction.REORDERED);
+        return reordered;
     }
 
     @PostMapping("/optimize")
     public List<TripPlaceResponse> optimize(@AuthenticationPrincipal Long userId,
                                             @PathVariable Long planId,
                                             @Valid @RequestBody TripPlaceOptimizeRequest request) {
-        return tripPlaceService.optimize(planId, userId, request);
+        List<TripPlaceResponse> optimized = tripPlaceService.optimize(planId, userId, request);
+        placeChangeBroadcaster.broadcast(planId, userId, PlaceChangeAction.OPTIMIZED);
+        return optimized;
     }
 
     @DeleteMapping("/{placeId}")
@@ -82,5 +94,6 @@ public class TripPlaceController {
                        @PathVariable Long planId,
                        @PathVariable Long placeId) {
         tripPlaceService.delete(planId, placeId, userId);
+        placeChangeBroadcaster.broadcast(planId, userId, PlaceChangeAction.REMOVED);
     }
 }
