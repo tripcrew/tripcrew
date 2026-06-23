@@ -44,10 +44,10 @@ const routes = [
     meta: { title: '여행 계획 편집 (SC-07)', requiresAuth: true }
   },
   {
+    // F06 P2a — 편집기 일원화: 공동편집을 PlanEditView 로 합침(혼자=일반 편집기, 여럿=실시간 협업).
+    // 옛 /co 진입점은 편집 화면으로 리다이렉트. CoEditView 의 충돌 모달 마크업은 P2b 용으로 보존.
     path: '/plans/:id/co',
-    name: 'co-edit',
-    component: () => import('@/views/CoEditView.vue'),
-    meta: { title: '공동 편집 (SC-08)', requiresAuth: true }
+    redirect: (to) => `/plans/${to.params.id}/edit`
   },
   {
     path: '/plans',
