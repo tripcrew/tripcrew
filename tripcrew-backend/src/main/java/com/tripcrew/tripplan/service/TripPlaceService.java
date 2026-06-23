@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.tripcrew.activity.service.UserActivityService;
 import com.tripcrew.attraction.model.dto.AttractionDetailResponse;
 import com.tripcrew.attraction.model.mapper.AttractionMapper;
 import com.tripcrew.common.exception.BusinessException;
@@ -42,6 +43,7 @@ public class TripPlaceService {
     private final AttractionMapper attractionMapper;
     private final NaverDirectionsService naverDirectionsService;
     private final TripPlanAccessService accessService;
+    private final UserActivityService userActivityService;
 
     @Transactional(readOnly = true)
     public List<TripPlaceResponse> list(Long planId, Long userId) {
@@ -60,6 +62,7 @@ public class TripPlaceService {
         place.setOrderIndex(tripPlaceMapper.maxOrderIndex(planId, visitDay) + 1);
 
         tripPlaceMapper.insert(place);
+        userActivityService.record(userId, "PLACE_ADDED", planId, plan.getTitle(), place.getName(), visitDay);
         return TripPlaceResponse.from(findPlaceOrThrow(place.getId(), planId));
     }
 
@@ -67,7 +70,7 @@ public class TripPlaceService {
     public TripPlaceResponse updateSchedule(Long planId, Long placeId, Long userId, TripPlaceScheduleRequest request) {
         TripPlan plan = accessService.requireEditor(planId, userId);
         validateVisitDay(plan, request.visitDay());
-        findPlaceOrThrow(placeId, planId);
+        TripPlace place = findPlaceOrThrow(placeId, planId);
 
         Integer visitDay = request.visitDay();
         Integer orderIndex = request.orderIndex();
@@ -76,6 +79,7 @@ public class TripPlaceService {
         }
 
         tripPlaceMapper.updateSchedule(placeId, planId, visitDay, orderIndex);
+        userActivityService.record(userId, "PLACE_SCHEDULED", planId, plan.getTitle(), place.getName(), visitDay);
         return TripPlaceResponse.from(findPlaceOrThrow(placeId, planId));
     }
 
@@ -125,6 +129,7 @@ public class TripPlaceService {
         for (TripPlace place : optimized) {
             tripPlaceMapper.updateOrderIndex(place.getId(), planId, order++);
         }
+        userActivityService.record(userId, "ROUTE_OPTIMIZED", planId, plan.getTitle(), null, request.visitDay());
 
         return tripPlaceMapper.findByPlanIdAndVisitDay(planId, request.visitDay()).stream()
                 .map(TripPlaceResponse::from)

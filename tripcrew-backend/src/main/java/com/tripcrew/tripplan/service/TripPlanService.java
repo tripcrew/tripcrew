@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.tripcrew.activity.service.UserActivityService;
 import com.tripcrew.common.exception.BusinessException;
 import com.tripcrew.tripplan.exception.OptimisticLockConflictException;
 import com.tripcrew.tripplan.exception.TripPlanNotFoundException;
@@ -29,6 +30,7 @@ public class TripPlanService {
     private final TripPlanMapper tripPlanMapper;
     private final TripMemberMapper tripMemberMapper;
     private final TripPlanAccessService accessService;
+    private final UserActivityService userActivityService;
 
     /** 여행계획 생성. 소유자는 인증 주체. DB DEFAULT 가 채운 값까지 반영해 재조회 반환. */
     @Transactional
@@ -43,6 +45,7 @@ public class TripPlanService {
                 .endDate(request.endDate())
                 .build();
         tripPlanMapper.insert(plan);
+        userActivityService.record(ownerId, "PLAN_CREATED", plan.getId(), plan.getTitle(), null, null);
 
         return TripPlanResponse.from(findOrThrow(plan.getId()));
     }

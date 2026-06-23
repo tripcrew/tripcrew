@@ -107,17 +107,19 @@
 
             <ol v-else class="ranking-list">
               <li v-for="item in ranking" :key="item.id">
-                <span class="rank-no">{{ item.rank }}</span>
-                <div class="rank-info">
-                  <strong>{{ item.title }}</strong>
-                  <span class="t-caption">{{ item.region }}</span>
-                </div>
-                <span :class="['trend', `trend--${item.trend}`]">
-                  <template v-if="item.trend === 'up'">▲ {{ item.delta }}</template>
-                  <template v-else-if="item.trend === 'down'">▼ {{ item.delta }}</template>
-                  <template v-else-if="item.trend === 'new'">NEW</template>
-                  <template v-else>─</template>
-                </span>
+                <button type="button" class="ranking-list__button" @click="goToAttraction(item.id)">
+                  <span class="rank-no">{{ item.rank }}</span>
+                  <span class="rank-info">
+                    <strong>{{ item.title }}</strong>
+                    <span class="t-caption">{{ item.region }}</span>
+                  </span>
+                  <span :class="['trend', `trend--${item.trend}`]">
+                    <template v-if="item.trend === 'up'">▲ {{ item.delta }}</template>
+                    <template v-else-if="item.trend === 'down'">▼ {{ item.delta }}</template>
+                    <template v-else-if="item.trend === 'new'">NEW</template>
+                    <template v-else>─</template>
+                  </span>
+                </button>
               </li>
             </ol>
           </section>
@@ -127,26 +129,15 @@
             <div class="block__head">
               <h2 class="t-h2">최근 활동</h2>
             </div>
-            <ul class="activity">
-              <li>
-                <div class="activity-dot"></div>
+            <p v-if="activitiesLoading" class="activity-state">최근 활동을 불러오는 중입니다.</p>
+            <p v-else-if="activitiesError" class="activity-state">{{ activitiesError }}</p>
+            <p v-else-if="activities.length === 0" class="activity-state">아직 최근 활동이 없습니다.</p>
+            <ul v-else class="activity">
+              <li v-for="activity in activities" :key="activity.id">
+                <div :class="['activity-dot', `activity-dot--${activity.activityType}`]"></div>
                 <div>
-                  <p>지원 님이 여수 계획에 <strong>'케이블카'</strong> 추가</p>
-                  <span class="t-caption">5분 전</span>
-                </div>
-              </li>
-              <li>
-                <div class="activity-dot activity-dot--success"></div>
-                <div>
-                  <p>동선 최적화 완료 · <strong>이동시간 -32%</strong></p>
-                  <span class="t-caption">12분 전</span>
-                </div>
-              </li>
-              <li>
-                <div class="activity-dot activity-dot--coral"></div>
-                <div>
-                  <p>강릉 후기 <strong>★ 4점</strong> 작성</p>
-                  <span class="t-caption">어제</span>
+                  <p>{{ activityMessage(activity) }}</p>
+                  <span class="t-caption">{{ formatRelative(activity.createdAt) }}</span>
                 </div>
               </li>
             </ul>
@@ -163,6 +154,7 @@ import { useRouter } from 'vue-router'
 
 import AppHeader from '@/components/common/AppHeader.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
+import { activityApi } from '@/api/activities'
 import { rankingApi } from '@/api/rankings'
 import { tripPlanApi } from '@/api/tripPlans'
 import { useAuthStore } from '@/stores/auth'
@@ -176,6 +168,9 @@ const plansError = ref('')
 const ranking = ref([])
 const rankingLoading = ref(true)
 const rankingError = ref('')
+const activities = ref([])
+const activitiesLoading = ref(true)
+const activitiesError = ref('')
 const planRail = ref(null)
 const planDrag = ref({
   active: false,
@@ -228,11 +223,37 @@ async function loadRanking() {
   try {
     ranking.value = await rankingApi.getAttractions()
     rankingError.value = ''
-  } catch (error) {
-    rankingError.value = error?.response?.data?.message || '실시간 랭킹을 불러오지 못했습니다.'
+  } catch {
+    ranking.value = []
+    rankingError.value = ''
   } finally {
     rankingLoading.value = false
   }
+}
+
+async function loadActivities() {
+  try {
+    activities.value = await activityApi.getRecent()
+    activitiesError.value = ''
+  } catch {
+    activities.value = []
+    activitiesError.value = ''
+  } finally {
+    activitiesLoading.value = false
+  }
+}
+
+function activityMessage(activity) {
+  const planTitle = activity.tripPlanTitle || '여행 계획'
+  if (activity.activityType === 'PLAN_CREATED') return `${planTitle} 계획을 만들었어요.`
+  if (activity.activityType === 'PLACE_ADDED') return `${planTitle}에 ${activity.placeName}을(를) 추가했어요.`
+  if (activity.activityType === 'PLACE_SCHEDULED') {
+    return activity.visitDay
+      ? `${activity.placeName}을(를) Day ${activity.visitDay}에 배치했어요.`
+      : `${activity.placeName}을(를) 보관함으로 옮겼어요.`
+  }
+  if (activity.activityType === 'ROUTE_OPTIMIZED') return `${planTitle} Day ${activity.visitDay} 동선을 최적화했어요.`
+  return '여행 계획을 업데이트했어요.'
 }
 
 function openPlan(planId) {
@@ -241,6 +262,10 @@ function openPlan(planId) {
     return
   }
   router.push(`/plans/${planId}/edit`)
+}
+
+function goToAttraction(id) {
+  router.push(`/attractions/${id}`)
 }
 
 function startPlanDrag(event) {
@@ -378,6 +403,7 @@ function pad(value) {
 onMounted(() => {
   loadPlans()
   loadRanking()
+  loadActivities()
   rankingTimer = window.setInterval(loadRanking, 30_000)
 })
 
@@ -687,17 +713,26 @@ onBeforeUnmount(() => {
 }
 
 .ranking-list li {
+  list-style: none;
+}
+
+.ranking-list__button {
   display: flex;
+  width: 100%;
   align-items: center;
   gap: 12px;
   padding: 10px;
+  border: 0;
   border-radius: 10px;
   background: white;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   transition: background 0.15s;
   cursor: pointer;
 }
 
-.ranking-list li:hover {
+.ranking-list__button:hover {
   background: var(--teal-soft);
 }
 
@@ -786,6 +821,16 @@ onBeforeUnmount(() => {
 
 .activity-dot--success { background: var(--success); }
 .activity-dot--coral { background: var(--coral); }
+.activity-dot--PLAN_CREATED { background: var(--info); }
+.activity-dot--PLACE_ADDED { background: var(--success); }
+.activity-dot--PLACE_SCHEDULED { background: var(--coral); }
+.activity-dot--ROUTE_OPTIMIZED { background: var(--teal); }
+
+.activity-state {
+  padding: 12px 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
 
 .activity p {
   font-size: 14px;
