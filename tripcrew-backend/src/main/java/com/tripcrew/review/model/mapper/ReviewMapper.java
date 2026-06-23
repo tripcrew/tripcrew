@@ -26,4 +26,12 @@ public interface ReviewMapper {
 
     /** 대상 존재 검증용(앱레벨). 여행계획(trip_plans.id) 존재 여부. */
     boolean existsTripPlan(@Param("targetId") Long targetId);
+
+    /**
+     * 후기를 숨김(soft-delete)으로 전환. 신고 처리완료(RESOLVED) 시 호출.
+     * 하드삭제가 아니라 status=HIDDEN 으로만 바꿔 row 를 보존한다.
+     *
+     * @return 영향받은 행 수(이미 없는 id 면 0)
+     */
+    int hideById(@Param("id") Long id);
 }

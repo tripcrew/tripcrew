@@ -2,6 +2,7 @@ package com.tripcrew.review.model.dto;
 
 import java.time.LocalDateTime;
 
+import com.tripcrew.review.model.ReviewStatus;
 import com.tripcrew.review.model.ReviewTargetType;
 
 import lombok.AllArgsConstructor;
@@ -30,6 +31,7 @@ public class Review {
     private Long targetId;
     private Integer rating;
     private String content;
+    private ReviewStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
