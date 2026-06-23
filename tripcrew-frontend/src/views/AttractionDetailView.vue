@@ -13,16 +13,21 @@
       <div v-else-if="errorMessage" class="detail-state">{{ errorMessage }}</div>
 
       <template v-else-if="attraction">
-        <section class="gallery" :class="{ 'gallery--single': sideImages.length === 0 }">
+        <section class="gallery" :class="{ 'gallery--single': !hasCoordinates }">
           <div class="gallery__main">
             <img v-if="primaryImage" :src="primaryImage" :alt="cleanDisplayName(attraction.title)" />
             <div v-else class="gallery__placeholder">
               <span>TripCrew</span>
             </div>
           </div>
-          <div v-if="sideImages.length" class="gallery__side">
-            <div v-for="(image, index) in sideImages" :key="image" class="gallery__thumb">
-              <img :src="image" :alt="`${cleanDisplayName(attraction.title)} 보조 이미지 ${index + 1}`" />
+          <div v-if="hasCoordinates" class="gallery__map">
+            <div ref="mapElement" class="gallery__map-canvas"></div>
+            <div v-if="mapState !== 'ready'" class="gallery__map-fallback">
+              {{ mapFallbackMessage }}
+            </div>
+            <div class="gallery__map-caption">
+              <strong>{{ cleanDisplayName(attraction.title) }}</strong>
+              <span>{{ attraction.sido }} {{ attraction.gugun }}</span>
             </div>
           </div>
         </section>
@@ -50,7 +55,7 @@
                   <span class="like-heart">{{ liked ? '♥' : '♡' }}</span>
                   <span class="like-count">{{ likeCountLabel }}</span>
                 </button>
-                <button class="icon-action" type="button" aria-label="공유" title="공유" @click="copyShareUrl">↗</button>
+                <button class="icon-action" type="button" aria-label="링크 복사" title="링크 복사" @click="copyShareUrl">⧉</button>
               </div>
             </header>
 
@@ -89,7 +94,6 @@
               <BaseButton variant="primary" size="lg" :disabled="planPanelLoading" @click="openPlanPanel">
                 {{ planPanelLoading ? '계획 불러오는 중' : '+ 내 여행 계획에 추가' }}
               </BaseButton>
-              <BaseButton variant="secondary" size="lg">지도에서 보기</BaseButton>
             </div>
 
             <section v-if="showPlanPanel" class="add-plan-panel">
@@ -200,7 +204,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { attractionApi } from '@/api/attractions'
@@ -238,6 +242,11 @@ const selectedPlanId = ref(null)
 const visitDay = ref(1)
 const planMessage = ref('')
 const planError = ref('')
+const mapElement = ref(null)
+const mapState = ref('idle')
+let mapInstance = null
+let mapMarker = null
+let naverMapsScriptPromise = null
 
 const avgStars = computed(() => starText(Math.round(reviewSummary.value.average)))
 
@@ -260,14 +269,19 @@ function formatDate(iso) {
   return iso ? iso.slice(0, 10) : ''
 }
 
-const galleryImages = computed(() =>
-  [attraction.value?.firstImage1, attraction.value?.firstImage2]
-    .map((image) => image?.trim())
-    .filter(Boolean),
+const primaryImage = computed(() =>
+  attraction.value?.firstImage1?.trim() || attraction.value?.firstImage2?.trim() || '',
 )
-
-const primaryImage = computed(() => galleryImages.value[0] || '')
-const sideImages = computed(() => galleryImages.value.slice(1))
+const hasCoordinates = computed(() => {
+  const latitude = Number(attraction.value?.latitude)
+  const longitude = Number(attraction.value?.longitude)
+  return Number.isFinite(latitude) && Number.isFinite(longitude)
+})
+const mapFallbackMessage = computed(() => {
+  if (mapState.value === 'missing-key') return '지도 설정이 필요합니다.'
+  if (mapState.value === 'error') return '지도를 불러오지 못했습니다.'
+  return '지도를 불러오는 중입니다.'
+})
 const selectedPlan = computed(() =>
   planOptions.value.find((plan) => plan.id === selectedPlanId.value),
 )
@@ -287,6 +301,64 @@ async function loadAttraction() {
     errorMessage.value = error?.response?.data?.message || '관광지 정보를 불러오지 못했습니다.'
   } finally {
     isLoading.value = false
+    if (attraction.value) {
+      await nextTick()
+      initLocationMap()
+    }
+  }
+}
+
+function loadNaverMapsScript() {
+  const clientId = import.meta.env.VITE_NAVER_MAP_CLIENT_ID
+  if (!clientId || clientId === 'your_naver_map_client_id') {
+    mapState.value = 'missing-key'
+    return Promise.reject(new Error('missing naver map client id'))
+  }
+  if (window.naver?.maps) return Promise.resolve(window.naver.maps)
+  if (naverMapsScriptPromise) return naverMapsScriptPromise
+
+  naverMapsScriptPromise = new Promise((resolve, reject) => {
+    const existing = document.getElementById('naver-map-sdk')
+    if (existing) {
+      existing.addEventListener('load', () => resolve(window.naver.maps), { once: true })
+      existing.addEventListener('error', reject, { once: true })
+      return
+    }
+    const script = document.createElement('script')
+    script.id = 'naver-map-sdk'
+    script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${encodeURIComponent(clientId)}`
+    script.async = true
+    script.onload = () => resolve(window.naver.maps)
+    script.onerror = reject
+    document.head.appendChild(script)
+  })
+  return naverMapsScriptPromise
+}
+
+async function initLocationMap() {
+  if (!hasCoordinates.value || !mapElement.value) return
+  mapState.value = 'loading'
+  try {
+    const maps = await loadNaverMapsScript()
+    const position = new maps.LatLng(Number(attraction.value.latitude), Number(attraction.value.longitude))
+    if (!mapInstance) {
+      mapInstance = new maps.Map(mapElement.value, {
+        center: position,
+        zoom: 15,
+        minZoom: 6,
+        scaleControl: false,
+        mapDataControl: false,
+        logoControlOptions: { position: maps.Position.BOTTOM_LEFT },
+      })
+    } else {
+      mapInstance.setCenter(position)
+    }
+    if (mapMarker) mapMarker.setMap(null)
+    mapMarker = new maps.Marker({ position, map: mapInstance })
+    maps.Event.trigger(mapInstance, 'resize')
+    mapState.value = 'ready'
+  } catch {
+    mapState.value = mapState.value === 'missing-key' ? 'missing-key' : 'error'
   }
 }
 
@@ -473,7 +545,7 @@ onMounted(loadAll)
 }
 
 .gallery__main,
-.gallery__thumb {
+.gallery__map {
   background: linear-gradient(135deg, var(--teal-soft), var(--coral-tint));
   position: relative;
   overflow: hidden;
@@ -486,23 +558,55 @@ onMounted(loadAll)
   height: clamp(280px, 31vw, 420px);
 }
 
-.gallery__main img,
-.gallery__thumb img {
+.gallery__main img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.gallery__side {
-  display: grid;
-  grid-auto-rows: minmax(0, 1fr);
-  gap: 12px;
+.gallery__map {
+  border-radius: var(--r-md);
   height: clamp(280px, 31vw, 420px);
 }
 
-.gallery__thumb {
-  border-radius: var(--r-md);
+.gallery__map-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.gallery__map-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: linear-gradient(135deg, var(--teal-soft), var(--coral-tint));
+  color: var(--ink-3);
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.gallery__map-caption {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink);
+  font-size: 12px;
+  box-shadow: var(--sh-1);
+  pointer-events: none;
+}
+
+.gallery__map-caption span {
+  color: var(--ink-soft);
 }
 
 .gallery__placeholder {
@@ -906,20 +1010,12 @@ onMounted(loadAll)
   }
 
   .gallery__main,
-  .gallery__side {
+  .gallery__map {
     height: auto;
   }
 
   .gallery__main {
     aspect-ratio: 16 / 10;
-  }
-
-  .gallery__side {
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  }
-
-  .gallery__thumb {
-    aspect-ratio: 4 / 3;
   }
 
   .detail-grid {
