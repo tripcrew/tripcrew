@@ -49,6 +49,9 @@ public class SecurityConfig {
                         // 공개: 헬스체크, 인증(회원가입/로그인/재발급)
                         .requestMatchers("/api/health").permitAll()
                         .requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/reissue").permitAll()
+                        // F06 공동편집: WebSocket 핸드셰이크(HTTP 업그레이드)는 통과시키고,
+                        // 실제 인증은 STOMP CONNECT 프레임에서(StompAuthChannelInterceptor) 처리.
+                        .requestMatchers("/ws/**").permitAll()
                         // 공개 조회(관광지 등 GET)는 기능 구현 시 개별 permitAll 추가
                         .requestMatchers(HttpMethod.GET, "/api/attractions/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/regions/**").permitAll()
