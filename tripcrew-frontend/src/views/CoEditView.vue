@@ -15,7 +15,7 @@
           <p class="t-caption">{{ roster.length }}명이 함께 보는 중</p>
         </div>
 
-        <BaseButton variant="secondary" @click="$router.push(`/plans/${planId}`)">계획 편집으로</BaseButton>
+        <BaseButton variant="secondary" @click="$router.push(`/plans/${planId}/edit`)">계획 편집으로</BaseButton>
       </header>
 
       <div class="coedit-grid">
