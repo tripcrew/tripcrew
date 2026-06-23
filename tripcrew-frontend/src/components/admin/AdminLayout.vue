@@ -38,10 +38,10 @@
             <span class="nav-icon">🚫</span>
             정지된 계정
           </RouterLink>
-          <a class="nav-item">
+          <RouterLink class="nav-item" :class="{ active: active === 'notices' }" to="/admin/notices">
             <span class="nav-icon">📢</span>
             공지사항
-          </a>
+          </RouterLink>
           <a class="nav-item">
             <span class="nav-icon">📍</span>
             관광지 관리
