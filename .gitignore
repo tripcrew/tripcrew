@@ -28,6 +28,10 @@ src/main/resources/application-secret.properties
 **/src/main/resources/application-secret.properties
 *.mwb
 *_dump.sql
+
+# 업로드된 후기 이미지 (런타임 생성물, 커밋 금지)
+uploads/
+**/uploads/
 member.sql
 *화면 설계서*.pdf
 CLAUDE.md

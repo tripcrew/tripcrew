@@ -54,6 +54,9 @@ public class SecurityConfig {
                         // F06 공동편집: WebSocket 핸드셰이크(HTTP 업그레이드)는 통과시키고,
                         // 실제 인증은 STOMP CONNECT 프레임에서(StompAuthChannelInterceptor) 처리.
                         .requestMatchers("/ws/**").permitAll()
+                        // 업로드된 후기 이미지 정적 서빙(F08): 누구나 <img> 로 볼 수 있게 공개.
+                        // 업로드(POST /api/uploads/**)는 인증 필요 → anyRequest 로 커버.
+                        .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                         // 공개 조회(관광지 등 GET)는 기능 구현 시 개별 permitAll 추가
                         .requestMatchers(HttpMethod.GET, "/api/attractions/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/regions/**").permitAll()

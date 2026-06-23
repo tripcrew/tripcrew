@@ -10,6 +10,8 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -40,6 +42,24 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleNotReadable(HttpMessageNotReadableException e) {
         return ResponseEntity.badRequest()
                 .body(ErrorResponse.of(HttpStatus.BAD_REQUEST.value(), "요청 본문을 해석할 수 없습니다."));
+    }
+
+    /**
+     * 정적 리소스 미존재(예: 삭제된 업로드 이미지 요청) → 404.
+     * 이 핸들러가 없으면 아래 catch-all 이 잡아 500 + 에러 로그로 잘못 처리한다.
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoResource(NoResourceFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ErrorResponse.of(HttpStatus.NOT_FOUND.value(), "리소스를 찾을 수 없습니다."));
+    }
+
+    /** 업로드 용량 초과(multipart max-file-size/max-request-size) → 413 대신 친절한 400 */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxUpload(MaxUploadSizeExceededException e) {
+        return ResponseEntity.badRequest()
+                .body(ErrorResponse.of(HttpStatus.BAD_REQUEST.value(),
+                        "이미지 용량이 너무 큽니다. 한 장당 10MB 이하로 올려주세요."));
     }
 
     /** 그 외 예상치 못한 예외 → 500 (상세는 로그로, 응답엔 일반 메시지) */

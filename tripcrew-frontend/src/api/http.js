@@ -12,6 +12,20 @@ import axios from 'axios'
  */
 const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api'
 
+/**
+ * 정적 리소스(업로드 이미지 등) origin. API baseURL 에서 끝의 `/api` 를 떼어낸 값.
+ * 예: http://localhost:8080/api → http://localhost:8080
+ * 백엔드가 내려주는 상대 경로(/uploads/...)는 이 값을 앞에 붙여 절대 URL 로 만든다.
+ */
+export const assetBaseURL = baseURL.replace(/\/api\/?$/, '')
+
+/** 업로드 이미지 상대경로(/uploads/...)를 절대 URL 로. 이미 절대 URL 이면 그대로 둔다. */
+export function toAssetUrl(path) {
+  if (!path) return ''
+  if (/^https?:\/\//.test(path)) return path
+  return assetBaseURL + path
+}
+
 const ACCESS_KEY = 'tripcrew.accessToken'
 const REFRESH_KEY = 'tripcrew.refreshToken'
 
