@@ -9,10 +9,7 @@
 
       <div class="system-status">
         <span class="status-label">SYSTEM</span>
-        <span class="status-item"><span class="sd sd--ok"></span>API · 정상</span>
-        <span class="status-item"><span class="sd sd--ok"></span>Redis · 정상</span>
-        <span class="status-item"><span class="sd sd--warn"></span>TourAPI · HALF-OPEN</span>
-        <span class="status-item"><span class="sd sd--ok"></span>Gemini · 정상</span>
+        <span class="status-item"><span class="sd" :class="healthDotClass"></span>{{ healthText }}</span>
       </div>
 
       <button class="logout-btn" title="로그아웃" @click="handleLogout">
@@ -51,20 +48,23 @@
             <span class="nav-icon">📢</span>
             공지사항
           </RouterLink>
-          <a class="nav-item">
+          <span class="nav-item nav-item--soon" title="준비 중인 메뉴입니다" aria-disabled="true">
             <span class="nav-icon">📍</span>
             관광지 관리
-          </a>
+            <span class="nav-soon">준비 중</span>
+          </span>
 
           <h4 class="nav-title">모니터링</h4>
-          <a class="nav-item">
+          <span class="nav-item nav-item--soon" title="준비 중인 메뉴입니다" aria-disabled="true">
             <span class="nav-icon">📊</span>
             통계 대시보드
-          </a>
-          <a class="nav-item">
+            <span class="nav-soon">준비 중</span>
+          </span>
+          <span class="nav-item nav-item--soon" title="준비 중인 메뉴입니다" aria-disabled="true">
             <span class="nav-icon">⚙️</span>
             시스템 상태
-          </a>
+            <span class="nav-soon">준비 중</span>
+          </span>
         </nav>
       </aside>
 
@@ -77,10 +77,11 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 
+import { http } from '@/api/http'
 import { useAuthStore } from '@/stores/auth'
 import { useAdminMetaStore } from '@/stores/adminMeta'
 
@@ -93,6 +94,24 @@ const router = useRouter()
 const auth = useAuthStore()
 const userInitial = computed(() => (auth.user && auth.user.nickname ? auth.user.nickname : 'A').charAt(0))
 
+// 시스템 상태: 프론트가 실제로 확인 가능한 건 백엔드 생존뿐이라 /api/health 를 핑한다.
+// (Redis/외부 API 별 상태는 전용 헬스 엔드포인트가 생기면 확장 — 그전까지 날조 표시 안 함)
+const apiHealthy = ref(null) // null=확인 중, true=정상, false=연결 끊김
+const healthText = computed(() =>
+  apiHealthy.value === null ? 'API · 확인 중' : apiHealthy.value ? 'API · 정상' : 'API · 연결 끊김',
+)
+const healthDotClass = computed(() =>
+  apiHealthy.value === null ? 'sd--warn' : apiHealthy.value ? 'sd--ok' : 'sd--down',
+)
+async function checkHealth() {
+  try {
+    const { data } = await http.get('/health')
+    apiHealthy.value = data && data.status === 'UP'
+  } catch {
+    apiHealthy.value = false
+  }
+}
+
 async function handleLogout() {
   if (!window.confirm('로그아웃하시겠어요?')) return
   await auth.logout()
@@ -102,7 +121,10 @@ async function handleLogout() {
 // 신고 관리 배지(미처리 OPEN 수)는 어느 관리자 페이지에서든 보이도록 store 에서 가져온다.
 const adminMeta = useAdminMetaStore()
 const { openReportCount } = storeToRefs(adminMeta)
-onMounted(adminMeta.refreshOpenReportCount)
+onMounted(() => {
+  adminMeta.refreshOpenReportCount()
+  checkHealth()
+})
 </script>
 
 <style scoped>
@@ -211,6 +233,7 @@ onMounted(adminMeta.refreshOpenReportCount)
 
 .sd--ok { background: var(--success); animation: blink 2s infinite; }
 .sd--warn { background: var(--warning); animation: blink 1.4s infinite; }
+.sd--down { background: var(--danger); }
 
 @keyframes blink {
   0%, 100% { opacity: 1; }
@@ -277,6 +300,27 @@ onMounted(adminMeta.refreshOpenReportCount)
 .nav-item.active {
   background: var(--teal-soft);
   color: var(--teal-3);
+}
+
+/* 아직 라우트가 없는(준비 중) 메뉴 — 클릭 불가, 깨진 링크처럼 보이지 않게 명시 */
+.nav-item--soon {
+  color: var(--muted);
+  cursor: default;
+}
+
+.nav-item--soon:hover {
+  background: none;
+  color: var(--muted);
+}
+
+.nav-soon {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--bg-2);
+  padding: 2px 7px;
+  border-radius: 999px;
 }
 
 .nav-icon { font-size: 16px; }
