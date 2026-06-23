@@ -42,6 +42,9 @@ public class ChatService implements InitializingBean {
     @Value("${gemini.base-url:https://generativelanguage.googleapis.com/v1beta}")
     private String baseUrl;
 
+    @Value("${gemini.max-output-tokens:1024}")
+    private int maxOutputTokens;
+
     @Override
     public void afterPropertiesSet() {
         this.restClient = RestClient.builder()
@@ -69,7 +72,7 @@ public class ChatService implements InitializingBean {
         GeminiRequest request = new GeminiRequest(
                 List.of(new GeminiContent("user", List.of(new GeminiPart(userMessage)))),
                 new GeminiContent(null, List.of(new GeminiPart(systemInstruction()))),
-                new GeminiGenerationConfig(0.7, 512)
+                new GeminiGenerationConfig(0.7, maxOutputTokens)
         );
 
         GeminiResponse response = callGeminiWithRetry(request);
