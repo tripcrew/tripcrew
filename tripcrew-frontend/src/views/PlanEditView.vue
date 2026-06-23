@@ -654,13 +654,17 @@ async function changeMemberRole(member, role) {
 }
 
 async function kickMember(member) {
-  if (!window.confirm(`${member.email} 님을 내보낼까요?`)) return
+  const leavingSelf = member.userId === myUserId.value
+  const message = leavingSelf
+    ? '이 여행 계획에서 나가시겠어요? 다시 참여하려면 초대를 받아야 해요.'
+    : `${member.email} 님을 이 계획에서 내보낼까요?`
+  if (!window.confirm(message)) return
   membersError.value = ''
   try {
     await tripPlanApi.removeMember(id, member.userId)
     await loadMembers()
   } catch (e) {
-    membersError.value = '멤버 제거에 실패했습니다.'
+    membersError.value = leavingSelf ? '계획에서 나가지 못했습니다.' : '멤버 제거에 실패했습니다.'
   }
 }
 
