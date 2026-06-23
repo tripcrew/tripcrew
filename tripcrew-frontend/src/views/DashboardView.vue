@@ -395,6 +395,10 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.page-soft {
+  background: linear-gradient(120deg, #e8f3ef 0%, #f5f7f5 46%, #faeee8 100%);
+}
+
 .dashboard {
   padding: 40px var(--space-6) 80px;
 }
