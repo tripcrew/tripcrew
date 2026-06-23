@@ -20,7 +20,7 @@
               챗봇으로 시작하기 →
             </BaseButton>
             <BaseButton variant="secondary" size="lg" @click="$router.push('/attractions')">
-              직접 계획 짜기
+              여행지 둘러보기
             </BaseButton>
           </div>
         </div>
