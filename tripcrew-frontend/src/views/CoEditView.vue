@@ -6,17 +6,16 @@
       <header class="coedit-header">
         <div>
           <div class="status-row">
-            <span class="ws-status">
+            <span class="ws-status" :class="{ 'ws-status--off': !connected }">
               <span class="ws-dot"></span>
-              실시간 연결됨
+              {{ connected ? '실시간 연결됨' : '연결 중…' }}
             </span>
-            <span class="t-mono muted">v.42 → 충돌!</span>
           </div>
-          <h1 class="t-h1">여수 2박3일 바다 위주</h1>
-          <p class="t-caption">3명이 함께 편집 중</p>
+          <h1 class="t-h1">{{ planTitle }}</h1>
+          <p class="t-caption">{{ roster.length }}명이 함께 보는 중</p>
         </div>
 
-        <BaseButton variant="secondary">+ 동행 초대</BaseButton>
+        <BaseButton variant="secondary" @click="$router.push(`/plans/${planId}`)">계획 편집으로</BaseButton>
       </header>
 
       <div class="coedit-grid">
@@ -99,16 +98,19 @@
           <section class="side-card">
             <header class="side-head">
               <h3>실시간 참여자</h3>
-              <span class="t-mono">{{ users.length }}명 활성</span>
+              <span class="t-mono">{{ roster.length }}명 접속</span>
             </header>
-            <ul class="user-list">
-              <li v-for="u in users" :key="u.name">
-                <div class="avatar" :style="{ background: u.color }">{{ u.letter }}</div>
+            <p v-if="roster.length === 0" class="t-caption muted presence-empty">
+              {{ connected ? '아직 접속한 멤버가 없어요.' : '실시간 연결을 준비하고 있어요…' }}
+            </p>
+            <ul v-else class="user-list">
+              <li v-for="u in roster" :key="u.userId">
+                <div class="avatar" :style="{ background: avatarColor(u.userId) }">{{ avatarLetter(u.nickname) }}</div>
                 <div class="user-info">
-                  <strong>{{ u.name }}</strong>
-                  <span class="t-caption">{{ u.status }}</span>
+                  <strong>{{ u.nickname }}{{ u.userId === myUserId ? ' (나)' : '' }}</strong>
+                  <span class="t-caption">참여 중</span>
                 </div>
-                <span class="user-dot" :class="`user-dot--${u.dotColor}`"></span>
+                <span class="user-dot user-dot--success"></span>
               </li>
             </ul>
           </section>
@@ -141,8 +143,8 @@
       </div>
     </main>
 
-    <!-- Conflict modal -->
-    <div class="modal-overlay">
+    <!-- Conflict modal (P2 실시간 편집 충돌 처리 자리 — P1에서는 미노출) -->
+    <div v-if="showConflictMock" class="modal-overlay">
       <div class="modal modal--conflict">
         <header class="modal__head">
           <span class="modal-icon">⚠️</span>
@@ -192,14 +194,44 @@
 </template>
 
 <script setup>
+import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
+
 import AppHeader from '@/components/common/AppHeader.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
+import { tripPlanApi } from '@/api/tripPlans'
+import { useAuthStore } from '@/stores/auth'
+import { usePresence } from '@/composables/usePresence'
 
-const users = [
-  { name: '민지 (나)', letter: '민', color: 'var(--teal)', status: '활성', dotColor: 'success' },
-  { name: '지원', letter: '지', color: 'var(--coral)', status: '하멜등대 편집 중', dotColor: 'warning' },
-  { name: '현우', letter: '현', color: 'var(--violet)', status: '방금 활동', dotColor: 'success' }
-]
+const route = useRoute()
+const auth = useAuthStore()
+const planId = computed(() => Number(route.params.id))
+const myUserId = computed(() => (auth.user ? auth.user.id : null))
+
+const plan = ref(null)
+const planTitle = computed(() => (plan.value && plan.value.title ? plan.value.title : '여행 계획'))
+
+// P2(실시간 편집·충돌)의 충돌 모달 목업은 P1에서는 숨긴다.
+const showConflictMock = ref(false)
+
+const { connected, roster, connect } = usePresence(planId.value)
+
+const PALETTE = ['var(--teal)', 'var(--coral)', 'var(--violet)', 'var(--info)', 'var(--warning)']
+function avatarColor(userId) {
+  return PALETTE[(userId || 0) % PALETTE.length]
+}
+function avatarLetter(nickname) {
+  return nickname ? nickname.charAt(0) : '?'
+}
+
+onMounted(async () => {
+  try {
+    plan.value = await tripPlanApi.get(planId.value)
+  } catch {
+    plan.value = null
+  }
+  connect()
+})
 </script>
 
 <style scoped>
@@ -233,12 +265,20 @@ const users = [
   font-weight: 700;
 }
 
+.ws-status--off {
+  background: var(--ink-soft);
+}
+
 .ws-dot {
   width: 6px;
   height: 6px;
   background: white;
   border-radius: 50%;
   animation: pulse 1.6s ease-in-out infinite;
+}
+
+.presence-empty {
+  padding: 8px 0 4px;
 }
 
 @keyframes pulse {

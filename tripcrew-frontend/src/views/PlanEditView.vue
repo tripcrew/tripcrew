@@ -20,6 +20,7 @@
 
           <div class="header-right">
             <BaseButton variant="ghost" @click="$router.push('/plans')">← 목록</BaseButton>
+            <BaseButton v-if="myRole" variant="ghost" @click="$router.push(`/plans/${id}/co`)">공동편집</BaseButton>
             <BaseButton v-if="myRole" variant="ghost" @click="openShare">공유</BaseButton>
             <BaseButton v-if="isOwner" variant="secondary" :disabled="deleting" @click="removePlan">삭제</BaseButton>
             <BaseButton v-if="canEdit" variant="primary" :disabled="saving" @click="save">

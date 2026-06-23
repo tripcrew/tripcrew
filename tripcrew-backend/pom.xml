@@ -30,6 +30,12 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
+        <!-- F06 공동편집: WebSocket + STOMP (실시간 프레즌스/편집) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+
         <!-- Request 유효성 검증 (@Valid 등) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
