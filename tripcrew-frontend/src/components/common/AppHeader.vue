@@ -10,7 +10,7 @@
         <router-link to="/attractions" class="nav-link">관광지</router-link>
         <router-link to="/chat" class="nav-link">챗봇</router-link>
         <router-link to="/plans" class="nav-link">내 계획</router-link>
-        <a href="#" class="nav-link">커뮤니티</a>
+        <router-link to="/notices" class="nav-link">공지</router-link>
       </nav>
 
       <div class="app-header__actions">

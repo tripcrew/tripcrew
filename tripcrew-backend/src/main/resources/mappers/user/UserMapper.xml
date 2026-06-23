@@ -8,13 +8,13 @@
     </select>
 
     <select id="findByEmail" resultType="User">
-        SELECT id, email, password, nickname, role, created_at, updated_at
+        SELECT id, email, password, nickname, role, status, created_at, updated_at
           FROM users
          WHERE email = #{email}
     </select>
 
     <select id="findById" resultType="User">
-        SELECT id, email, password, nickname, role, created_at, updated_at
+        SELECT id, email, password, nickname, role, status, report_count, created_at, updated_at
           FROM users
          WHERE id = #{id}
     </select>
@@ -26,7 +26,7 @@
 
     <!-- 관리자용 전체 사용자 목록. password 는 노출하지 않으려 SELECT 에서 제외(null 로 둠). -->
     <select id="findAll" resultType="User">
-        SELECT id, email, nickname, role, created_at, updated_at
+        SELECT id, email, nickname, role, status, report_count, created_at, updated_at
           FROM users
          ORDER BY id ASC
     </select>
@@ -35,6 +35,20 @@
     <update id="updateRole">
         UPDATE users
            SET role = #{role}
+         WHERE id = #{id}
+    </update>
+
+    <!-- 관리자용 계정 상태(밴/해제) 변경. affected rows 0 이면 대상 사용자 없음. -->
+    <update id="updateStatus">
+        UPDATE users
+           SET status = #{status}
+         WHERE id = #{id}
+    </update>
+
+    <!-- 신고 처리완료 시 누적 신고 횟수 +1 -->
+    <update id="incrementReportCount">
+        UPDATE users
+           SET report_count = report_count + 1
          WHERE id = #{id}
     </update>
 

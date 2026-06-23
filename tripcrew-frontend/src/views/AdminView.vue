@@ -1,66 +1,8 @@
 <template>
-  <div class="admin-app">
-    <!-- Top bar -->
-    <header class="admin-top">
-      <div class="admin-brand">
-        <span class="logo">TripCrew<span class="dot">.</span></span>
-        <span class="admin-badge">Admin <span class="t-mono">v.2026.05</span></span>
-      </div>
-
-      <div class="system-status">
-        <span class="status-label">SYSTEM</span>
-        <span class="status-item"><span class="sd sd--ok"></span>API · 정상</span>
-        <span class="status-item"><span class="sd sd--ok"></span>Redis · 정상</span>
-        <span class="status-item"><span class="sd sd--warn"></span>TourAPI · HALF-OPEN</span>
-        <span class="status-item"><span class="sd sd--ok"></span>Gemini · 정상</span>
-      </div>
-
-      <div class="admin-user">
-        <div class="avatar" style="background: var(--teal-3);">{{ userInitial }}</div>
-      </div>
-    </header>
-
-    <div class="admin-layout">
-      <!-- Sidebar -->
-      <aside class="admin-sidebar">
-        <nav class="admin-nav">
-          <h4 class="nav-title">관리</h4>
-          <a class="nav-item active">
-            <span class="nav-icon">👥</span>
-            회원 관리
-            <span class="nav-count">12,482</span>
-          </a>
-          <a class="nav-item">
-            <span class="nav-icon">📝</span>
-            후기 모더레이션
-            <span class="nav-count nav-count--alert">4</span>
-          </a>
-          <a class="nav-item">
-            <span class="nav-icon">📢</span>
-            공지사항
-          </a>
-          <a class="nav-item">
-            <span class="nav-icon">📍</span>
-            관광지 관리
-          </a>
-
-          <h4 class="nav-title">모니터링</h4>
-          <a class="nav-item">
-            <span class="nav-icon">📊</span>
-            통계 대시보드
-          </a>
-          <a class="nav-item">
-            <span class="nav-icon">⚙️</span>
-            시스템 상태
-          </a>
-        </nav>
-      </aside>
-
-      <!-- Main -->
-      <main class="admin-main">
-        <nav class="admin-breadcrumb">
-          관리자 › <strong>회원 관리</strong>
-        </nav>
+  <AdminLayout active="users">
+    <nav class="admin-breadcrumb">
+      관리자 › <strong>회원 관리</strong>
+    </nav>
 
         <header class="admin-page-head">
           <h1 class="t-h1">회원 관리</h1>
@@ -131,16 +73,17 @@
                 <th>이메일</th>
                 <th>닉네임</th>
                 <th>role</th>
+                <th>상태</th>
                 <th>가입일</th>
                 <th>권한 변경</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="loading">
-                <td colspan="6" class="table-empty">불러오는 중…</td>
+                <td colspan="7" class="table-empty">불러오는 중…</td>
               </tr>
               <tr v-else-if="filteredUsers.length === 0">
-                <td colspan="6" class="table-empty">표시할 회원이 없습니다.</td>
+                <td colspan="7" class="table-empty">표시할 회원이 없습니다.</td>
               </tr>
               <tr v-for="u in filteredUsers" :key="u.id">
                 <td class="t-mono">{{ u.id }}</td>
@@ -148,6 +91,11 @@
                 <td><strong>{{ u.nickname }}</strong></td>
                 <td>
                   <span :class="['role-chip', `role--${u.role.toLowerCase()}`]">{{ u.role }}</span>
+                </td>
+                <td>
+                  <span :class="['status-chip', u.status === 'BANNED' ? 'status--locked' : 'status--active']">
+                    {{ u.status === 'BANNED' ? '정지' : '정상' }}
+                  </span>
                 </td>
                 <td class="t-mono">{{ formatDate(u.createdAt) }}</td>
                 <td>
@@ -189,17 +137,17 @@
         </p>
 
         <p class="api-note t-mono">
-          GET /api/admin/users (ROLE_ADMIN) · PATCH /api/admin/users/{id}/role (ROLE_SUPER_ADMIN) · USER↔ADMIN 토글만
+          GET /api/admin/users (ROLE_ADMIN) · PATCH /{id}/role (ROLE_SUPER_ADMIN, USER↔ADMIN) ·
+          제재는 [신고 관리]에서 처리(누적 3회 자동) · 해제는 [정지된 계정]에서
         </p>
-      </main>
-    </div>
-  </div>
+  </AdminLayout>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 
 import { adminApi } from '@/api/admin'
+import AdminLayout from '@/components/admin/AdminLayout.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
 import { useAuthStore } from '@/stores/auth'
 
@@ -216,22 +164,30 @@ const query = ref('')
 const roleFilter = ref('')
 
 const currentUserId = computed(() => auth.user && auth.user.id)
-const userInitial = computed(() => (auth.user && auth.user.nickname ? auth.user.nickname : 'A').charAt(0))
 // role 변경은 SUPER_ADMIN 만(서버 인가와 짝). ADMIN 은 목록만 보고 토글은 '읽기 전용'.
 const canManageRoles = computed(() => !!(auth.user && auth.user.role === 'SUPER_ADMIN'))
 
 const adminCount = computed(() => users.value.filter((u) => u.role === 'ADMIN').length)
 const userCount = computed(() => users.value.filter((u) => u.role === 'USER').length)
 
+// 정렬 우선순위: SUPER_ADMIN → ADMIN → USER, 동일 role 은 id 오름차순
+const ROLE_RANK = { SUPER_ADMIN: 0, ADMIN: 1, USER: 2 }
 const filteredUsers = computed(() => {
   const q = query.value.trim().toLowerCase()
-  return users.value.filter((u) => {
-    if (roleFilter.value && u.role !== roleFilter.value) return false
-    if (!q) return true
-    return (
-      u.email?.toLowerCase().includes(q) || u.nickname?.toLowerCase().includes(q)
-    )
-  })
+  return users.value
+    .filter((u) => {
+      if (roleFilter.value && u.role !== roleFilter.value) return false
+      if (!q) return true
+      return (
+        u.email?.toLowerCase().includes(q) || u.nickname?.toLowerCase().includes(q)
+      )
+    })
+    .slice()
+    .sort((a, b) => {
+      const ra = ROLE_RANK[a.role] ?? 99
+      const rb = ROLE_RANK[b.role] ?? 99
+      return ra !== rb ? ra - rb : a.id - b.id
+    })
 })
 
 function formatDate(value) {
@@ -284,176 +240,6 @@ onMounted(load)
 </script>
 
 <style scoped>
-.admin-app {
-  min-height: 100vh;
-  background: var(--bg-soft);
-  font-size: 14px;
-}
-
-/* Top bar */
-.admin-top {
-  height: 60px;
-  background: var(--ink);
-  color: white;
-  padding: 0 24px;
-  display: flex;
-  align-items: center;
-  gap: 32px;
-  border-bottom: 1px solid #2A323D;
-}
-
-.admin-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.logo {
-  font-size: 18px;
-  font-weight: 800;
-  color: white;
-  letter-spacing: -0.5px;
-}
-
-.logo .dot { color: var(--coral); }
-
-.admin-badge {
-  padding: 4px 10px;
-  background: var(--coral);
-  color: white;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.admin-badge .t-mono {
-  font-size: 10px;
-  opacity: 0.75;
-}
-
-.system-status {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  font-size: 12px;
-}
-
-.status-label {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  color: rgba(255,255,255,0.4);
-  letter-spacing: 1.2px;
-}
-
-.status-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: rgba(255,255,255,0.78);
-}
-
-.sd {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-}
-
-.sd--ok { background: var(--success); animation: blink 2s infinite; }
-.sd--warn { background: var(--warning); animation: blink 1.4s infinite; }
-
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
-.admin-user .avatar {
-  width: 36px; height: 36px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  color: white;
-  font-weight: 700;
-  font-size: 14px;
-  border: 2px solid white;
-}
-
-/* Layout */
-.admin-layout {
-  display: grid;
-  grid-template-columns: 240px 1fr;
-  min-height: calc(100vh - 60px);
-}
-
-/* Sidebar */
-.admin-sidebar {
-  background: white;
-  border-right: 1px solid var(--line);
-  padding: 24px 16px;
-}
-
-.nav-title {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--muted);
-  letter-spacing: 1.2px;
-  margin: 16px 12px 8px;
-  text-transform: uppercase;
-}
-
-.nav-title:first-child { margin-top: 0; }
-
-.admin-nav {
-  display: flex;
-  flex-direction: column;
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ink-3);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.nav-item:hover { background: var(--bg-soft); color: var(--ink); }
-
-.nav-item.active {
-  background: var(--teal-soft);
-  color: var(--teal-3);
-}
-
-.nav-icon { font-size: 16px; }
-
-.nav-count {
-  margin-left: auto;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--muted);
-  background: var(--bg-2);
-  padding: 2px 7px;
-  border-radius: 999px;
-}
-
-.nav-count--alert {
-  background: var(--coral);
-  color: white;
-  font-weight: 700;
-}
-
-/* Main */
-.admin-main {
-  padding: 32px 40px;
-}
-
 .admin-breadcrumb {
   font-size: 13px;
   color: var(--ink-soft);

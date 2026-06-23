@@ -8,8 +8,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.tripcrew.admin.exception.UserNotFoundException;
 import com.tripcrew.admin.model.dto.AdminUserResponse;
+import com.tripcrew.auth.model.mapper.RefreshTokenMapper;
 import com.tripcrew.common.exception.BusinessException;
 import com.tripcrew.user.model.Role;
+import com.tripcrew.user.model.Status;
 import com.tripcrew.user.model.dto.User;
 import com.tripcrew.user.model.mapper.UserMapper;
 
@@ -23,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 public class AdminUserService {
 
     private final UserMapper userMapper;
+    private final RefreshTokenMapper refreshTokenMapper;
 
     /** 전체 사용자 목록(id 오름차순). */
     @Transactional(readOnly = true)
@@ -57,5 +60,61 @@ public class AdminUserService {
                     "SUPER_ADMIN 권한은 API 로 변경할 수 없습니다. (DB 직접 지정만 가능)");
         }
         userMapper.updateRole(targetId, role);
+    }
+
+    /**
+     * 사용자 밴(제재). 진입은 ROLE_ADMIN(SUPER_ADMIN 포함)으로 SecurityConfig 에서 막혀 있다.
+     * 권한 위계상 제재 대상에 제한을 둔다:
+     * <ul>
+     *   <li>본인은 밴할 수 없다 — 자기 잠금 사고 방지.</li>
+     *   <li>SUPER_ADMIN 은 누구도 밴할 수 없다 — 최고 책임자 보호.</li>
+     *   <li>ADMIN 대상은 SUPER_ADMIN 만 밴할 수 있다 — ADMIN 끼리 상호 제재 차단.</li>
+     * </ul>
+     * 밴 즉시 해당 사용자의 refresh token 을 폐기한다(재발급 차단). 기발급 access token 은
+     * stateless 라 만료(최대 30분) 전까지 유효하다 — login/reissue 양쪽에서 BANNED 를 막는다.
+     */
+    @Transactional
+    public void ban(Long requesterId, Long targetId) {
+        if (requesterId.equals(targetId)) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "본인 계정은 제재할 수 없습니다.");
+        }
+        User target = userMapper.findById(targetId).orElseThrow(UserNotFoundException::new);
+        if (target.getRole() == Role.SUPER_ADMIN) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "SUPER_ADMIN 계정은 제재할 수 없습니다.");
+        }
+        if (target.getRole() == Role.ADMIN) {
+            User requester = userMapper.findById(requesterId).orElseThrow(UserNotFoundException::new);
+            if (requester.getRole() != Role.SUPER_ADMIN) {
+                throw new BusinessException(HttpStatus.BAD_REQUEST,
+                        "ADMIN 계정은 SUPER_ADMIN 만 제재할 수 있습니다.");
+            }
+        }
+        userMapper.updateStatus(targetId, Status.BANNED);
+        refreshTokenMapper.deleteByUserId(targetId);
+    }
+
+    /** 사용자 밴 해제. 대상이 없으면 404. */
+    @Transactional
+    public void unban(Long targetId) {
+        User target = userMapper.findById(targetId).orElseThrow(UserNotFoundException::new);
+        userMapper.updateStatus(target.getId(), Status.ACTIVE);
+    }
+
+    /**
+     * 신고 누적에 의한 자동 제재(시스템 호출). 신고 처리완료가 임계치를 넘었을 때 호출된다.
+     * 일반 USER 만 대상 — ADMIN/SUPER_ADMIN 은 자동 제재 대상이 아니며, 이미 BANNED 면 무시한다.
+     * 밴 메커니즘은 Phase 1 과 동일(상태 BANNED + refresh token 폐기).
+     *
+     * @return 실제로 제재가 적용됐으면 true
+     */
+    @Transactional
+    public boolean sanctionIfEligible(Long userId) {
+        User user = userMapper.findById(userId).orElse(null);
+        if (user == null || user.getRole() != Role.USER || user.getStatus() == Status.BANNED) {
+            return false;
+        }
+        userMapper.updateStatus(userId, Status.BANNED);
+        refreshTokenMapper.deleteByUserId(userId);
+        return true;
     }
 }
