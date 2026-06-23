@@ -517,16 +517,36 @@ function showToast(message) {
   }, 3600)
 }
 
-// 다른 접속자의 장소 변경 알림 → 목록을 다시 불러오고 누가 바꿨는지 토스트로 안내.
-async function handlePlaceChange(event) {
-  if (!event || event.actorId === myUserId.value) return // 내 변경은 이미 반영됨
+// 내가 직접 장소를 조작(드래그/순서변경·추가삭제 저장·동선 최적화)하는 동안에는
+// 원격 갱신으로 목록을 갈아끼우지 않는다(조작이 어긋나는 것 방지). 끝나면 미뤄둔 갱신을 반영.
+const localBusy = computed(
+  () => placeReordering.value || placeSaving.value || optimizing.value || draggedPlaceId.value !== null,
+)
+let pendingRefetch = false
+
+async function applyRemoteRefetch() {
+  pendingRefetch = false
   try {
     await loadPlaces()
   } catch {
     // 재조회 실패는 조용히 무시 — 다음 변경/새로고침 때 다시 동기화된다.
   }
+}
+
+watch(localBusy, (busy) => {
+  if (!busy && pendingRefetch) applyRemoteRefetch()
+})
+
+// 다른 접속자의 장소 변경 알림 → 목록을 다시 불러오고 누가 바꿨는지 토스트로 안내.
+async function handlePlaceChange(event) {
+  if (!event || event.actorId === myUserId.value) return // 내 변경은 이미 반영됨
   const text = PLACE_ACTION_TEXT[event.action] || '계획을 수정했어요'
   showToast(`${event.actorNickname}님이 ${text}`)
+  if (localBusy.value) {
+    pendingRefetch = true // 내 조작이 끝나면 watch 에서 한 번에 반영
+    return
+  }
+  await applyRemoteRefetch()
 }
 
 const { connected, roster, connect } = usePresence(id, { onPlaceChange: handlePlaceChange })
