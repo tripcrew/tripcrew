@@ -3,7 +3,7 @@
     <!-- Top bar -->
     <header class="admin-top">
       <div class="admin-brand">
-        <span class="logo">TripCrew<span class="dot">.</span></span>
+        <RouterLink to="/home" class="logo" title="사이트 홈으로">TripCrew<span class="dot">.</span></RouterLink>
         <span class="admin-badge">Admin <span class="t-mono">v.2026.05</span></span>
       </div>
 
@@ -14,6 +14,14 @@
         <span class="status-item"><span class="sd sd--warn"></span>TourAPI · HALF-OPEN</span>
         <span class="status-item"><span class="sd sd--ok"></span>Gemini · 정상</span>
       </div>
+
+      <RouterLink to="/home" class="home-btn" title="사용자 사이트 홈으로 이동">
+        <svg class="home-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 11.5 12 4l9 7.5" />
+          <path d="M5 10v9h5v-5h4v5h5v-9" />
+        </svg>
+        사이트 홈
+      </RouterLink>
 
       <div class="admin-user">
         <div class="avatar" style="background: var(--teal-3);">{{ userInitial }}</div>
@@ -119,9 +127,37 @@ onMounted(adminMeta.refreshOpenReportCount)
   font-weight: 800;
   color: white;
   letter-spacing: -0.5px;
+  text-decoration: none;
+  transition: opacity 0.15s;
 }
 
+.logo:hover { opacity: 0.8; }
+
 .logo .dot { color: var(--coral); }
+
+/* 사이트(사용자) 홈으로 — 다크 톱바에 어울리는 ghost 버튼 */
+.home-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.home-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.36);
+  color: white;
+}
+
+.home-ico { display: block; }
 
 .admin-badge {
   padding: 4px 10px;
