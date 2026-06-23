@@ -23,12 +23,13 @@
           <router-link to="/profile" class="avatar avatar--sm" :aria-label="`${displayName} 프로필`">
             {{ avatarText }}
           </router-link>
-          <button class="icon-btn icon-btn--logout" aria-label="로그아웃" title="로그아웃" @click="handleLogout">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <button class="logout-btn" aria-label="로그아웃" title="로그아웃" @click="handleLogout">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
               <polyline points="16 17 21 12 16 7"/>
               <line x1="21" y1="12" x2="9" y2="12"/>
             </svg>
+            로그아웃
           </button>
         </template>
         <template v-else>
@@ -145,8 +146,21 @@ const avatarText = computed(() => displayName.value.trim().slice(0, 1).toUpperCa
   color: var(--ink);
 }
 
-/* 로그아웃: hover 시 '나가기'를 암시하는 coral 틴트 */
-.icon-btn--logout:hover {
+/* 로그아웃: 아이콘 + 텍스트. hover 시 '나가기'를 암시하는 coral 틴트 */
+.logout-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-3);
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.logout-btn:hover {
   background: var(--coral-tint, #fff1ec);
   color: var(--coral, #e06a4f);
 }
