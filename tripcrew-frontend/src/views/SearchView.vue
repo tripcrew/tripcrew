@@ -109,15 +109,22 @@
               <div v-else class="thumb-grad"></div>
             </div>
             <div class="att-card__body">
-              <div class="rating-row">
-                <span class="rating">TripCrew</span>
+              <div class="card-region">
                 <span class="t-caption">{{ a.sido }} {{ a.gugun }}</span>
               </div>
-              <h3>{{ cleanDisplayName(a.title) }}</h3>
+              <div class="card-title-row">
+                <h3>{{ cleanDisplayName(a.title) }}</h3>
+              </div>
               <p class="t-caption">{{ a.address || '주소 정보 없음' }}</p>
-              <div class="tag-row">
-                <span v-if="a.contentType" class="chip chip--teal">{{ a.contentType }}</span>
-                <span v-if="a.sido" class="chip">{{ a.sido }}</span>
+              <div class="card-footer">
+                <div class="tag-row">
+                  <span v-if="a.contentType" class="chip chip--teal">{{ a.contentType }}</span>
+                  <span v-if="a.sido" class="chip">{{ a.sido }}</span>
+                </div>
+                <span class="review-stat" :class="{ 'review-stat--empty': !a.reviewCount }">
+                  <template v-if="a.reviewCount">★ {{ Number(a.reviewAverage).toFixed(1) }}</template>
+                  <template v-else>☆ 0.0</template>
+                </span>
               </div>
             </div>
           </article>
@@ -698,17 +705,40 @@ onBeforeUnmount(() => {
   gap: 8px;
 }
 
-.rating-row {
+.card-region {
   display: flex;
   align-items: center;
-  gap: 4px;
 }
 
-.rating {
-  color: var(--warning);
-  font-weight: 700;
-  font-size: 13px;
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: auto;
 }
+
+.card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.card-title-row h3 {
+  min-width: 0;
+}
+
+.review-stat {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.review-stat {
+  color: var(--warning);
+}
+
+.review-stat--empty { color: var(--muted); }
 
 .att-card h3 {
   font-size: 16px;

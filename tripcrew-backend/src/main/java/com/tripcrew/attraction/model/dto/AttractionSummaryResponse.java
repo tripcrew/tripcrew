@@ -24,4 +24,6 @@ public class AttractionSummaryResponse {
     private String address;
     private BigDecimal latitude;
     private BigDecimal longitude;
+    private Double reviewAverage;
+    private Long reviewCount;
 }

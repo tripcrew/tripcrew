@@ -50,6 +50,16 @@
            AND target_id = #{targetId}
     </select>
 
+    <select id="findStatsByTargetIds" resultType="ReviewStats">
+        SELECT target_type, target_id, review_count, rating_sum, avg_rating
+          FROM review_stats
+         WHERE target_type = #{targetType}
+           AND target_id IN
+        <foreach collection="targetIds" item="targetId" open="(" separator="," close=")">
+            #{targetId}
+        </foreach>
+    </select>
+
     <select id="findDistribution" resultType="RatingCount">
         SELECT rating, COUNT(*) AS count
           FROM reviews
