@@ -68,32 +68,38 @@
         <p v-else-if="popular.length === 0" class="t-caption">아직 최근 1시간 내 랭킹 데이터가 없습니다.</p>
 
         <div v-else class="ranking-grid">
-          <article v-for="item in popular" :key="item.id" class="ranking-card">
-            <div class="ranking-card__rank">{{ String(item.rank).padStart(2, '0') }}</div>
-            <div class="ranking-card__thumb">
+          <button
+            v-for="item in popular"
+            :key="item.id"
+            type="button"
+            class="ranking-card"
+            @click="goToAttraction(item.id)"
+          >
+            <span class="ranking-card__rank">{{ String(item.rank).padStart(2, '0') }}</span>
+            <span class="ranking-card__thumb">
               <img v-if="item.imageUrl" :src="item.imageUrl" :alt="item.title" />
-              <div v-else class="thumb-placeholder">
+              <span v-else class="thumb-placeholder">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                   <rect x="3" y="3" width="18" height="18" rx="2"/>
                   <circle cx="9" cy="9" r="2"/>
                   <path d="m21 15-5-5L5 21"/>
                 </svg>
-              </div>
-            </div>
-            <div class="ranking-card__body">
-              <h3 class="ranking-card__title">{{ item.title }}</h3>
-              <p class="ranking-card__meta">{{ item.region }}</p>
-              <div class="tag-row">
+              </span>
+            </span>
+            <span class="ranking-card__body">
+              <span class="ranking-card__title" role="heading" aria-level="3">{{ item.title }}</span>
+              <span class="ranking-card__meta">{{ item.region }}</span>
+              <span class="tag-row">
                 <span class="chip chip--teal">최근 1시간 {{ item.score }}점</span>
-              </div>
-            </div>
-            <div :class="['ranking-card__trend', `trend--${item.trend}`]">
+              </span>
+            </span>
+            <span :class="['ranking-card__trend', `trend--${item.trend}`]">
               <span v-if="item.trend === 'up'">▲ {{ item.delta }}</span>
               <span v-else-if="item.trend === 'down'">▼ {{ item.delta }}</span>
               <span v-else-if="item.trend === 'new'">NEW</span>
               <span v-else>─</span>
-            </div>
-          </article>
+            </span>
+          </button>
         </div>
       </div>
     </section>
@@ -135,11 +141,13 @@
 
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import AppHeader from '@/components/common/AppHeader.vue'
 import AppFooter from '@/components/common/AppFooter.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
 import { rankingApi } from '@/api/rankings'
 
+const router = useRouter()
 const popular = ref([])
 const rankingLoading = ref(true)
 const rankingError = ref('')
@@ -149,11 +157,16 @@ async function loadRanking() {
   try {
     popular.value = await rankingApi.getAttractions()
     rankingError.value = ''
-  } catch (error) {
-    rankingError.value = error?.response?.data?.message || '실시간 랭킹을 불러오지 못했습니다.'
+  } catch {
+    popular.value = []
+    rankingError.value = ''
   } finally {
     rankingLoading.value = false
   }
+}
+
+function goToAttraction(id) {
+  router.push(`/attractions/${id}`)
 }
 
 onMounted(() => {
@@ -373,12 +386,16 @@ onBeforeUnmount(() => {
 }
 
 .ranking-card {
+  width: 100%;
+  text-align: left;
+  font: inherit;
   background: white;
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   padding: 20px;
   position: relative;
   transition: all 0.2s;
+  cursor: pointer;
 }
 
 .ranking-card:hover {
@@ -421,6 +438,7 @@ onBeforeUnmount(() => {
 }
 
 .ranking-card__title {
+  display: block;
   font-size: 16px;
   font-weight: 700;
   color: var(--ink);
@@ -428,6 +446,7 @@ onBeforeUnmount(() => {
 }
 
 .ranking-card__meta {
+  display: block;
   font-size: 13px;
   color: var(--ink-soft);
   margin-bottom: 10px;
