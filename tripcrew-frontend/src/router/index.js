@@ -62,6 +62,12 @@ const routes = [
     meta: { title: '마이페이지', requiresAuth: true }
   },
   {
+    path: '/wishlist',
+    name: 'wishlist',
+    component: () => import('@/views/WishlistView.vue'),
+    meta: { title: '가보고 싶어요 (찜)', requiresAuth: true }
+  },
+  {
     path: '/attractions/:id/reviews',
     name: 'reviews',
     component: () => import('@/views/ReviewsView.vue'),
