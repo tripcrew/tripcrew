@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.tripcrew.tripplan.model.mapper.TripMemberMapper">
+
+    <!-- created_at / updated_at 은 DB DEFAULT 로 채워진다 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO trip_members (trip_plan_id, user_id, role)
+        VALUES (#{tripPlanId}, #{userId}, #{role})
+    </insert>
+
+    <select id="findByPlanAndUser" resultType="TripMember">
+        SELECT id, trip_plan_id, user_id, role, created_at, updated_at
+          FROM trip_members
+         WHERE trip_plan_id = #{planId}
+           AND user_id = #{userId}
+    </select>
+
+    <!-- 협업자 목록(이메일/닉네임 조인). 소유자는 서비스에서 합성해 합친다. -->
+    <select id="findByPlan" resultType="TripMemberRow">
+        SELECT m.user_id   AS user_id,
+               u.email      AS email,
+               u.nickname   AS nickname,
+               m.role       AS role,
+               m.created_at AS created_at
+          FROM trip_members m
+          JOIN users u ON u.id = m.user_id
+         WHERE m.trip_plan_id = #{planId}
+         ORDER BY m.created_at DESC
+    </select>
+
+    <select id="findByUserId" resultType="TripMember">
+        SELECT id, trip_plan_id, user_id, role, created_at, updated_at
+          FROM trip_members
+         WHERE user_id = #{userId}
+    </select>
+
+    <update id="updateRole">
+        UPDATE trip_members
+           SET role = #{role}
+         WHERE trip_plan_id = #{planId}
+           AND user_id = #{userId}
+    </update>
+
+    <delete id="delete">
+        DELETE FROM trip_members
+         WHERE trip_plan_id = #{planId}
+           AND user_id = #{userId}
+    </delete>
+
+</mapper>

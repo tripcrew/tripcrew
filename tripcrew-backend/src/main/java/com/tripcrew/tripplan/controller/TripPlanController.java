@@ -46,8 +46,8 @@ public class TripPlanController {
     }
 
     @GetMapping("/{id}")
-    public TripPlanResponse get(@PathVariable Long id) {
-        return tripPlanService.get(id);
+    public TripPlanResponse get(@AuthenticationPrincipal Long userId, @PathVariable Long id) {
+        return tripPlanService.get(id, userId);
     }
 
     @PutMapping("/{id}")
