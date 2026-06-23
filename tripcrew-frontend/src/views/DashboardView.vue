@@ -60,12 +60,6 @@
               <span>수정 {{ p.updatedLabel }}</span>
             </div>
 
-            <div class="progress">
-              <div class="progress__bar">
-                <div class="progress__fill" :style="{ width: p.progress + '%' }"></div>
-              </div>
-              <span class="progress__label">{{ p.progress }}%</span>
-            </div>
           </article>
         </div>
       </section>
@@ -307,7 +301,6 @@ function toDashboardPlan(plan) {
     status: status.label,
     statusKey: status.key,
     ddayLabel: getDdayLabel(plan.startDate),
-    progress: getProgress(plan.startDate, plan.endDate),
     sortTime: getSortTime(plan),
   }
 }
@@ -327,18 +320,7 @@ function getDdayLabel(startDate) {
   const diff = Math.round((start - today) / 86400000)
   if (diff > 0) return `D-${diff}`
   if (diff === 0) return 'D-Day'
-  return ''
-}
-
-function getProgress(startDate, endDate) {
-  const start = parseDate(startDate)
-  const end = parseDate(endDate)
-  if (!start || !end || end < start) return 12
-  if (today < start) return 8
-  if (today > end) return 100
-  const total = Math.max(1, Math.round((end - start) / 86400000) + 1)
-  const elapsed = Math.round((today - start) / 86400000) + 1
-  return Math.min(100, Math.max(8, Math.round((elapsed / total) * 100)))
+  return `D+${Math.abs(diff)}`
 }
 
 function getSortTime(plan) {
