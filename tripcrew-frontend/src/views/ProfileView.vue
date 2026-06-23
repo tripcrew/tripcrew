@@ -68,7 +68,7 @@ async function handleLogout() {
   if (!confirmed) return
 
   await authStore.logout()
-  router.replace({ path: '/auth', query: { mode: 'login' } })
+  router.replace('/')
 }
 </script>
 

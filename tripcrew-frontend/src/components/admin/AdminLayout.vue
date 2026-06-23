@@ -15,6 +15,15 @@
         <span class="status-item"><span class="sd sd--ok"></span>Gemini · 정상</span>
       </div>
 
+      <button class="logout-btn" title="로그아웃" @click="handleLogout">
+        <svg class="logout-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+          <polyline points="16 17 21 12 16 7" />
+          <line x1="21" y1="12" x2="9" y2="12" />
+        </svg>
+        로그아웃
+      </button>
+
       <div class="admin-user">
         <div class="avatar" style="background: var(--teal-3);">{{ userInitial }}</div>
       </div>
@@ -69,7 +78,7 @@
 
 <script setup>
 import { computed, onMounted } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 
 import { useAuthStore } from '@/stores/auth'
@@ -80,8 +89,15 @@ defineProps({
   active: { type: String, default: '' },
 })
 
+const router = useRouter()
 const auth = useAuthStore()
 const userInitial = computed(() => (auth.user && auth.user.nickname ? auth.user.nickname : 'A').charAt(0))
+
+async function handleLogout() {
+  if (!window.confirm('로그아웃하시겠어요?')) return
+  await auth.logout()
+  router.replace('/')
+}
 
 // 신고 관리 배지(미처리 OPEN 수)는 어느 관리자 페이지에서든 보이도록 store 에서 가져온다.
 const adminMeta = useAdminMetaStore()
@@ -122,6 +138,31 @@ onMounted(adminMeta.refreshOpenReportCount)
 }
 
 .logo .dot { color: var(--coral); }
+
+/* 로그아웃 — 다크 톱바용 ghost 버튼. hover 시 '나가기'를 암시하는 coral 톤 */
+.logout-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.logout-btn:hover {
+  background: rgba(224, 106, 79, 0.16);
+  border-color: var(--coral);
+  color: white;
+}
+
+.logout-ico { display: block; }
 
 .admin-badge {
   padding: 4px 10px;
