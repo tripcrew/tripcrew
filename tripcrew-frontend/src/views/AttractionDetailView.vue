@@ -4,7 +4,8 @@
 
     <main class="container detail-layout">
       <nav class="breadcrumb">
-        관광지 › {{ attraction?.sido || '지역' }} › {{ attraction?.gugun || '전체' }} ›
+        <router-link to="/attractions" class="bc-link">관광지</router-link>
+        › {{ attraction?.sido || '지역' }} › {{ attraction?.gugun || '전체' }} ›
         <strong>{{ cleanDisplayName(attraction?.title) || '상세' }}</strong>
       </nav>
 
@@ -139,7 +140,8 @@
                       <span class="stars">{{ starText(r.rating) }}</span>
                       <span class="t-caption">· {{ formatDate(r.createdAt) }}</span>
                     </div>
-                    <p>{{ r.content }}</p>
+                    <p v-if="r.content">{{ r.content }}</p>
+                    <ReviewImages :urls="r.imageUrls || []" size="sm" :max="4" />
                   </div>
                 </li>
               </ul>
@@ -194,6 +196,7 @@ import { reviewApi } from '@/api/reviews'
 import { tripPlanApi } from '@/api/tripPlans'
 import AppHeader from '@/components/common/AppHeader.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
+import ReviewImages from '@/components/review/ReviewImages.vue'
 
 const route = useRoute()
 const attraction = ref(null)
@@ -378,6 +381,16 @@ onMounted(loadAll)
 
 .breadcrumb strong {
   color: var(--ink);
+}
+
+.bc-link {
+  color: var(--ink-soft);
+  transition: color 0.15s;
+}
+
+.bc-link:hover {
+  color: var(--teal);
+  text-decoration: underline;
 }
 
 .detail-state {

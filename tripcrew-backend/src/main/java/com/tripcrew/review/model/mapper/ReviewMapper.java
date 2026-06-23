@@ -9,6 +9,7 @@ import org.apache.ibatis.annotations.Param;
 import com.tripcrew.review.model.ReviewTargetType;
 import com.tripcrew.review.model.dto.RatingCount;
 import com.tripcrew.review.model.dto.Review;
+import com.tripcrew.review.model.dto.ReviewImage;
 import com.tripcrew.review.model.dto.ReviewStats;
 
 @Mapper
@@ -74,4 +75,21 @@ public interface ReviewMapper {
                         @Param("targetId") Long targetId,
                         @Param("countDelta") int countDelta,
                         @Param("ratingDelta") long ratingDelta);
+
+    // ── 후기 이미지(review_images) ─────────────────────────────
+
+    /** 후기 이미지들을 첨부 순서(0부터)대로 일괄 저장한다. urls 가 비면 호출하지 않는다. */
+    int insertImages(@Param("reviewId") Long reviewId, @Param("urls") List<String> urls);
+
+    /** 한 후기의 이미지 URL 목록(순서대로). */
+    List<String> findImageUrlsByReviewId(@Param("reviewId") Long reviewId);
+
+    /**
+     * 여러 후기의 이미지를 한 번에 조회(목록 N+1 방지). reviewId 로 그룹핑해 쓴다.
+     * reviewIds 가 비면 호출하지 않는다.
+     */
+    List<ReviewImage> findImagesByReviewIds(@Param("reviewIds") List<Long> reviewIds);
+
+    /** 한 후기의 이미지 행 전체 삭제(수정 시 전체 교체용). @return 삭제된 행 수. */
+    int deleteImagesByReviewId(@Param("reviewId") Long reviewId);
 }

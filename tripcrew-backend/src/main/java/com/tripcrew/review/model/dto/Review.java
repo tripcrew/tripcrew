@@ -1,6 +1,7 @@
 package com.tripcrew.review.model.dto;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import com.tripcrew.review.model.ReviewStatus;
 import com.tripcrew.review.model.ReviewTargetType;
@@ -37,4 +38,7 @@ public class Review {
 
     /** 조인으로 채우는 작성자 닉네임(reviews 컬럼 아님). */
     private String authorNickname;
+
+    /** 별도 조회(review_images)로 채우는 첨부 이미지 URL 목록(reviews 컬럼 아님). */
+    private List<String> imageUrls;
 }

@@ -4,7 +4,9 @@
 
     <main class="container reviews-layout">
       <nav class="breadcrumb">
-        관광지 › <strong>{{ attractionTitle }}</strong> › 후기
+        <router-link to="/attractions" class="bc-link">관광지</router-link>
+        › <router-link :to="`/attractions/${targetId}`" class="bc-link">{{ attractionTitle }}</router-link>
+        › <strong>후기</strong>
       </nav>
 
       <div class="reviews-grid">
@@ -36,6 +38,11 @@
               <span class="t-caption">최소 20자 이상 권장</span>
               <span class="t-mono">{{ content.length }} / 1000</span>
             </div>
+          </div>
+
+          <div class="form-block">
+            <label class="form-label">사진 첨부 <span class="label-optional">(선택)</span></label>
+            <ReviewImagePicker v-model="writeImages" :max="5" />
           </div>
 
           <p v-if="formError" class="form-error">{{ formError }}</p>
@@ -112,6 +119,7 @@
                   <span class="rating-num">{{ editRating.toFixed(1) }}</span>
                 </div>
                 <textarea v-model="editContent" class="review-textarea" rows="4" maxlength="1000" />
+                <ReviewImagePicker v-model="editImages" :max="5" />
                 <p v-if="editError" class="form-error">{{ editError }}</p>
                 <div class="edit-actions">
                   <BaseButton variant="secondary" @click="cancelEdit">취소</BaseButton>
@@ -122,7 +130,8 @@
               </div>
 
               <template v-else>
-                <p class="review-content">{{ r.content }}</p>
+                <p v-if="r.content" class="review-content">{{ r.content }}</p>
+                <ReviewImages :urls="r.imageUrls || []" size="md" />
                 <footer class="review-foot">
                   <template v-if="r.userId === currentUserId">
                     <span class="own-tag">내 후기</span>
@@ -193,9 +202,13 @@ import { useRoute, useRouter } from 'vue-router'
 
 import AppHeader from '@/components/common/AppHeader.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
+import ReviewImages from '@/components/review/ReviewImages.vue'
+import ReviewImagePicker from '@/components/review/ReviewImagePicker.vue'
 import { reviewApi } from '@/api/reviews'
+import { uploadApi } from '@/api/uploads'
 import { reportApi } from '@/api/reports'
 import { attractionApi } from '@/api/attractions'
+import { toAssetUrl } from '@/api/http'
 import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
@@ -230,6 +243,7 @@ const rating = ref(5)
 const content = ref('')
 const submitting = ref(false)
 const formError = ref('')
+const writeImages = ref([]) // ReviewImagePicker 엔트리(새 파일만)
 
 // 수정 인라인 폼
 const editingId = ref(null)
@@ -238,6 +252,22 @@ const editContent = ref('')
 const editSubmitting = ref(false)
 const editError = ref('')
 const deletingId = ref(null)
+const editImages = ref([]) // 수정 모드 이미지 엔트리(기존 url + 새 파일)
+
+// 이미지 엔트리 id 시퀀스(기존 이미지 → 엔트리 변환용)
+let entrySeq = 0
+function urlToEntry(url) {
+  return { id: `e${entrySeq++}`, file: null, url, preview: toAssetUrl(url) }
+}
+
+// 픽커 엔트리 → 최종 imageUrls. 새 파일은 업로드해 URL 로 치환하고 순서를 보존한다.
+async function resolveImageUrls(entries) {
+  const files = entries.filter((e) => e.file).map((e) => e.file)
+  let uploaded = []
+  if (files.length) uploaded = await uploadApi.images(files)
+  let fi = 0
+  return entries.map((e) => (e.file ? uploaded[fi++] : e.url))
+}
 
 const isAuthenticated = computed(() => auth.isAuthenticated)
 const currentUserId = computed(() => (auth.user ? auth.user.id : null))
@@ -325,6 +355,7 @@ function startEdit(review) {
   editingId.value = review.id
   editRating.value = review.rating
   editContent.value = review.content || ''
+  editImages.value = (review.imageUrls || []).map(urlToEntry)
   editError.value = ''
 }
 function cancelEdit() {
@@ -339,9 +370,11 @@ async function saveEdit(review) {
   editSubmitting.value = true
   editError.value = ''
   try {
+    const imageUrls = await resolveImageUrls(editImages.value)
     await reviewApi.update(review.id, {
       rating: editRating.value,
       content: editContent.value.trim(),
+      imageUrls,
     })
     editingId.value = null
     await loadAll()
@@ -382,14 +415,17 @@ async function submitReview() {
   submitting.value = true
   formError.value = ''
   try {
+    const imageUrls = await resolveImageUrls(writeImages.value)
     await reviewApi.create({
       targetType: TARGET_TYPE,
       targetId: targetId.value,
       rating: rating.value,
       content: content.value.trim(),
+      imageUrls,
     })
     content.value = ''
     rating.value = 5
+    writeImages.value = []
     await loadAll()
   } catch (e) {
     formError.value = e?.response?.data?.message || '후기 등록에 실패했어요.'
@@ -450,6 +486,16 @@ onMounted(loadAll)
 
 .breadcrumb strong { color: var(--ink); }
 
+.bc-link {
+  color: var(--ink-soft);
+  transition: color 0.15s;
+}
+
+.bc-link:hover {
+  color: var(--teal);
+  text-decoration: underline;
+}
+
 .reviews-grid {
   display: grid;
   grid-template-columns: 1fr 1.4fr;
@@ -487,6 +533,11 @@ onMounted(loadAll)
   font-weight: 700;
   color: var(--ink-2);
   margin-bottom: 10px;
+}
+
+.label-optional {
+  font-weight: 500;
+  color: var(--muted);
 }
 
 /* Star input */
