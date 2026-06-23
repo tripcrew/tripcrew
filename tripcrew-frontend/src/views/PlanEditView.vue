@@ -47,11 +47,11 @@
           <div class="field-row">
             <div class="field">
               <label>시작일</label>
-              <input v-model="form.startDate" type="date" :disabled="!canEdit" />
+              <input v-model="form.startDate" type="date" min="0001-01-01" max="9999-12-31" :disabled="!canEdit" />
             </div>
             <div class="field">
               <label>종료일</label>
-              <input v-model="form.endDate" type="date" :disabled="!canEdit" />
+              <input v-model="form.endDate" type="date" min="0001-01-01" max="9999-12-31" :disabled="!canEdit" />
             </div>
           </div>
 
@@ -113,33 +113,92 @@
               </button>
             </div>
 
-            <form v-if="canEdit" class="place-form" @submit.prevent="addCustomPlace">
-              <div class="field place-form__name">
-                <label>직접 추가</label>
-                <input v-model.trim="placeForm.name" type="text" maxlength="255" placeholder="장소 이름" />
-              </div>
-              <div class="field field--small">
-                <label>위도</label>
-                <input v-model="placeForm.latitude" type="number" step="0.000001" placeholder="선택" />
-              </div>
-              <div class="field field--small">
-                <label>경도</label>
-                <input v-model="placeForm.longitude" type="number" step="0.000001" placeholder="선택" />
-              </div>
-              <div class="place-form__actions">
-                <BaseButton variant="secondary" :disabled="placeSaving" type="submit">
-                  {{ placeSaving ? '추가 중…' : selectedDay === null ? '보관함에 추가' : `Day ${selectedDay}에 추가` }}
+            <section v-if="canEdit" class="place-search">
+              <form class="place-search__form" @submit.prevent="searchAttractions">
+                <div class="field place-search__field">
+                  <label>관광지 추가</label>
+                  <input
+                    v-model.trim="attractionKeyword"
+                    type="search"
+                    maxlength="100"
+                    placeholder="추가할 관광지명을 검색하세요"
+                  />
+                </div>
+                <BaseButton variant="secondary" :disabled="attractionSearching || placeSaving" type="submit">
+                  {{ attractionSearching ? '검색 중…' : '검색' }}
                 </BaseButton>
+              </form>
+              <p class="place-search__hint">선택한 관광지의 위치 정보가 일정과 지도에 자동으로 반영됩니다.</p>
+              <p v-if="attractionSearchError" class="form-error">{{ attractionSearchError }}</p>
+
+              <div v-if="attractionResults.length" class="attraction-results">
+                <button
+                  v-for="attraction in attractionResults"
+                  :key="attraction.no"
+                  type="button"
+                  class="attraction-result"
+                  :disabled="placeSaving"
+                  @click="addAttractionPlace(attraction)"
+                >
+                  <img v-if="attraction.imageUrl" :src="attraction.imageUrl" :alt="cleanDisplayName(attraction.title)" />
+                  <span v-else class="attraction-result__image">🗺️</span>
+                  <span class="attraction-result__body">
+                    <strong>{{ cleanDisplayName(attraction.title) }}</strong>
+                    <small>{{ [attraction.sido, attraction.gugun].filter(Boolean).join(' ') || attraction.address || '지역 정보 없음' }}</small>
+                  </span>
+                  <span class="attraction-result__add">
+                    {{ placeSaving ? '추가 중…' : selectedDay === null ? '보관함 추가' : `Day ${selectedDay} 추가` }}
+                  </span>
+                </button>
               </div>
-            </form>
+              <nav v-if="attractionSearchTotalPages > 1" class="attraction-pagination" aria-label="관광지 검색 결과 페이지">
+                <button
+                  type="button"
+                  :disabled="attractionSearching || attractionSearchPage <= 1"
+                  @click="changeAttractionSearchPage(attractionSearchPage - 1)"
+                >
+                  이전
+                </button>
+                <button
+                  v-for="page in attractionSearchPages"
+                  :key="page"
+                  type="button"
+                  :class="{ active: page === attractionSearchPage }"
+                  :disabled="attractionSearching"
+                  @click="changeAttractionSearchPage(page)"
+                >
+                  {{ page }}
+                </button>
+                <button
+                  type="button"
+                  :disabled="attractionSearching || attractionSearchPage >= attractionSearchTotalPages"
+                  @click="changeAttractionSearchPage(attractionSearchPage + 1)"
+                >
+                  다음
+                </button>
+              </nav>
+            </section>
             <p v-if="placeMsg" class="place-msg">{{ placeMsg }}</p>
             <p v-if="placeError" class="form-error">{{ placeError }}</p>
 
             <div class="timeline">
               <div v-if="visiblePlaces.length === 0" class="empty-places">
-                {{ selectedDay === null ? '보관함에 장소가 없습니다.' : `Day ${selectedDay}에 추가된 장소가 없습니다.` }}
+                <strong>{{ selectedDay === null ? '보관함에 장소가 없습니다.' : `Day ${selectedDay}에 추가된 장소가 없습니다.` }}</strong>
+                <span>위에서 관광지를 검색해 {{ selectedDay === null ? '보관함' : `Day ${selectedDay}` }}에 추가해 보세요.</span>
               </div>
-              <div v-for="(item, i) in visiblePlaces" :key="item.id" class="timeline-row">
+              <div
+                v-for="(item, i) in visiblePlaces"
+                :key="item.id"
+                :class="['timeline-row', {
+                  'timeline-row--dragging': draggedPlaceId === item.id,
+                  'timeline-row--drag-over': dragOverPlaceId === item.id,
+                }]"
+                :draggable="!placeReordering"
+                @dragstart="startPlaceDrag($event, item)"
+                @dragover.prevent="dragOverPlace($event, item)"
+                @drop.prevent="dropPlace($event, item)"
+                @dragend="endPlaceDrag"
+              >
                 <div class="time-col">
                   <strong>{{ String(i + 1).padStart(2, '0') }}</strong>
                   <span class="t-caption">방문</span>
@@ -160,9 +219,7 @@
                         <span v-if="item.memo"> · {{ item.memo }}</span>
                       </p>
                     </div>
-                    <div v-if="canEdit" class="item-actions" @click.stop>
-                      <button type="button" class="mini-btn" @click="movePlace(item, 'up')" :disabled="i === 0">↑</button>
-                      <button type="button" class="mini-btn" @click="movePlace(item, 'down')" :disabled="i === visiblePlaces.length - 1">↓</button>
+                    <div v-if="canEdit" class="item-actions" @click.stop @dragstart.stop>
                       <div v-if="selectedDay === null" class="assign-control">
                         <input
                           type="number"
@@ -180,6 +237,7 @@
                       </button>
                       <button type="button" class="mini-btn mini-btn--danger" @click="removePlace(item)">삭제</button>
                     </div>
+                    <span class="drag-handle" title="드래그해 순서 변경" aria-label="드래그해 순서 변경">↕</span>
                   </div>
                 </div>
               </div>
@@ -326,6 +384,7 @@ import { ref, computed, nextTick, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppHeader from '@/components/common/AppHeader.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
+import { attractionApi } from '@/api/attractions'
 import { tripPlanApi } from '@/api/tripPlans'
 import { useAuthStore } from '@/stores/auth'
 
@@ -349,6 +408,15 @@ const optimizeFailed = ref(false)
 const optimizeElapsedMs = ref(0)
 const placeError = ref('')
 const placeMsg = ref('')
+const attractionKeyword = ref('')
+const attractionResults = ref([])
+const attractionSearching = ref(false)
+const attractionSearchError = ref('')
+const attractionSearchPage = ref(0)
+const attractionSearchTotalPages = ref(0)
+const draggedPlaceId = ref(null)
+const dragOverPlaceId = ref(null)
+const placeReordering = ref(false)
 const selectedDay = ref(1)
 const dayJumpValue = ref(1)
 const storageTargets = ref({})
@@ -361,12 +429,6 @@ const routeBounds = ref(null)
 const drivingRoutePath = ref([])
 const selectedMapPlaceName = ref('')
 let activeInfoWindow = null
-const placeForm = ref({
-  name: '',
-  latitude: '',
-  longitude: '',
-  memo: '',
-})
 
 const form = ref({
   title: '',
@@ -419,6 +481,13 @@ const selectedDayDate = computed(() =>
 )
 
 const defaultDay = computed(() => selectedDay.value ?? 1)
+const attractionSearchPages = computed(() => {
+  const total = attractionSearchTotalPages.value
+  const current = attractionSearchPage.value
+  const start = Math.max(1, Math.min(current - 2, total - 4))
+  const end = Math.min(total, start + 4)
+  return Array.from({ length: Math.max(0, end - start + 1) }, (_, index) => start + index)
+})
 const visiblePlaces = computed(() =>
   places.value
     .filter((place) => (selectedDay.value === null ? place.visitDay == null : place.visitDay === selectedDay.value))
@@ -748,12 +817,16 @@ function renderMapPlaces() {
       position,
       title: cleanDisplayName(place.name),
       icon: {
-        content: `<div class="naver-plan-marker">${index + 1}</div>`,
+        content: `<div class="naver-plan-marker${place.attractionId ? ' naver-plan-marker--link' : ''}">${index + 1}</div>`,
         anchor: new maps.Point(14, 14),
       },
     })
 
     maps.Event.addListener(marker, 'click', () => {
+      if (place.attractionId) {
+        router.push(`/attractions/${place.attractionId}`)
+        return
+      }
       selectedMapPlaceName.value = cleanDisplayName(place.name)
       map.morph(position, 15, {
         duration: 250,
@@ -761,7 +834,8 @@ function renderMapPlaces() {
       })
     })
     maps.Event.addListener(marker, 'mouseover', () => {
-      openMarkerInfoWindow(maps, map, marker, cleanDisplayName(place.name))
+      const name = cleanDisplayName(place.name)
+      openMarkerInfoWindow(maps, map, marker, name)
     })
     maps.Event.addListener(marker, 'mouseout', closeMarkerInfoWindow)
 
@@ -946,31 +1020,65 @@ async function removePlan() {
   }
 }
 
-async function addCustomPlace() {
+async function searchAttractions() {
+  const keyword = attractionKeyword.value.trim()
+  attractionSearchError.value = ''
+  attractionResults.value = []
+  attractionSearchPage.value = 0
+  attractionSearchTotalPages.value = 0
+  if (keyword.length < 2) {
+    attractionSearchError.value = '관광지명을 두 글자 이상 입력해 주세요.'
+    return
+  }
+
+  await fetchAttractions(1)
+}
+
+async function changeAttractionSearchPage(page) {
+  if (attractionSearching.value || page < 1 || page > attractionSearchTotalPages.value || page === attractionSearchPage.value) return
+  await fetchAttractions(page)
+}
+
+async function fetchAttractions(page) {
+  attractionSearching.value = true
+  try {
+    const data = await attractionApi.search({
+      keyword: attractionKeyword.value.trim(),
+      page,
+      size: 6,
+    })
+    attractionResults.value = data.items || []
+    attractionSearchPage.value = data.page || page
+    attractionSearchTotalPages.value = data.totalPages || 0
+    if (attractionResults.value.length === 0) {
+      attractionSearchError.value = '검색 결과가 없습니다. 다른 검색어를 입력해 주세요.'
+    }
+  } catch (e) {
+    attractionSearchError.value = e.response?.data?.message || '관광지를 검색하지 못했습니다.'
+  } finally {
+    attractionSearching.value = false
+  }
+}
+
+async function addAttractionPlace(attraction) {
   if (placeSaving.value) return
   placeError.value = ''
   placeMsg.value = ''
-  if (!placeForm.value.name) {
-    placeError.value = '장소 이름을 입력해 주세요.'
-    return
-  }
 
   placeSaving.value = true
   try {
     await tripPlanApi.addPlace(id, {
-      name: placeForm.value.name,
-      latitude: placeForm.value.latitude === '' ? null : placeForm.value.latitude,
-      longitude: placeForm.value.longitude === '' ? null : placeForm.value.longitude,
+      attractionId: attraction.no,
       visitDay: selectedDay.value === null ? null : selectedDay.value,
-      memo: placeForm.value.memo || null,
     })
-    placeForm.value.name = ''
-    placeForm.value.latitude = ''
-    placeForm.value.longitude = ''
+    attractionResults.value = []
+    attractionKeyword.value = ''
+    attractionSearchPage.value = 0
+    attractionSearchTotalPages.value = 0
     await loadPlaces()
-    placeMsg.value = '장소를 추가했습니다.'
+    placeMsg.value = `${cleanDisplayName(attraction.title)}을(를) 추가했습니다.`
   } catch (e) {
-    placeError.value = e.response?.data?.message || '장소 추가에 실패했습니다.'
+    placeError.value = e.response?.data?.message || '관광지 추가에 실패했습니다.'
   } finally {
     placeSaving.value = false
   }
@@ -1007,22 +1115,54 @@ async function assignStoredPlace(place) {
   }
 }
 
-async function movePlace(place, direction) {
-  const list = visiblePlaces.value.map((item) => item.id)
-  const index = list.indexOf(place.id)
-  const nextIndex = direction === 'up' ? index - 1 : index + 1
-  if (nextIndex < 0 || nextIndex >= list.length) return
-  ;[list[index], list[nextIndex]] = [list[nextIndex], list[index]]
+function startPlaceDrag(event, place) {
+  if (placeReordering.value) {
+    event.preventDefault()
+    return
+  }
+  draggedPlaceId.value = place.id
+  event.dataTransfer.effectAllowed = 'move'
+  event.dataTransfer.setData('text/plain', String(place.id))
+}
+
+function dragOverPlace(event, place) {
+  if (!draggedPlaceId.value || draggedPlaceId.value === place.id) return
+  event.dataTransfer.dropEffect = 'move'
+  dragOverPlaceId.value = place.id
+}
+
+async function dropPlace(event, targetPlace) {
+  const sourceId = draggedPlaceId.value || Number(event.dataTransfer.getData('text/plain'))
+  endPlaceDrag()
+  if (!sourceId || sourceId === targetPlace.id || placeReordering.value) return
+
+  const placeIds = visiblePlaces.value.map((place) => place.id)
+  const sourceIndex = placeIds.indexOf(sourceId)
+  const targetIndex = placeIds.indexOf(targetPlace.id)
+  if (sourceIndex < 0 || targetIndex < 0) return
+
+  placeIds.splice(sourceIndex, 1)
+  // 아래로 끌면 대상 뒤, 위로 끌면 대상 앞으로 이동한다.
+  const insertIndex = targetIndex
+  placeIds.splice(insertIndex, 0, sourceId)
 
   placeError.value = ''
+  placeReordering.value = true
   try {
     places.value = await tripPlanApi.reorderPlaces(id, {
       visitDay: selectedDay.value,
-      placeIds: list,
+      placeIds,
     })
   } catch (e) {
     placeError.value = e.response?.data?.message || '장소 순서 변경에 실패했습니다.'
+  } finally {
+    placeReordering.value = false
   }
+}
+
+function endPlaceDrag() {
+  draggedPlaceId.value = null
+  dragOverPlaceId.value = null
 }
 
 async function removePlace(place) {
@@ -1311,11 +1451,7 @@ onBeforeUnmount(() => {
   cursor: not-allowed;
 }
 
-.place-form {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(120px, 1fr)) minmax(150px, auto);
-  gap: 12px;
-  align-items: end;
+.place-search {
   padding: 16px;
   margin-bottom: 18px;
   background: white;
@@ -1323,23 +1459,122 @@ onBeforeUnmount(() => {
   border-radius: 12px;
 }
 
-.place-form__name {
-  grid-column: 1 / -1;
-}
-
-.field--small {
-  flex: none;
-}
-
-.field--small input:disabled {
-  background: var(--bg-2);
-  color: var(--ink-soft);
-}
-
-.place-form__actions {
+.place-search__form {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.place-search__field {
+  min-width: 0;
+}
+
+.place-search__hint {
+  margin-top: 8px;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.attraction-results {
+  display: grid;
   gap: 8px;
+  margin-top: 14px;
+}
+
+.attraction-pagination {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.attraction-pagination button {
+  min-width: 32px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 7px;
+  background: white;
+  color: var(--ink-3);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.attraction-pagination button.active {
+  border-color: var(--teal);
+  background: var(--teal);
+  color: white;
+}
+
+.attraction-pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.attraction-result {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg-soft);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.attraction-result:hover:not(:disabled) {
+  border-color: var(--teal);
+  background: var(--teal-soft);
+}
+
+.attraction-result:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.attraction-result img,
+.attraction-result__image {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.attraction-result__image {
+  display: grid;
+  place-items: center;
+  background: white;
+}
+
+.attraction-result__body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.attraction-result__body strong,
+.attraction-result__body small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attraction-result__body strong { font-size: 14px; }
+.attraction-result__body small { color: var(--ink-soft); }
+
+.attraction-result__add {
+  color: var(--teal-3);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .timeline {
@@ -1357,10 +1592,31 @@ onBeforeUnmount(() => {
   border-radius: 12px;
 }
 
+.empty-places strong,
+.empty-places span {
+  display: block;
+}
+
+.empty-places span {
+  margin-top: 6px;
+  font-size: 13px;
+}
+
 .timeline-row {
   display: grid;
   grid-template-columns: 56px 28px 1fr;
   gap: 10px;
+  cursor: grab;
+}
+
+.timeline-row--dragging {
+  opacity: 0.45;
+  cursor: grabbing;
+}
+
+.timeline-row--drag-over .item-card {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 2px var(--teal-soft);
 }
 
 .time-col {
@@ -1416,6 +1672,16 @@ onBeforeUnmount(() => {
   background: white;
   border: 1px solid var(--line);
   border-radius: 10px;
+}
+
+.drag-handle {
+  width: 10px;
+  color: var(--ink-soft);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+  user-select: none;
 }
 
 .item-card--mappable {
@@ -1555,6 +1821,17 @@ onBeforeUnmount(() => {
   box-shadow: 0 4px 12px rgba(20, 38, 46, 0.22);
   font-size: 12px;
   font-weight: 800;
+}
+
+:global(.naver-plan-marker--link) {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+:global(.naver-plan-marker--link:hover) {
+  transform: scale(1.16);
+  background: var(--teal-3);
+  box-shadow: 0 6px 16px rgba(20, 38, 46, 0.34);
 }
 
 :global(.naver-plan-info) {
@@ -1887,11 +2164,7 @@ onBeforeUnmount(() => {
     position: static;
     height: clamp(360px, 58vh, 520px);
   }
-  .place-form { grid-template-columns: minmax(220px, 1fr) 142px; }
-  .place-form__name,
-  .place-form__actions {
-    grid-column: 1 / -1;
-  }
+  .place-search__form { grid-template-columns: minmax(220px, 1fr) 142px; }
 }
 
 @media (max-width: 700px) {
@@ -1907,7 +2180,7 @@ onBeforeUnmount(() => {
     justify-content: flex-start;
   }
 
-  .place-form,
+  .place-search__form,
   .timeline-row,
   .day-navigator {
     grid-template-columns: 1fr;
