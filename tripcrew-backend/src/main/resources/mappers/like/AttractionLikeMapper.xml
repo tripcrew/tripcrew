@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.tripcrew.like.model.mapper.AttractionLikeMapper">
+
+    <!-- 유니크(user_id, attraction_no) 라 중복 INSERT 는 IGNORE 로 무시(멱등) -->
+    <insert id="insertIgnore">
+        INSERT IGNORE INTO attraction_likes (user_id, attraction_no)
+        VALUES (#{userId}, #{attractionNo})
+    </insert>
+
+    <delete id="delete">
+        DELETE FROM attraction_likes
+         WHERE user_id = #{userId}
+           AND attraction_no = #{attractionNo}
+    </delete>
+
+    <select id="exists" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1 FROM attraction_likes
+             WHERE user_id = #{userId}
+               AND attraction_no = #{attractionNo}
+        )
+    </select>
+
+    <select id="countByAttraction" resultType="long">
+        SELECT COUNT(*) FROM attraction_likes
+         WHERE attraction_no = #{attractionNo}
+    </select>
+
+    <select id="existsAttraction" resultType="boolean">
+        SELECT EXISTS (SELECT 1 FROM attractions WHERE no = #{attractionNo})
+    </select>
+
+</mapper>
