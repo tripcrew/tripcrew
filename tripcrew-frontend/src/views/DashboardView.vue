@@ -101,16 +101,21 @@
               </span>
             </div>
 
-            <ol class="ranking-list">
-              <li v-for="(item, i) in ranking" :key="item.id">
-                <span class="rank-no">{{ i + 1 }}</span>
+            <p v-if="rankingLoading" class="ranking-state">랭킹을 불러오는 중입니다.</p>
+            <p v-else-if="rankingError" class="ranking-state">{{ rankingError }}</p>
+            <p v-else-if="ranking.length === 0" class="ranking-state">아직 최근 1시간 내 랭킹 데이터가 없습니다.</p>
+
+            <ol v-else class="ranking-list">
+              <li v-for="item in ranking" :key="item.id">
+                <span class="rank-no">{{ item.rank }}</span>
                 <div class="rank-info">
-                  <strong>{{ item.name }}</strong>
+                  <strong>{{ item.title }}</strong>
                   <span class="t-caption">{{ item.region }}</span>
                 </div>
                 <span :class="['trend', `trend--${item.trend}`]">
                   <template v-if="item.trend === 'up'">▲ {{ item.delta }}</template>
                   <template v-else-if="item.trend === 'down'">▼ {{ item.delta }}</template>
+                  <template v-else-if="item.trend === 'new'">NEW</template>
                   <template v-else>─</template>
                 </span>
               </li>
@@ -153,11 +158,12 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AppHeader from '@/components/common/AppHeader.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
+import { rankingApi } from '@/api/rankings'
 import { tripPlanApi } from '@/api/tripPlans'
 import { useAuthStore } from '@/stores/auth'
 
@@ -167,6 +173,9 @@ const displayName = computed(() => authStore.user?.nickname || '여행자')
 const rawPlans = ref([])
 const plansLoading = ref(true)
 const plansError = ref('')
+const ranking = ref([])
+const rankingLoading = ref(true)
+const rankingError = ref('')
 const planRail = ref(null)
 const planDrag = ref({
   active: false,
@@ -175,6 +184,7 @@ const planDrag = ref({
   scrollLeft: 0,
 })
 const suppressPlanClick = ref(false)
+let rankingTimer = null
 
 const today = startOfDay(new Date())
 
@@ -201,14 +211,6 @@ const recommendations = [
   { id: 4, name: '가평 자라섬', rating: 4.3, tag: '자연' }
 ]
 
-const ranking = [
-  { id: 1, name: '오동도 동백숲', region: '전남 여수', trend: 'up', delta: 2 },
-  { id: 2, name: '강릉 안목해변', region: '강원 강릉', trend: 'same' },
-  { id: 3, name: '제주 성산일출봉', region: '제주 서귀포', trend: 'down', delta: 1 },
-  { id: 4, name: '부산 감천문화마을', region: '부산 사하', trend: 'up', delta: 1 },
-  { id: 5, name: '통영 동피랑', region: '경남 통영', trend: 'same' }
-]
-
 async function loadPlans() {
   plansLoading.value = true
   plansError.value = ''
@@ -219,6 +221,17 @@ async function loadPlans() {
     plansError.value = error?.response?.data?.message || '여행 계획을 불러오지 못했습니다.'
   } finally {
     plansLoading.value = false
+  }
+}
+
+async function loadRanking() {
+  try {
+    ranking.value = await rankingApi.getAttractions()
+    rankingError.value = ''
+  } catch (error) {
+    rankingError.value = error?.response?.data?.message || '실시간 랭킹을 불러오지 못했습니다.'
+  } finally {
+    rankingLoading.value = false
   }
 }
 
@@ -362,7 +375,15 @@ function pad(value) {
   return String(value).padStart(2, '0')
 }
 
-onMounted(loadPlans)
+onMounted(() => {
+  loadPlans()
+  loadRanking()
+  rankingTimer = window.setInterval(loadRanking, 30_000)
+})
+
+onBeforeUnmount(() => {
+  if (rankingTimer) window.clearInterval(rankingTimer)
+})
 </script>
 
 <style scoped>
@@ -659,6 +680,12 @@ onMounted(loadPlans)
   gap: 8px;
 }
 
+.ranking-state {
+  padding: 14px 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
 .ranking-list li {
   display: flex;
   align-items: center;
@@ -704,6 +731,7 @@ onMounted(loadPlans)
 .trend--up { background: #E1F5EA; color: #1A7A4A; }
 .trend--down { background: #FBEAE2; color: #B12C3A; }
 .trend--same { background: var(--bg-2); color: var(--muted); }
+.trend--new { background: var(--teal-soft); color: var(--teal-3); }
 
 /* Live pill */
 .live-pill {

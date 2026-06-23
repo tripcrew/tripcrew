@@ -51,6 +51,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/reissue").permitAll()
                         // 공개 조회(관광지 등 GET)는 기능 구현 시 개별 permitAll 추가
                         .requestMatchers(HttpMethod.GET, "/api/attractions/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/rankings/**").permitAll()
                         // 후기 목록 조회는 공개(작성은 인증 필요 → anyRequest 로 커버)
                         .requestMatchers(HttpMethod.GET, "/api/reviews").permitAll()
                         // 공지 목록/상세 조회는 공개(작성/수정/삭제는 /api/admin/notices → ADMIN 로 커버)

@@ -11,26 +11,87 @@ import com.tripcrew.attraction.model.dto.AttractionSearchRequest;
 import com.tripcrew.attraction.model.dto.AttractionSummaryResponse;
 import com.tripcrew.attraction.model.mapper.AttractionMapper;
 import com.tripcrew.common.exception.BusinessException;
+import com.tripcrew.ranking.service.AttractionRankingService;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AttractionService {
 
+    private static final long SLOW_SEARCH_THRESHOLD_MS = 500;
+
     private final AttractionMapper attractionMapper;
+    private final AttractionRankingService attractionRankingService;
 
     public AttractionPageResponse search(AttractionSearchRequest request) {
+        long startedAt = System.nanoTime();
+
         request.normalize();
 
+        long searchStartedAt = System.nanoTime();
         List<AttractionSummaryResponse> items = attractionMapper.search(request);
-        long totalCount = attractionMapper.count(request);
+        long searchElapsedMs = elapsedMillis(searchStartedAt);
 
-        return AttractionPageResponse.of(items, request.getPage(), request.getLimit(), totalCount);
+        long countStartedAt = System.nanoTime();
+        long totalCount = attractionMapper.count(request);
+        long countElapsedMs = elapsedMillis(countStartedAt);
+
+        AttractionPageResponse response = AttractionPageResponse.of(items, request.getPage(), request.getLimit(), totalCount);
+        long totalElapsedMs = elapsedMillis(startedAt);
+
+        if (totalElapsedMs >= SLOW_SEARCH_THRESHOLD_MS) {
+            log.warn(
+                    "Slow attraction search: total={}ms, search={}ms, count={}ms, keyword='{}', sidoCode={}, gugunCode={}, contentTypeIds={}, page={}, size={}, resultCount={}, totalCount={}",
+                    totalElapsedMs,
+                    searchElapsedMs,
+                    countElapsedMs,
+                    request.getKeyword(),
+                    request.getSidoCode(),
+                    request.getGugunCode(),
+                    request.getContentTypeIds(),
+                    request.getPage(),
+                    request.getLimit(),
+                    items.size(),
+                    totalCount
+            );
+        } else {
+            log.info(
+                    "Attraction search: total={}ms, search={}ms, count={}ms, keyword='{}', sidoCode={}, gugunCode={}, contentTypeIds={}, page={}, size={}, resultCount={}, totalCount={}",
+                    totalElapsedMs,
+                    searchElapsedMs,
+                    countElapsedMs,
+                    request.getKeyword(),
+                    request.getSidoCode(),
+                    request.getGugunCode(),
+                    request.getContentTypeIds(),
+                    request.getPage(),
+                    request.getLimit(),
+                    items.size(),
+                    totalCount
+            );
+        }
+
+        return response;
     }
 
     public AttractionDetailResponse get(Integer no) {
-        return attractionMapper.findByNo(no)
+        AttractionDetailResponse attraction = attractionMapper.findByNo(no)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "관광지를 찾을 수 없습니다."));
+
+        try {
+            attractionRankingService.recordDetailView(no);
+        } catch (RuntimeException e) {
+            // Redis 장애가 관광지 상세 조회 자체를 실패시키면 안 된다.
+            log.warn("Failed to record attraction ranking. attractionId={}", no, e);
+        }
+
+        return attraction;
+    }
+
+    private long elapsedMillis(long startedAt) {
+        return (System.nanoTime() - startedAt) / 1_000_000;
     }
 }
