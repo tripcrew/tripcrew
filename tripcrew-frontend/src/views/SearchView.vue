@@ -11,7 +11,7 @@
 
         <div class="filter-group">
           <h4>시·도</h4>
-          <select v-model.number="filters.sidoCode" class="filter-select">
+          <select v-model.number="filters.sidoCode" class="filter-select" :disabled="sidosLoading">
             <option :value="null">전체</option>
             <option v-for="sido in sidos" :key="sido.code" :value="sido.code">
               {{ sido.name }}
@@ -21,12 +21,13 @@
 
         <div class="filter-group">
           <h4>시·군·구</h4>
-          <select v-model.number="filters.gugunCode" class="filter-select" :disabled="guguns.length === 0">
+          <select v-model.number="filters.gugunCode" class="filter-select" :disabled="gugunsLoading || guguns.length === 0">
             <option :value="null">전체</option>
             <option v-for="gugun in guguns" :key="gugun.code" :value="gugun.code">
               {{ gugun.name }}
             </option>
           </select>
+          <p v-if="regionError" class="filter-error">{{ regionError }}</p>
         </div>
 
         <div class="filter-group">
@@ -149,6 +150,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import { useRoute, useRouter } from 'vue-router'
 
 import { attractionApi } from '@/api/attractions'
+import { regionApi } from '@/api/regions'
 import AppHeader from '@/components/common/AppHeader.vue'
 
 const DEFAULT_PAGE_SIZE = 6
@@ -160,6 +162,11 @@ const keyword = ref('')
 const isLoading = ref(false)
 const errorMessage = ref('')
 const attractions = ref([])
+const sidos = ref([])
+const guguns = ref([])
+const sidosLoading = ref(false)
+const gugunsLoading = ref(false)
+const regionError = ref('')
 const pageData = reactive({
   page: 1,
   size: DEFAULT_PAGE_SIZE,
@@ -173,42 +180,6 @@ const filters = reactive({
   page: 1,
   size: DEFAULT_PAGE_SIZE,
 })
-
-const sidos = [
-  { code: 1, name: '서울' },
-  { code: 6, name: '부산' },
-  { code: 31, name: '경기도' },
-  { code: 32, name: '강원특별자치도' },
-  { code: 38, name: '전라남도' },
-  { code: 39, name: '제주도' },
-]
-
-const gugunsBySido = {
-  1: [
-    { code: 1, name: '강남구' },
-    { code: 23, name: '종로구' },
-  ],
-  6: [
-    { code: 16, name: '해운대구' },
-    { code: 15, name: '중구' },
-  ],
-  31: [
-    { code: 2, name: '고양시' },
-    { code: 14, name: '시흥시' },
-  ],
-  32: [
-    { code: 1, name: '강릉시' },
-    { code: 6, name: '양구군' },
-  ],
-  38: [
-    { code: 11, name: '순천시' },
-    { code: 13, name: '여수시' },
-  ],
-  39: [
-    { code: 3, name: '서귀포시' },
-    { code: 4, name: '제주시' },
-  ],
-}
 
 const contentTypes = [
   { id: 12, name: '관광지' },
@@ -224,9 +195,9 @@ const contentTypes = [
 let debounceTimer = null
 let suppressNextRouteLoad = false
 let isApplyingRouteQuery = false
+let gugunRequest = 0
 
-const guguns = computed(() => gugunsBySido[filters.sidoCode] || [])
-const selectedSido = computed(() => sidos.find((sido) => sido.code === filters.sidoCode))
+const selectedSido = computed(() => sidos.value.find((sido) => sido.code === filters.sidoCode))
 const selectedGugun = computed(() => guguns.value.find((gugun) => gugun.code === filters.gugunCode))
 const selectedRegionLabel = computed(() => {
   if (selectedSido.value && selectedGugun.value) return `${selectedSido.value.name} ${selectedGugun.value.name}`
@@ -287,10 +258,47 @@ function applyQueryToState(query) {
 
 async function restoreQueryAndLoad() {
   isApplyingRouteQuery = true
+  await loadSidos()
   applyQueryToState(route.query)
+  await loadGuguns(filters.sidoCode)
   await loadAttractions()
   await nextTick()
   isApplyingRouteQuery = false
+}
+
+async function loadSidos() {
+  if (sidos.value.length > 0) return
+  sidosLoading.value = true
+  regionError.value = ''
+  try {
+    sidos.value = await regionApi.listSidos()
+  } catch (error) {
+    regionError.value = error?.response?.data?.message || '지역 목록을 불러오지 못했습니다.'
+  } finally {
+    sidosLoading.value = false
+  }
+}
+
+async function loadGuguns(sidoCode) {
+  const request = ++gugunRequest
+  guguns.value = []
+  if (!sidoCode) {
+    gugunsLoading.value = false
+    return
+  }
+
+  gugunsLoading.value = true
+  regionError.value = ''
+  try {
+    const data = await regionApi.listGuguns(sidoCode)
+    if (request === gugunRequest) guguns.value = data
+  } catch (error) {
+    if (request === gugunRequest) {
+      regionError.value = error?.response?.data?.message || '시·군·구 목록을 불러오지 못했습니다.'
+    }
+  } finally {
+    if (request === gugunRequest) gugunsLoading.value = false
+  }
 }
 
 function buildRouteQuery() {
@@ -389,6 +397,7 @@ watch(
 
     filters.gugunCode = null
     filters.page = 1
+    await loadGuguns(filters.sidoCode)
     await syncRouteQuery()
     loadAttractions()
   },
