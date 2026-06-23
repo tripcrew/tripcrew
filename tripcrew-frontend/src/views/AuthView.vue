@@ -150,13 +150,6 @@
             <BaseButton variant="primary" size="lg" type="submit" full :disabled="isSubmitting">
               {{ isSubmitting ? '처리 중...' : '로그인' }}
             </BaseButton>
-
-            <div class="divider">또는</div>
-
-            <button class="oauth-btn">
-              <span class="oauth-icon">💬</span>
-              카카오로 시작
-            </button>
           </form>
         </div>
 
@@ -591,38 +584,6 @@ function getRedirectTarget() {
   font-size: 13px;
   color: var(--ink-soft);
   text-decoration: underline;
-}
-
-.divider {
-  text-align: center;
-  margin: 20px 0;
-  font-size: 12px;
-  color: var(--muted);
-  position: relative;
-}
-
-.divider::before, .divider::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  width: 40%;
-  height: 1px;
-  background: var(--line);
-}
-.divider::before { left: 0; }
-.divider::after { right: 0; }
-
-.oauth-btn {
-  width: 100%;
-  padding: 12px;
-  background: #FEE500;
-  color: #181818;
-  border-radius: 10px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
 }
 
 .api-note {
