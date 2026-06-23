@@ -4,7 +4,9 @@
 
     <main class="container reviews-layout">
       <nav class="breadcrumb">
-        관광지 › <strong>{{ attractionTitle }}</strong> › 후기
+        <router-link to="/attractions" class="bc-link">관광지</router-link>
+        › <router-link :to="`/attractions/${targetId}`" class="bc-link">{{ attractionTitle }}</router-link>
+        › <strong>후기</strong>
       </nav>
 
       <div class="reviews-grid">
@@ -483,6 +485,16 @@ onMounted(loadAll)
 }
 
 .breadcrumb strong { color: var(--ink); }
+
+.bc-link {
+  color: var(--ink-soft);
+  transition: color 0.15s;
+}
+
+.bc-link:hover {
+  color: var(--teal);
+  text-decoration: underline;
+}
 
 .reviews-grid {
   display: grid;

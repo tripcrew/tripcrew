@@ -4,7 +4,8 @@
 
     <main class="container detail-layout">
       <nav class="breadcrumb">
-        관광지 › {{ attraction?.sido || '지역' }} › {{ attraction?.gugun || '전체' }} ›
+        <router-link to="/attractions" class="bc-link">관광지</router-link>
+        › {{ attraction?.sido || '지역' }} › {{ attraction?.gugun || '전체' }} ›
         <strong>{{ cleanDisplayName(attraction?.title) || '상세' }}</strong>
       </nav>
 
@@ -380,6 +381,16 @@ onMounted(loadAll)
 
 .breadcrumb strong {
   color: var(--ink);
+}
+
+.bc-link {
+  color: var(--ink-soft);
+  transition: color 0.15s;
+}
+
+.bc-link:hover {
+  color: var(--teal);
+  text-decoration: underline;
 }
 
 .detail-state {
