@@ -124,7 +124,7 @@
         </div>
 
         <nav v-if="pageData.totalPages > 1" class="pagination" aria-label="관광지 페이지">
-          <button type="button" :disabled="pageData.page <= 1" @click="changePage(pageData.page - 1)">
+          <button type="button" :disabled="pageData.page <= 1" @click="goToPreviousPageGroup">
             이전
           </button>
           <button
@@ -136,7 +136,7 @@
           >
             {{ pageNumber }}
           </button>
-          <button type="button" :disabled="pageData.page >= pageData.totalPages" @click="changePage(pageData.page + 1)">
+          <button type="button" :disabled="pageData.page >= pageData.totalPages" @click="goToNextPageGroup">
             다음
           </button>
         </nav>
@@ -154,6 +154,7 @@ import { regionApi } from '@/api/regions'
 import AppHeader from '@/components/common/AppHeader.vue'
 
 const DEFAULT_PAGE_SIZE = 6
+const PAGE_GROUP_SIZE = 5
 const MIN_KEYWORD_LENGTH = 2
 
 const route = useRoute()
@@ -214,8 +215,8 @@ const selectedTypeLabel = computed(() => {
 const visiblePages = computed(() => {
   const total = pageData.totalPages
   const current = pageData.page
-  const start = Math.max(1, current - 2)
-  const end = Math.min(total, start + 4)
+  const start = Math.floor((current - 1) / PAGE_GROUP_SIZE) * PAGE_GROUP_SIZE + 1
+  const end = Math.min(total, start + PAGE_GROUP_SIZE - 1)
   return Array.from({ length: end - start + 1 }, (_, index) => start + index)
 })
 
@@ -365,6 +366,16 @@ async function changePage(page) {
   filters.page = page
   await syncRouteQuery(false)
   loadAttractions()
+}
+
+function goToPreviousPageGroup() {
+  const currentGroupStart = Math.floor((pageData.page - 1) / PAGE_GROUP_SIZE) * PAGE_GROUP_SIZE + 1
+  changePage(Math.max(1, currentGroupStart - PAGE_GROUP_SIZE))
+}
+
+function goToNextPageGroup() {
+  const currentGroupStart = Math.floor((pageData.page - 1) / PAGE_GROUP_SIZE) * PAGE_GROUP_SIZE + 1
+  changePage(Math.min(pageData.totalPages, currentGroupStart + PAGE_GROUP_SIZE))
 }
 
 async function resetFilters() {
@@ -610,6 +621,7 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
+  perspective: 1200px;
 }
 
 .att-card {
@@ -618,19 +630,15 @@ onBeforeUnmount(() => {
   border-radius: var(--r-lg);
   overflow: hidden;
   cursor: pointer;
-  transition: all 0.2s;
-}
-
-.att-card:not(.is-skeleton):hover {
-  transform: translateY(-2px);
-  box-shadow: var(--sh-2);
-  border-color: var(--teal);
+  transform-style: preserve-3d;
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.35s ease, border-color 0.35s ease;
 }
 
 .att-card__thumb {
   width: 100%;
   aspect-ratio: 16/10;
   position: relative;
+  overflow: hidden;
   background: var(--bg-2);
 }
 
@@ -639,6 +647,42 @@ onBeforeUnmount(() => {
   height: 100%;
   object-fit: cover;
   display: block;
+  transition: transform 0.55s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.35s ease;
+}
+
+.att-card__thumb::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 45%, rgba(10, 38, 35, 0.2));
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+
+@media (hover: hover) {
+  .att-card:not(.is-skeleton):hover {
+    transform: translateY(-7px) rotateX(2deg) rotateY(-1.5deg);
+    box-shadow: 0 18px 34px rgba(24, 78, 72, 0.18);
+    border-color: rgba(32, 139, 133, 0.65);
+  }
+
+  .att-card:not(.is-skeleton):hover .att-card__thumb img {
+    transform: scale(1.07);
+    filter: saturate(1.08);
+  }
+
+  .att-card:not(.is-skeleton):hover .att-card__thumb::after {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .att-card,
+  .att-card__thumb img,
+  .att-card__thumb::after {
+    transition: none;
+  }
 }
 
 .thumb-grad {
