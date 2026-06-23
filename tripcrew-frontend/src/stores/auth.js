@@ -57,5 +57,24 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
   }
 
-  return { accessToken, user, isAuthenticated, signup, login, logout }
+  async function updateNickname(nickname, currentPassword) {
+    const updatedUser = await authApi.updateNickname(nickname, currentPassword)
+    user.value = updatedUser
+    writeStoredUser(updatedUser)
+    return updatedUser
+  }
+
+  async function verifyPassword(currentPassword) {
+    await authApi.verifyPassword(currentPassword)
+  }
+
+  async function withdraw(currentPassword) {
+    await authApi.withdraw(currentPassword)
+    tokenStorage.clear()
+    writeStoredUser(null)
+    accessToken.value = null
+    user.value = null
+  }
+
+  return { accessToken, user, isAuthenticated, signup, login, logout, verifyPassword, updateNickname, withdraw }
 })

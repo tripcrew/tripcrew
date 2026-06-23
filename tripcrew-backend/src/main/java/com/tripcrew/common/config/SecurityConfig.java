@@ -20,6 +20,7 @@ import com.tripcrew.auth.jwt.JwtAccessDeniedHandler;
 import com.tripcrew.auth.jwt.JwtAuthenticationEntryPoint;
 import com.tripcrew.auth.jwt.JwtAuthenticationFilter;
 import com.tripcrew.auth.jwt.JwtProvider;
+import com.tripcrew.user.model.mapper.UserMapper;
 
 import lombok.RequiredArgsConstructor;
 
@@ -36,6 +37,7 @@ public class SecurityConfig {
     private final JwtProvider jwtProvider;
     private final JwtAuthenticationEntryPoint authenticationEntryPoint;
     private final JwtAccessDeniedHandler accessDeniedHandler;
+    private final UserMapper userMapper;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -68,7 +70,7 @@ public class SecurityConfig {
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler))
-                .addFilterBefore(new JwtAuthenticationFilter(jwtProvider),
+                .addFilterBefore(new JwtAuthenticationFilter(jwtProvider, userMapper),
                         UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

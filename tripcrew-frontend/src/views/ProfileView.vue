@@ -28,17 +28,76 @@
           </div>
         </dl>
 
+        <section v-if="isEditMode" class="edit-section">
+          <div class="edit-section__head">
+            <div>
+              <h2>정보 수정</h2>
+              <p>변경하거나 탈퇴하려면 현재 비밀번호를 입력해 주세요.</p>
+            </div>
+            <button type="button" class="edit-close" aria-label="정보 수정 닫기" @click="closeEditMode">×</button>
+          </div>
+
+          <form v-if="!isPasswordVerified" class="password-check" @submit.prevent="handlePasswordVerification">
+            <label class="form-label" for="current-password">정보 수정 비밀번호</label>
+            <div class="password-check__row">
+              <input id="current-password" v-model="currentPassword" type="password" maxlength="64" autocomplete="current-password" required />
+              <BaseButton variant="primary" type="submit" :disabled="isVerifyingPassword">
+                {{ isVerifyingPassword ? '인증 중...' : '인증' }}
+              </BaseButton>
+            </div>
+            <p v-if="passwordError" class="form-error">{{ passwordError }}</p>
+          </form>
+
+          <template v-else>
+            <p class="verified-message">비밀번호 인증이 완료되었습니다.</p>
+            <form class="nickname-form" @submit.prevent="handleNicknameUpdate">
+              <label class="form-label" for="nickname">새 닉네임</label>
+              <div class="nickname-form__row">
+                <input id="nickname" v-model.trim="nickname" type="text" maxlength="50" required />
+                <BaseButton variant="secondary" type="submit" :disabled="isUpdatingNickname">
+                  {{ isUpdatingNickname ? '변경 중...' : '닉네임 변경' }}
+                </BaseButton>
+              </div>
+              <p v-if="nicknameMessage" class="form-message">{{ nicknameMessage }}</p>
+              <p v-if="nicknameError" class="form-error">{{ nicknameError }}</p>
+            </form>
+
+            <div class="withdraw-row">
+              <div>
+                <h3>회원 탈퇴</h3>
+                <p>탈퇴 후에는 로그인하거나 계정을 복구할 수 없습니다.</p>
+              </div>
+              <BaseButton variant="danger" :disabled="isWithdrawing" @click="showWithdrawConfirm = true">
+                {{ isWithdrawing ? '처리 중...' : '탈퇴하기' }}
+              </BaseButton>
+            </div>
+            <p v-if="withdrawError" class="form-error">{{ withdrawError }}</p>
+          </template>
+        </section>
+
         <div class="profile-actions">
           <BaseButton variant="secondary" @click="goHome">홈으로</BaseButton>
-          <BaseButton variant="danger" @click="handleLogout">로그아웃</BaseButton>
+          <BaseButton class="profile-edit-button" variant="secondary" @click="openEditMode">정보 수정</BaseButton>
         </div>
       </section>
     </main>
+    <div v-if="showWithdrawConfirm" class="confirm-backdrop" @click.self="showWithdrawConfirm = false">
+      <section class="confirm-dialog" role="dialog" aria-modal="true">
+        <h2>정말 탈퇴하시겠습니까?</h2>
+        <p>탈퇴 후에는 로그인하거나 계정을 복구할 수 없습니다.</p>
+        <div class="confirm-dialog__actions">
+          <BaseButton variant="secondary" @click="showWithdrawConfirm = false">취소</BaseButton>
+          <BaseButton variant="danger" :disabled="isWithdrawing" @click="handleWithdraw">
+            {{ isWithdrawing ? '처리 중...' : '탈퇴하기' }}
+          </BaseButton>
+        </div>
+      </section>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AppHeader from '@/components/common/AppHeader.vue'
@@ -52,6 +111,22 @@ const displayName = computed(() => authStore.user?.nickname || '여행자')
 const userEmail = computed(() => authStore.user?.email || '이메일 정보 없음')
 const userRole = computed(() => authStore.user?.role || 'USER')
 const avatarText = computed(() => displayName.value.trim().slice(0, 1).toUpperCase() || 'U')
+const isEditMode = ref(false)
+const isPasswordVerified = ref(false)
+const nickname = ref(displayName.value)
+const currentPassword = ref('')
+const isVerifyingPassword = ref(false)
+const passwordError = ref('')
+const isUpdatingNickname = ref(false)
+const nicknameMessage = ref('')
+const nicknameError = ref('')
+const isWithdrawing = ref(false)
+const withdrawError = ref('')
+const showWithdrawConfirm = ref(false)
+
+watch(displayName, (value) => {
+  nickname.value = value
+})
 
 onMounted(() => {
   if (!authStore.isAuthenticated) {
@@ -63,12 +138,69 @@ function goHome() {
   router.push('/home')
 }
 
-async function handleLogout() {
-  const confirmed = window.confirm('로그아웃하시겠어요?')
-  if (!confirmed) return
+function openEditMode() {
+  isEditMode.value = true
+  isPasswordVerified.value = false
+  currentPassword.value = ''
+  passwordError.value = ''
+  nicknameMessage.value = ''
+  nicknameError.value = ''
+  withdrawError.value = ''
+}
 
-  await authStore.logout()
-  router.replace('/')
+function closeEditMode() {
+  isEditMode.value = false
+  isPasswordVerified.value = false
+  showWithdrawConfirm.value = false
+  currentPassword.value = ''
+  nickname.value = displayName.value
+  nicknameMessage.value = ''
+  nicknameError.value = ''
+  withdrawError.value = ''
+}
+
+async function handlePasswordVerification() {
+  passwordError.value = ''
+  isVerifyingPassword.value = true
+  try {
+    await authStore.verifyPassword(currentPassword.value)
+    isPasswordVerified.value = true
+  } catch (error) {
+    passwordError.value = error?.response?.data?.message || '비밀번호를 확인하지 못했습니다.'
+  } finally {
+    isVerifyingPassword.value = false
+  }
+}
+
+async function handleNicknameUpdate() {
+  nicknameMessage.value = ''
+  nicknameError.value = ''
+  if (!nickname.value || !currentPassword.value) return
+
+  isUpdatingNickname.value = true
+  try {
+    await authStore.updateNickname(nickname.value, currentPassword.value)
+    nicknameMessage.value = '닉네임을 변경했어요.'
+  } catch (error) {
+    nicknameError.value = error?.response?.data?.message || '닉네임을 변경하지 못했습니다.'
+  } finally {
+    isUpdatingNickname.value = false
+  }
+}
+
+async function handleWithdraw() {
+  withdrawError.value = ''
+
+  isWithdrawing.value = true
+  try {
+    await authStore.withdraw(currentPassword.value)
+    router.replace('/')
+  } catch (error) {
+    withdrawError.value = error?.response?.data?.message || '회원 탈퇴를 처리하지 못했습니다.'
+  } finally {
+    isWithdrawing.value = false
+    showWithdrawConfirm.value = false
+  }
 }
 </script>
 
@@ -101,14 +233,12 @@ async function handleLogout() {
   font-weight: 800;
 }
 
-.profile-email {
-  color: var(--ink-soft);
-}
+.profile-email { color: var(--ink-soft); }
 
 .avatar {
-  border-radius: 50%;
   display: grid;
   place-items: center;
+  border-radius: 50%;
   background: var(--teal);
   color: white;
   font-weight: 800;
@@ -117,8 +247,8 @@ async function handleLogout() {
 .avatar--lg {
   width: 72px;
   height: 72px;
-  font-size: 28px;
   flex: 0 0 auto;
+  font-size: 28px;
 }
 
 .profile-info {
@@ -132,8 +262,8 @@ async function handleLogout() {
   grid-template-columns: 100px 1fr;
   gap: var(--space-4);
   padding: 14px 16px;
-  background: var(--bg-soft);
   border-radius: var(--r-md);
+  background: var(--bg-soft);
 }
 
 .profile-info dt {
@@ -146,28 +276,160 @@ async function handleLogout() {
   font-weight: 700;
 }
 
+.edit-section {
+  margin-top: 28px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--bg-soft);
+}
+
+.edit-section__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.edit-section h2,
+.withdraw-row h3 {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.edit-section__head p,
+.withdraw-row p {
+  margin-top: 5px;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.edit-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: var(--ink-soft);
+  font-size: 24px;
+  line-height: 1;
+}
+
+.form-label {
+  display: block;
+  margin: 16px 0 7px;
+  color: var(--ink-3);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.edit-section input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line-2);
+  border-radius: 9px;
+  background: white;
+  font: inherit;
+}
+
+.password-check__row,
+.nickname-form__row {
+  display: flex;
+  gap: 10px;
+}
+
+.password-check__row input,
+.nickname-form__row input { min-width: 0; }
+
+.verified-message {
+  margin: 16px 0 -2px;
+  color: var(--success);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.withdraw-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+
+.withdraw-row h3 { color: var(--danger); }
+
+.form-message,
+.form-error {
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.form-message { color: var(--success); }
+.form-error { color: var(--danger); }
+
 .profile-actions {
   display: flex;
   justify-content: flex-end;
   gap: var(--space-3);
+  margin-top: 28px;
+}
+
+.profile-edit-button {
+  border-color: var(--coral);
+  background: var(--coral);
+  color: white;
+}
+
+.profile-edit-button:hover:not(:disabled) {
+  border-color: var(--coral-2);
+  background: var(--coral-2);
+}
+
+.confirm-backdrop {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(17, 31, 29, 0.4);
+}
+
+.confirm-dialog {
+  width: min(100%, 400px);
+  padding: 28px;
+  border-radius: var(--r-xl);
+  background: white;
+  box-shadow: var(--sh-2);
+}
+
+.confirm-dialog h2 {
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.confirm-dialog p {
+  margin-top: 9px;
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.confirm-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 24px;
 }
 
 @media (max-width: 640px) {
-  .profile-panel {
-    padding: 24px;
-  }
-
-  .profile-head {
-    align-items: flex-start;
-  }
-
-  .profile-info div {
-    grid-template-columns: 1fr;
-    gap: 4px;
-  }
-
-  .profile-actions {
-    flex-direction: column;
-  }
+  .profile-panel { padding: 24px; }
+  .profile-head { align-items: flex-start; }
+  .profile-info div { grid-template-columns: 1fr; gap: 4px; }
+  .password-check__row,
+  .nickname-form__row,
+  .withdraw-row,
+  .profile-actions { flex-direction: column; }
+  .withdraw-row { align-items: stretch; }
 }
 </style>

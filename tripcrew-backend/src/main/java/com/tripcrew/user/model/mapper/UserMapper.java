@@ -31,6 +31,8 @@ public interface UserMapper {
     /** 관리자용 계정 상태(밴/해제) 변경. affected rows 0 이면 대상 없음. */
     int updateStatus(@Param("id") Long id, @Param("status") Status status);
 
+    int updateNickname(@Param("id") Long id, @Param("nickname") String nickname);
+
     /** 신고 처리완료 시 누적 신고 횟수 +1. (3회 이상이면 호출측에서 자동 제재) */
     int incrementReportCount(@Param("id") Long id);
 }
