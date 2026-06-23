@@ -30,4 +30,5 @@ src/main/resources/application-secret.properties
 *_dump.sql
 member.sql
 *화면 설계서*.pdf
+CLAUDE.md
 AGENTS.md
