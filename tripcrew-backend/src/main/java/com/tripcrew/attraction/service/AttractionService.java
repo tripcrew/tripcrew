@@ -1,6 +1,9 @@
 package com.tripcrew.attraction.service;
 
+import java.util.Map;
 import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -12,6 +15,9 @@ import com.tripcrew.attraction.model.dto.AttractionSummaryResponse;
 import com.tripcrew.attraction.model.mapper.AttractionMapper;
 import com.tripcrew.common.exception.BusinessException;
 import com.tripcrew.ranking.service.AttractionRankingService;
+import com.tripcrew.review.model.ReviewTargetType;
+import com.tripcrew.review.model.dto.ReviewStats;
+import com.tripcrew.review.model.mapper.ReviewMapper;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +30,7 @@ public class AttractionService {
     private static final long SLOW_SEARCH_THRESHOLD_MS = 500;
 
     private final AttractionMapper attractionMapper;
+    private final ReviewMapper reviewMapper;
     private final AttractionRankingService attractionRankingService;
 
     public AttractionPageResponse search(AttractionSearchRequest request) {
@@ -35,6 +42,10 @@ public class AttractionService {
         List<AttractionSummaryResponse> items = attractionMapper.search(request);
         long searchElapsedMs = elapsedMillis(searchStartedAt);
 
+        long reviewStatsStartedAt = System.nanoTime();
+        attachReviewStats(items);
+        long reviewStatsElapsedMs = elapsedMillis(reviewStatsStartedAt);
+
         long countStartedAt = System.nanoTime();
         long totalCount = attractionMapper.count(request);
         long countElapsedMs = elapsedMillis(countStartedAt);
@@ -44,9 +55,10 @@ public class AttractionService {
 
         if (totalElapsedMs >= SLOW_SEARCH_THRESHOLD_MS) {
             log.warn(
-                    "Slow attraction search: total={}ms, search={}ms, count={}ms, keyword='{}', sidoCode={}, gugunCode={}, contentTypeIds={}, page={}, size={}, resultCount={}, totalCount={}",
+                    "Slow attraction search: total={}ms, search={}ms, reviewStats={}ms, count={}ms, keyword='{}', sidoCode={}, gugunCode={}, contentTypeIds={}, page={}, size={}, resultCount={}, totalCount={}",
                     totalElapsedMs,
                     searchElapsedMs,
+                    reviewStatsElapsedMs,
                     countElapsedMs,
                     request.getKeyword(),
                     request.getSidoCode(),
@@ -59,9 +71,10 @@ public class AttractionService {
             );
         } else {
             log.info(
-                    "Attraction search: total={}ms, search={}ms, count={}ms, keyword='{}', sidoCode={}, gugunCode={}, contentTypeIds={}, page={}, size={}, resultCount={}, totalCount={}",
+                    "Attraction search: total={}ms, search={}ms, reviewStats={}ms, count={}ms, keyword='{}', sidoCode={}, gugunCode={}, contentTypeIds={}, page={}, size={}, resultCount={}, totalCount={}",
                     totalElapsedMs,
                     searchElapsedMs,
+                    reviewStatsElapsedMs,
                     countElapsedMs,
                     request.getKeyword(),
                     request.getSidoCode(),
@@ -75,6 +88,27 @@ public class AttractionService {
         }
 
         return response;
+    }
+
+    private void attachReviewStats(List<AttractionSummaryResponse> items) {
+        if (items.isEmpty()) {
+            return;
+        }
+
+        List<Long> attractionIds = items.stream()
+                .map(AttractionSummaryResponse::getNo)
+                .map(Integer::longValue)
+                .toList();
+        Map<Long, ReviewStats> statsByAttractionId = reviewMapper
+                .findStatsByTargetIds(ReviewTargetType.ATTRACTION, attractionIds)
+                .stream()
+                .collect(Collectors.toMap(ReviewStats::getTargetId, Function.identity()));
+
+        for (AttractionSummaryResponse item : items) {
+            ReviewStats stats = statsByAttractionId.get(item.getNo().longValue());
+            item.setReviewAverage(stats == null ? 0.0 : stats.getAvgRating());
+            item.setReviewCount(stats == null ? 0L : stats.getReviewCount());
+        }
     }
 
     public AttractionDetailResponse get(Integer no) {

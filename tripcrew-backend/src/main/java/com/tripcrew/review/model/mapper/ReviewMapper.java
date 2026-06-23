@@ -39,6 +39,10 @@ public interface ReviewMapper {
     Optional<ReviewStats> findStats(@Param("targetType") ReviewTargetType targetType,
                                     @Param("targetId") Long targetId);
 
+    /** 목록 카드에 표시할 여러 대상의 후기 집계를 한 번에 조회한다. */
+    List<ReviewStats> findStatsByTargetIds(@Param("targetType") ReviewTargetType targetType,
+                                           @Param("targetIds") List<Long> targetIds);
+
     /** 대상의 별점 분포(VISIBLE, rating 별 개수). 비어 있을 수 있다(점수 없는 별은 0 으로 채움은 서비스에서). */
     List<RatingCount> findDistribution(@Param("targetType") ReviewTargetType targetType,
                                        @Param("targetId") Long targetId);
