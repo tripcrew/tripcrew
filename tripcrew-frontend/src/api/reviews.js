@@ -9,7 +9,11 @@ import { http } from './http'
  *
  * 대상은 폴리모픽(targetType: ATTRACTION | TRIP_PLAN, targetId: 대상 PK).
  * 목록 응답: { content, page, size, totalElements, totalPages, summary: { average, count, distribution } }
+ *   content[].imageUrls: 첨부 이미지 상대 URL 목록(/uploads/reviews/..., 없으면 [])
  *   sort: LATEST(기본) | RATING_HIGH | RATING_LOW
+ *
+ * 작성/수정 payload 에 imageUrls(최대 5장)를 함께 보낼 수 있다. URL 은 먼저
+ * uploadApi.images(files)(POST /api/uploads/images)로 업로드해 받은 값이어야 한다.
  */
 export const reviewApi = {
   listByTarget: (targetType, targetId, { page = 0, size = 10, sort = 'LATEST' } = {}) =>

@@ -99,4 +99,38 @@
             avg_rating   = CASE WHEN review_count > 0 THEN rating_sum / review_count ELSE 0 END
     </insert>
 
+    <!-- ── 후기 이미지(review_images) ───────────────────────── -->
+
+    <!-- 첨부 순서(0부터)를 sort_order 로 보존하며 일괄 INSERT -->
+    <insert id="insertImages">
+        INSERT INTO review_images (review_id, image_url, sort_order)
+        VALUES
+        <foreach collection="urls" item="url" index="i" separator=",">
+            (#{reviewId}, #{url}, #{i})
+        </foreach>
+    </insert>
+
+    <select id="findImageUrlsByReviewId" resultType="string">
+        SELECT image_url
+          FROM review_images
+         WHERE review_id = #{reviewId}
+         ORDER BY sort_order, id
+    </select>
+
+    <!-- 목록 N+1 방지: 여러 후기 이미지를 한 번에. 그룹핑은 서비스에서 reviewId 기준. -->
+    <select id="findImagesByReviewIds" resultType="ReviewImage">
+        SELECT review_id, image_url, sort_order
+          FROM review_images
+         WHERE review_id IN
+        <foreach collection="reviewIds" item="rid" open="(" separator="," close=")">
+            #{rid}
+        </foreach>
+         ORDER BY review_id, sort_order, id
+    </select>
+
+    <delete id="deleteImagesByReviewId">
+        DELETE FROM review_images
+         WHERE review_id = #{reviewId}
+    </delete>
+
 </mapper>
