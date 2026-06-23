@@ -113,15 +113,36 @@
             <section class="reviews-preview">
               <header class="block-head">
                 <h2 class="t-h2">최근 후기</h2>
-                <router-link :to="`/attractions/${attraction.no}/reviews`" class="link-teal">모두 보기 →</router-link>
-              </header>
-              <div class="review-item">
-                <div class="avatar avatar--sm" style="background: var(--violet);">T</div>
-                <div>
-                  <strong>TripCrew</strong> <span class="t-caption">후기 기능 준비 중</span>
-                  <p>관광지 후기 데이터가 연결되면 이 영역에 최근 후기가 표시됩니다.</p>
+                <div class="reviews-head-right">
+                  <span v-if="reviewSummary.count > 0" class="review-avg">
+                    <span class="stars">{{ avgStars }}</span>
+                    <strong>{{ reviewSummary.average.toFixed(1) }}</strong>
+                    <span class="t-caption">· {{ reviewSummary.count }}개</span>
+                  </span>
+                  <router-link :to="`/attractions/${attraction.no}/reviews`" class="link-teal">모두 보기 →</router-link>
                 </div>
-              </div>
+              </header>
+
+              <p v-if="reviewsLoading" class="t-caption review-empty">후기를 불러오는 중…</p>
+              <p v-else-if="recentReviews.length === 0" class="t-caption review-empty">
+                아직 후기가 없어요. 첫 후기를 남겨보세요!
+              </p>
+
+              <ul v-else class="review-list">
+                <li v-for="r in recentReviews" :key="r.id" class="review-item">
+                  <div class="avatar avatar--sm" :style="{ background: avatarColor(r.userId) }">
+                    {{ avatarLetter(r.authorNickname) }}
+                  </div>
+                  <div class="review-body">
+                    <div class="review-line">
+                      <strong>{{ r.authorNickname }}</strong>
+                      <span class="stars">{{ starText(r.rating) }}</span>
+                      <span class="t-caption">· {{ formatDate(r.createdAt) }}</span>
+                    </div>
+                    <p>{{ r.content }}</p>
+                  </div>
+                </li>
+              </ul>
             </section>
           </article>
 
@@ -169,6 +190,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import { attractionApi } from '@/api/attractions'
+import { reviewApi } from '@/api/reviews'
 import { tripPlanApi } from '@/api/tripPlans'
 import AppHeader from '@/components/common/AppHeader.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
@@ -177,6 +199,11 @@ const route = useRoute()
 const attraction = ref(null)
 const isLoading = ref(false)
 const errorMessage = ref('')
+
+// 최근 후기 미리보기(최신 3개) + 평점 요약
+const recentReviews = ref([])
+const reviewSummary = ref({ average: 0, count: 0 })
+const reviewsLoading = ref(false)
 const showPlanPanel = ref(false)
 const planPanelLoading = ref(false)
 const addingToPlan = ref(false)
@@ -186,9 +213,26 @@ const visitDay = ref(1)
 const planMessage = ref('')
 const planError = ref('')
 
+const avgStars = computed(() => starText(Math.round(reviewSummary.value.average)))
+
 const fullAddress = computed(() =>
   [attraction.value?.addr1, attraction.value?.addr2].filter(Boolean).join(' '),
 )
+
+const PALETTE = ['var(--violet)', 'var(--coral)', 'var(--info)', 'var(--teal)', 'var(--warning)']
+function avatarColor(userId) {
+  return PALETTE[(userId || 0) % PALETTE.length]
+}
+function avatarLetter(nickname) {
+  return nickname ? nickname.charAt(0) : '?'
+}
+function starText(n) {
+  const filled = Math.max(0, Math.min(5, n))
+  return '★'.repeat(filled) + '☆'.repeat(5 - filled)
+}
+function formatDate(iso) {
+  return iso ? iso.slice(0, 10) : ''
+}
 
 const galleryImages = computed(() =>
   [attraction.value?.firstImage1, attraction.value?.firstImage2]
@@ -217,6 +261,20 @@ async function loadAttraction() {
     errorMessage.value = error?.response?.data?.message || '관광지 정보를 불러오지 못했습니다.'
   } finally {
     isLoading.value = false
+  }
+}
+
+async function loadReviews() {
+  reviewsLoading.value = true
+  try {
+    const res = await reviewApi.listByTarget('ATTRACTION', route.params.id, { page: 0, size: 3, sort: 'LATEST' })
+    recentReviews.value = res.content || []
+    if (res.summary) reviewSummary.value = res.summary
+  } catch {
+    recentReviews.value = []
+    reviewSummary.value = { average: 0, count: 0 }
+  } finally {
+    reviewsLoading.value = false
   }
 }
 
@@ -298,8 +356,13 @@ watch(selectedPlanId, () => {
   }
 })
 
-watch(() => route.params.id, loadAttraction)
-onMounted(loadAttraction)
+function loadAll() {
+  loadAttraction()
+  loadReviews()
+}
+
+watch(() => route.params.id, loadAll)
+onMounted(loadAll)
 </script>
 
 <style scoped>
@@ -598,6 +661,45 @@ onMounted(loadAttraction)
   font-size: 14px;
   color: var(--ink-2);
   margin-top: 4px;
+  white-space: pre-wrap;
+}
+
+.review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.review-body { flex: 1; min-width: 0; }
+
+.review-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.review-line .stars { color: var(--warning); font-size: 13px; }
+
+.reviews-head-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.review-avg {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.review-avg .stars { color: var(--warning); font-size: 13px; }
+.review-avg strong { font-weight: 800; color: var(--ink); }
+
+.review-empty {
+  padding: 16px 0;
+  color: var(--ink-soft);
 }
 
 .avatar {

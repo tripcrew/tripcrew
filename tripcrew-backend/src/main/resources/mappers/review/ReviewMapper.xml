@@ -15,9 +15,9 @@
          WHERE id = #{id}
     </select>
 
-    <!-- 대상별 후기 목록(최신순). 작성자 닉네임을 함께 내려보낸다.
-         숨겨진(HIDDEN) 후기는 공개 목록에서 제외한다(신고 처리완료로 soft-delete 된 것). -->
-    <select id="findByTarget" resultType="Review">
+    <!-- 대상별 후기 목록(VISIBLE 만, 페이징+정렬). 작성자 닉네임을 함께 내려보낸다.
+         정렬 키는 서비스에서 화이트리스트 검증한 값만 들어온다(SQL 주입 방지). -->
+    <select id="findByTargetPaged" resultType="Review">
         SELECT r.id, r.user_id, r.target_type, r.target_id, r.rating, r.content,
                r.status, r.created_at, r.updated_at,
                u.nickname AS author_nickname
@@ -26,7 +26,37 @@
          WHERE r.target_type = #{targetType}
            AND r.target_id = #{targetId}
            AND r.status = 'VISIBLE'
-         ORDER BY r.created_at DESC, r.id DESC
+         ORDER BY
+        <choose>
+            <when test="sort == 'RATING_HIGH'">r.rating DESC, r.created_at DESC, r.id DESC</when>
+            <when test="sort == 'RATING_LOW'">r.rating ASC, r.created_at DESC, r.id DESC</when>
+            <otherwise>r.created_at DESC, r.id DESC</otherwise>
+        </choose>
+         LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countByTarget" resultType="long">
+        SELECT COUNT(*)
+          FROM reviews
+         WHERE target_type = #{targetType}
+           AND target_id = #{targetId}
+           AND status = 'VISIBLE'
+    </select>
+
+    <select id="findStats" resultType="ReviewStats">
+        SELECT target_type, target_id, review_count, rating_sum, avg_rating
+          FROM review_stats
+         WHERE target_type = #{targetType}
+           AND target_id = #{targetId}
+    </select>
+
+    <select id="findDistribution" resultType="RatingCount">
+        SELECT rating, COUNT(*) AS count
+          FROM reviews
+         WHERE target_type = #{targetType}
+           AND target_id = #{targetId}
+           AND status = 'VISIBLE'
+         GROUP BY rating
     </select>
 
     <select id="existsAttraction" resultType="boolean">
@@ -37,11 +67,36 @@
         SELECT EXISTS (SELECT 1 FROM trip_plans WHERE id = #{targetId})
     </select>
 
+    <update id="update">
+        UPDATE reviews
+           SET rating = #{rating},
+               content = #{content}
+         WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM reviews
+         WHERE id = #{id}
+    </delete>
+
     <!-- soft-delete: 하드삭제 없이 숨김으로만 전환(row 보존). 이미 HIDDEN 이어도 멱등. -->
     <update id="hideById">
         UPDATE reviews
            SET status = 'HIDDEN'
          WHERE id = #{id}
     </update>
+
+    <!-- 집계 증분 갱신(upsert). 행이 없으면 델타로 생성, 있으면 누적.
+         MySQL 단일테이블 UPDATE 는 좌→우로 평가되어 뒤 컬럼은 앞서 갱신된 값을 본다
+         → avg_rating 은 이미 갱신된 review_count/rating_sum 으로 재계산(델타 재가산 금지). count=0 이면 0. -->
+    <insert id="applyStatsDelta">
+        INSERT INTO review_stats (target_type, target_id, review_count, rating_sum, avg_rating)
+        VALUES (#{targetType}, #{targetId}, #{countDelta}, #{ratingDelta},
+                CASE WHEN #{countDelta} > 0 THEN #{ratingDelta} / #{countDelta} ELSE 0 END)
+        ON DUPLICATE KEY UPDATE
+            review_count = review_count + #{countDelta},
+            rating_sum   = rating_sum + #{ratingDelta},
+            avg_rating   = CASE WHEN review_count > 0 THEN rating_sum / review_count ELSE 0 END
+    </insert>
 
 </mapper>
