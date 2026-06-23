@@ -16,6 +16,17 @@ services:
       timeout: 3s
       retries: 20
 
+  redis:
+    image: redis:7-alpine
+    container_name: tripcrew-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   backend:
     build:
       context: ./tripcrew-backend
@@ -23,10 +34,14 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       DB_URL: ${DB_URL:-jdbc:mysql://mysql:3306/tripcrew?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8}
       DB_USERNAME: ${DB_USERNAME:-root}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       NAVER_MAP_CLIENT_ID: ${NAVER_MAP_CLIENT_ID:-}
       NAVER_MAP_CLIENT_SECRET: ${NAVER_MAP_CLIENT_SECRET:-}

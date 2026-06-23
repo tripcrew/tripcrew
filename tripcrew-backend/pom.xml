@@ -64,6 +64,12 @@
             <artifactId>flyway-mysql</artifactId>
         </dependency>
 
+        <!-- Redis: 최근 1시간 관광지 실시간 랭킹(ZSet) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
         <!-- JWT (F01 인증) -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>

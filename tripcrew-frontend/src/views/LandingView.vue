@@ -63,11 +63,16 @@
           </div>
         </div>
 
-        <div class="ranking-grid">
-          <article v-for="(item, i) in popular" :key="item.id" class="ranking-card">
-            <div class="ranking-card__rank">{{ String(i + 1).padStart(2, '0') }}</div>
+        <p v-if="rankingLoading" class="t-caption">실시간 랭킹을 불러오는 중입니다.</p>
+        <p v-else-if="rankingError" class="t-caption">{{ rankingError }}</p>
+        <p v-else-if="popular.length === 0" class="t-caption">아직 최근 1시간 내 랭킹 데이터가 없습니다.</p>
+
+        <div v-else class="ranking-grid">
+          <article v-for="item in popular" :key="item.id" class="ranking-card">
+            <div class="ranking-card__rank">{{ String(item.rank).padStart(2, '0') }}</div>
             <div class="ranking-card__thumb">
-              <div class="thumb-placeholder">
+              <img v-if="item.imageUrl" :src="item.imageUrl" :alt="item.title" />
+              <div v-else class="thumb-placeholder">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                   <rect x="3" y="3" width="18" height="18" rx="2"/>
                   <circle cx="9" cy="9" r="2"/>
@@ -76,16 +81,16 @@
               </div>
             </div>
             <div class="ranking-card__body">
-              <h3 class="ranking-card__title">{{ item.name }}</h3>
-              <p class="ranking-card__meta">{{ item.region }} · ★ {{ item.rating }}</p>
+              <h3 class="ranking-card__title">{{ item.title }}</h3>
+              <p class="ranking-card__meta">{{ item.region }}</p>
               <div class="tag-row">
-                <span class="chip chip--teal">{{ item.tags[0] }}</span>
-                <span class="chip">+{{ item.tags.length - 1 }}</span>
+                <span class="chip chip--teal">최근 1시간 {{ item.score }}점</span>
               </div>
             </div>
-            <div class="ranking-card__trend" :class="`trend--${item.trend}`">
+            <div :class="['ranking-card__trend', `trend--${item.trend}`]">
               <span v-if="item.trend === 'up'">▲ {{ item.delta }}</span>
               <span v-else-if="item.trend === 'down'">▼ {{ item.delta }}</span>
+              <span v-else-if="item.trend === 'new'">NEW</span>
               <span v-else>─</span>
             </div>
           </article>
@@ -129,16 +134,36 @@
 </template>
 
 <script setup>
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import AppHeader from '@/components/common/AppHeader.vue'
 import AppFooter from '@/components/common/AppFooter.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
+import { rankingApi } from '@/api/rankings'
 
-const popular = [
-  { id: 1, name: '오동도 동백숲', region: '전남 여수시', rating: 4.7, tags: ['자연', '동백', '산책'], trend: 'up', delta: 2 },
-  { id: 2, name: '강릉 안목해변', region: '강원 강릉시', rating: 4.6, tags: ['해변', '카페'], trend: 'same' },
-  { id: 3, name: '제주 성산일출봉', region: '제주 서귀포시', rating: 4.8, tags: ['자연', '일출', '세계유산', '트레킹'], trend: 'down', delta: 1 },
-  { id: 4, name: '부산 감천문화마을', region: '부산 사하구', rating: 4.5, tags: ['문화', '벽화', '포토'], trend: 'up', delta: 1 }
-]
+const popular = ref([])
+const rankingLoading = ref(true)
+const rankingError = ref('')
+let rankingTimer = null
+
+async function loadRanking() {
+  try {
+    popular.value = await rankingApi.getAttractions()
+    rankingError.value = ''
+  } catch (error) {
+    rankingError.value = error?.response?.data?.message || '실시간 랭킹을 불러오지 못했습니다.'
+  } finally {
+    rankingLoading.value = false
+  }
+}
+
+onMounted(() => {
+  loadRanking()
+  rankingTimer = window.setInterval(loadRanking, 30_000)
+})
+
+onBeforeUnmount(() => {
+  if (rankingTimer) window.clearInterval(rankingTimer)
+})
 </script>
 
 <style scoped>
@@ -380,6 +405,12 @@ const popular = [
   position: relative;
 }
 
+.ranking-card__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .thumb-placeholder {
   width: 100%;
   height: 100%;
@@ -421,6 +452,7 @@ const popular = [
 .trend--up { background: #E1F5EA; color: #1A7A4A; }
 .trend--down { background: #FBEAE2; color: #B12C3A; }
 .trend--same { background: var(--bg-2); color: var(--ink-soft); }
+.trend--new { background: var(--teal-soft); color: var(--teal-3); }
 
 /* Co-edit */
 .co-edit-banner {
