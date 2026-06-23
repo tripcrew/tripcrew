@@ -23,6 +23,14 @@
           <router-link to="/profile" class="avatar avatar--sm" :aria-label="`${displayName} 프로필`">
             {{ avatarText }}
           </router-link>
+          <button class="logout-btn" aria-label="로그아웃" title="로그아웃" @click="handleLogout">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            로그아웃
+          </button>
         </template>
         <template v-else>
           <router-link :to="{ path: '/auth', query: { mode: 'login' } }" class="nav-link">로그인</router-link>
@@ -35,6 +43,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
 
@@ -43,8 +52,15 @@ const props = defineProps({
   minimal: { type: Boolean, default: false }
 })
 
+const router = useRouter()
 const authStore = useAuthStore()
 const isLoggedIn = computed(() => props.loggedIn ?? authStore.isAuthenticated)
+
+async function handleLogout() {
+  if (!window.confirm('로그아웃하시겠어요?')) return
+  await authStore.logout()
+  router.replace('/')
+}
 const logoTo = computed(() => isLoggedIn.value ? '/home' : '/')
 const displayName = computed(() => authStore.user?.nickname || authStore.user?.email || '사용자')
 const avatarText = computed(() => displayName.value.trim().slice(0, 1).toUpperCase() || 'U')
@@ -128,6 +144,25 @@ const avatarText = computed(() => displayName.value.trim().slice(0, 1).toUpperCa
 .icon-btn:hover {
   background: var(--bg-2);
   color: var(--ink);
+}
+
+/* 로그아웃: 아이콘 + 텍스트. hover 시 '나가기'를 암시하는 coral 틴트 */
+.logout-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-3);
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.logout-btn:hover {
+  background: var(--coral-tint, #fff1ec);
+  color: var(--coral, #e06a4f);
 }
 
 .avatar {
