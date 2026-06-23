@@ -8,10 +8,18 @@
     </insert>
 
     <select id="findRecentByUserId" resultType="UserActivity">
-        SELECT id, user_id, activity_type, trip_plan_id, trip_plan_title, place_name, visit_day, created_at
-          FROM user_activities
-         WHERE user_id = #{userId}
-         ORDER BY created_at DESC, id DESC
+        SELECT ua.id,
+               ua.user_id,
+               ua.activity_type,
+               ua.trip_plan_id,
+               COALESCE(tp.title, ua.trip_plan_title) AS trip_plan_title,
+               ua.place_name,
+               ua.visit_day,
+               ua.created_at
+          FROM user_activities ua
+          LEFT JOIN trip_plans tp ON tp.id = ua.trip_plan_id
+         WHERE ua.user_id = #{userId}
+         ORDER BY ua.created_at DESC, ua.id DESC
          LIMIT #{limit}
     </select>
 </mapper>
