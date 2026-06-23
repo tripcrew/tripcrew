@@ -37,7 +37,19 @@
                 </p>
               </div>
               <div class="header-actions">
-                <button class="icon-action" type="button" aria-label="찜" title="찜">♡</button>
+                <button
+                  class="like-action"
+                  :class="{ liked }"
+                  type="button"
+                  :aria-label="liked ? '좋아요 취소' : '좋아요'"
+                  :aria-pressed="liked"
+                  :title="liked ? '좋아요 취소' : '좋아요'"
+                  :disabled="likeBusy"
+                  @click="toggleLike"
+                >
+                  <span class="like-heart">{{ liked ? '♥' : '♡' }}</span>
+                  <span class="like-count">{{ likeCountLabel }}</span>
+                </button>
                 <button class="icon-action" type="button" aria-label="공유" title="공유" @click="copyShareUrl">↗</button>
               </div>
             </header>
@@ -189,19 +201,30 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import { attractionApi } from '@/api/attractions'
 import { reviewApi } from '@/api/reviews'
+import { attractionLikeApi } from '@/api/attractionLikes'
 import { tripPlanApi } from '@/api/tripPlans'
 import AppHeader from '@/components/common/AppHeader.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
+import { useAuthStore } from '@/stores/auth'
 import ReviewImages from '@/components/review/ReviewImages.vue'
 
 const route = useRoute()
+const router = useRouter()
+const auth = useAuthStore()
 const attraction = ref(null)
 const isLoading = ref(false)
 const errorMessage = ref('')
+
+// 관광지 좋아요(찜)
+const liked = ref(false)
+const likeCount = ref(0)
+const likeBusy = ref(false)
+// 999 초과는 999+ 로 표시
+const likeCountLabel = computed(() => (likeCount.value > 999 ? '999+' : String(likeCount.value)))
 
 // 최근 후기 미리보기(최신 3개) + 평점 요약
 const recentReviews = ref([])
@@ -278,6 +301,38 @@ async function loadReviews() {
     reviewSummary.value = { average: 0, count: 0 }
   } finally {
     reviewsLoading.value = false
+  }
+}
+
+async function loadLikeStatus() {
+  try {
+    const res = await attractionLikeApi.status(route.params.id)
+    liked.value = res.liked
+    likeCount.value = res.likeCount
+  } catch {
+    liked.value = false
+    likeCount.value = 0
+  }
+}
+
+async function toggleLike() {
+  if (!auth.isAuthenticated) {
+    router.push({ path: '/auth', query: { mode: 'login', redirect: route.fullPath } })
+    return
+  }
+  if (likeBusy.value) return
+  likeBusy.value = true
+  try {
+    const res = liked.value
+      ? await attractionLikeApi.unlike(route.params.id)
+      : await attractionLikeApi.like(route.params.id)
+    liked.value = res.liked
+    likeCount.value = res.likeCount
+  } catch {
+    // 실패 시 상태 유지(서버 권위값 재동기화)
+    await loadLikeStatus()
+  } finally {
+    likeBusy.value = false
   }
 }
 
@@ -362,6 +417,7 @@ watch(selectedPlanId, () => {
 function loadAll() {
   loadAttraction()
   loadReviews()
+  loadLikeStatus()
 }
 
 watch(() => route.params.id, loadAll)
@@ -515,6 +571,56 @@ onMounted(loadAll)
   background: var(--bg-2);
   border-color: var(--line-2);
   transform: translateY(-1px);
+}
+
+/* 좋아요(찜) 버튼: 하트 + 총 개수. 누르면 빨갛게 채워짐 */
+.like-action {
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink-2);
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s, color 0.15s;
+}
+
+.like-action:hover:not(:disabled) {
+  background: var(--bg-2);
+  border-color: var(--line-2);
+  transform: translateY(-1px);
+}
+
+.like-action:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.like-heart {
+  font-size: 18px;
+  color: var(--ink-soft);
+  transition: color 0.15s, transform 0.15s;
+}
+
+.like-action.liked {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 8%, white);
+  color: var(--danger);
+}
+
+.like-action.liked .like-heart {
+  color: var(--danger);
+  transform: scale(1.12);
+}
+
+.like-count {
+  font-family: var(--font-mono);
+  font-size: 14px;
 }
 
 .rating-block {

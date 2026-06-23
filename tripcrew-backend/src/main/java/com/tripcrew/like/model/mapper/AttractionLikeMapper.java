@@ -1,0 +1,23 @@
+package com.tripcrew.like.model.mapper;
+
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+
+@Mapper
+public interface AttractionLikeMapper {
+
+    /** 좋아요 추가(멱등). 이미 있으면 무시(INSERT IGNORE). @return 새로 추가됐으면 1, 이미 있었으면 0. */
+    int insertIgnore(@Param("userId") Long userId, @Param("attractionNo") Integer attractionNo);
+
+    /** 좋아요 취소. @return 삭제된 행 수(없었으면 0). */
+    int delete(@Param("userId") Long userId, @Param("attractionNo") Integer attractionNo);
+
+    /** 해당 사용자가 이 관광지를 좋아요했는지. */
+    boolean exists(@Param("userId") Long userId, @Param("attractionNo") Integer attractionNo);
+
+    /** 관광지의 총 좋아요 수. */
+    long countByAttraction(@Param("attractionNo") Integer attractionNo);
+
+    /** 대상 관광지 존재 여부(앱레벨 검증 — 없으면 404). */
+    boolean existsAttraction(@Param("attractionNo") Integer attractionNo);
+}
