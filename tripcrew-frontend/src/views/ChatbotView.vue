@@ -40,8 +40,18 @@
           <div v-for="message in messages" :key="message.id" class="msg" :class="messageClass(message.role)">
             <div v-if="message.role === 'ASSISTANT'" class="msg__avatar">🤖</div>
             <div class="msg__content">
-              <div class="msg__bubble">
+              <div v-if="message.intro" class="msg__bubble msg__bubble--intro">
+                <strong>{{ message.title }}</strong>
                 <p>{{ message.content }}</p>
+                <ul>
+                  <li>여행 기간과 지역</li>
+                  <li>동행자와 이동수단</li>
+                  <li>원하는 분위기나 꼭 하고 싶은 것</li>
+                </ul>
+                <span class="intro-example">예: “강릉 1박 2일, 친구와 기차 여행, 카페와 바다 위주”</span>
+              </div>
+              <div v-else class="msg__bubble">
+                <div class="markdown-message" v-html="renderMessage(message.content)"></div>
               </div>
             </div>
           </div>
@@ -100,13 +110,7 @@ const suggestedPrompts = [
   '비 오는 날 갈만한 서울 실내 코스',
   '휠체어 접근 가능한 여행지 추천',
 ]
-const messages = ref([
-  {
-    id: crypto.randomUUID(),
-    role: 'ASSISTANT',
-    content: '안녕하세요. 여행 기간, 지역, 동행자, 이동수단을 알려주시면 코스를 추천해드릴게요.',
-  },
-])
+const messages = ref([createWelcomeMessage()])
 
 const canSend = computed(() => input.value.trim().length > 0 && !loading.value)
 
@@ -121,13 +125,67 @@ function usePrompt(prompt) {
 function resetChat() {
   input.value = ''
   errorMessage.value = ''
-  messages.value = [
-    {
-      id: crypto.randomUUID(),
-      role: 'ASSISTANT',
-      content: '새 대화를 시작할게요. 원하는 여행 조건을 편하게 입력해주세요.',
-    },
-  ]
+  messages.value = [createWelcomeMessage()]
+}
+
+function createWelcomeMessage() {
+  return {
+    id: crypto.randomUUID(),
+    role: 'ASSISTANT',
+    intro: true,
+    title: '안녕하세요! 여행 계획을 함께 만들어볼까요?',
+    content: '아는 정보만 편하게 알려주시면, 취향에 맞는 관광지와 동선을 추천해드릴게요.',
+  }
+}
+
+function renderMessage(content) {
+  const lines = escapeHtml(content).split('\n')
+  const html = []
+  let listType = null
+
+  const closeList = () => {
+    if (listType) html.push(`</${listType}>`)
+    listType = null
+  }
+
+  lines.forEach((line) => {
+    const heading = line.match(/^#{1,3}\s+(.+)$/)
+    const unordered = line.match(/^\s*[-*]\s+(.+)$/)
+    const ordered = line.match(/^\s*\d+\.\s+(.+)$/)
+
+    if (heading) {
+      closeList()
+      html.push(`<h3>${formatInlineMarkdown(heading[1])}</h3>`)
+    } else if (unordered || ordered) {
+      const nextListType = unordered ? 'ul' : 'ol'
+      if (listType !== nextListType) {
+        closeList()
+        listType = nextListType
+        html.push(`<${listType}>`)
+      }
+      html.push(`<li>${formatInlineMarkdown((unordered || ordered)[1])}</li>`)
+    } else if (line.trim()) {
+      closeList()
+      html.push(`<p>${formatInlineMarkdown(line)}</p>`)
+    } else {
+      closeList()
+    }
+  })
+  closeList()
+  return html.join('')
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
+function formatInlineMarkdown(value) {
+  return value.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
 }
 
 async function sendMessage() {
@@ -239,6 +297,62 @@ async function scrollToBottom() {
   background: var(--teal-soft);
   color: var(--teal-3);
   font-weight: 600;
+}
+
+.msg__bubble--intro {
+  min-width: min(100%, 390px);
+}
+
+.msg__bubble--intro strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 15px;
+}
+
+.msg__bubble--intro p {
+  line-height: 1.55;
+}
+
+.msg__bubble--intro ul {
+  margin: 12px 0;
+  padding-left: 18px;
+  color: var(--ink-3);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.intro-example {
+  display: block;
+  padding: 9px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.66);
+  color: var(--teal-3);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.markdown-message :deep(h3) {
+  margin: 0 0 10px;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.markdown-message :deep(p) {
+  margin: 0 0 10px;
+  line-height: 1.65;
+}
+
+.markdown-message :deep(ul),
+.markdown-message :deep(ol) {
+  margin: 0 0 12px;
+  padding-left: 20px;
+  line-height: 1.7;
+}
+
+.markdown-message :deep(strong) {
+  color: var(--ink);
+  font-weight: 800;
 }
 
 /* Main */
