@@ -4,16 +4,21 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.tripcrew.auth.model.dto.LoginRequest;
+import com.tripcrew.auth.model.dto.NicknameUpdateRequest;
+import com.tripcrew.auth.model.dto.PasswordVerificationRequest;
 import com.tripcrew.auth.model.dto.ReissueRequest;
 import com.tripcrew.auth.model.dto.SignupRequest;
 import com.tripcrew.auth.model.dto.TokenResponse;
 import com.tripcrew.auth.model.dto.UserResponse;
+import com.tripcrew.auth.model.dto.WithdrawRequest;
 import com.tripcrew.auth.service.AuthService;
 
 import jakarta.validation.Valid;
@@ -46,5 +51,24 @@ public class AuthController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void logout(@AuthenticationPrincipal Long userId) {
         authService.logout(userId);
+    }
+
+    @PostMapping("/me/verify-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void verifyPassword(@AuthenticationPrincipal Long userId,
+            @Valid @RequestBody PasswordVerificationRequest request) {
+        authService.verifyPassword(userId, request.currentPassword());
+    }
+
+    @PatchMapping("/me/nickname")
+    public UserResponse updateNickname(@AuthenticationPrincipal Long userId,
+            @Valid @RequestBody NicknameUpdateRequest request) {
+        return authService.updateNickname(userId, request.nickname(), request.currentPassword());
+    }
+
+    @DeleteMapping("/me")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void withdraw(@AuthenticationPrincipal Long userId, @Valid @RequestBody WithdrawRequest request) {
+        authService.withdraw(userId, request.currentPassword());
     }
 }

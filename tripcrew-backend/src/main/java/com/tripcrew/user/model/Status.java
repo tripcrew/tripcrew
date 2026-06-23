@@ -11,5 +11,7 @@ public enum Status {
      * 제재(밴)된 계정. 로그인·토큰 재발급이 차단된다.
      * <p>밴은 관리자(ADMIN/SUPER_ADMIN)가 부여하며, SUPER_ADMIN 대상은 밴할 수 없다.
      */
-    BANNED
+    BANNED,
+    /** 본인이 탈퇴한 계정. 데이터 관계는 보존하고 인증만 차단한다. */
+    WITHDRAWN
 }

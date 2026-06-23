@@ -16,6 +16,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 
+import com.tripcrew.user.model.Status;
+import com.tripcrew.user.model.mapper.UserMapper;
+
 /**
  * 요청의 Authorization: Bearer 토큰을 검증해 SecurityContext 에 인증 정보를 채운다.
  * 토큰이 없거나 유효하지 않으면 그냥 통과시키고, 인가는 SecurityConfig 규칙이 처리한다.
@@ -27,6 +30,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtProvider jwtProvider;
+    private final UserMapper userMapper;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
@@ -35,9 +39,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = resolveToken(request);
         if (token != null && jwtProvider.validate(token)) {
             Long userId = jwtProvider.getUserId(token);
-            String role = jwtProvider.getRole(token);
-            var authentication = new UsernamePasswordAuthenticationToken(userId, null, toAuthorities(role));
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+            userMapper.findById(userId)
+                    .filter(user -> user.getStatus() == Status.ACTIVE)
+                    .ifPresent(user -> {
+                        String role = jwtProvider.getRole(token);
+                        var authentication = new UsernamePasswordAuthenticationToken(userId, null, toAuthorities(role));
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                    });
         }
         filterChain.doFilter(request, response);
     }

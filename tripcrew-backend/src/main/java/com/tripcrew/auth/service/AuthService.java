@@ -6,11 +6,13 @@ import java.time.LocalDateTime;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
 
 import com.tripcrew.auth.exception.BannedUserException;
 import com.tripcrew.auth.exception.DuplicateEmailException;
 import com.tripcrew.auth.exception.InvalidCredentialsException;
 import com.tripcrew.auth.exception.InvalidTokenException;
+import com.tripcrew.auth.exception.WithdrawnUserException;
 import com.tripcrew.auth.jwt.JwtProvider;
 import com.tripcrew.auth.model.dto.LoginRequest;
 import com.tripcrew.auth.model.dto.RefreshToken;
@@ -22,6 +24,7 @@ import com.tripcrew.user.model.Role;
 import com.tripcrew.user.model.Status;
 import com.tripcrew.user.model.dto.User;
 import com.tripcrew.user.model.mapper.UserMapper;
+import com.tripcrew.common.exception.BusinessException;
 
 import lombok.RequiredArgsConstructor;
 
@@ -58,9 +61,7 @@ public class AuthService {
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new InvalidCredentialsException();
         }
-        if (user.getStatus() == Status.BANNED) {
-            throw new BannedUserException();
-        }
+        ensureActive(user);
         return issueTokens(user);
     }
 
@@ -78,10 +79,7 @@ public class AuthService {
         }
         User user = userMapper.findById(stored.getUserId())
                 .orElseThrow(InvalidTokenException::new);
-        if (user.getStatus() == Status.BANNED) {
-            refreshTokenMapper.deleteByToken(refreshToken);
-            throw new BannedUserException();
-        }
+        ensureActive(user);
         return issueTokens(user);
     }
 
@@ -89,6 +87,55 @@ public class AuthService {
     @Transactional
     public void logout(Long userId) {
         refreshTokenMapper.deleteByUserId(userId);
+    }
+
+    /** 정보 수정 화면 진입 전 현재 비밀번호를 확인한다. */
+    @Transactional(readOnly = true)
+    public void verifyPassword(Long userId, String currentPassword) {
+        User user = findUser(userId);
+        ensureActive(user);
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new InvalidCredentialsException();
+        }
+    }
+
+    /** 현재 비밀번호를 확인한 뒤 로그인한 사용자의 닉네임을 변경한다. */
+    @Transactional
+    public UserResponse updateNickname(Long userId, String nickname, String currentPassword) {
+        User user = findUser(userId);
+        ensureActive(user);
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new InvalidCredentialsException();
+        }
+        userMapper.updateNickname(userId, nickname.trim());
+        user.setNickname(nickname.trim());
+        return UserResponse.from(user);
+    }
+
+    /** 비밀번호 재확인 후 계정을 비활성화하고 모든 세션을 끊는다. */
+    @Transactional
+    public void withdraw(Long userId, String currentPassword) {
+        User user = findUser(userId);
+        ensureActive(user);
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new InvalidCredentialsException();
+        }
+        userMapper.updateStatus(userId, Status.WITHDRAWN);
+        refreshTokenMapper.deleteByUserId(userId);
+    }
+
+    private User findUser(Long userId) {
+        return userMapper.findById(userId)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
+    }
+
+    private void ensureActive(User user) {
+        if (user.getStatus() == Status.BANNED) {
+            throw new BannedUserException();
+        }
+        if (user.getStatus() == Status.WITHDRAWN) {
+            throw new WithdrawnUserException();
+        }
     }
 
     /** access/refresh 발급 + refresh 는 사용자당 1개로 갱신(회전). */
