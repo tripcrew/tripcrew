@@ -13,7 +13,7 @@ import com.tripcrew.report.model.ReportTargetType;
 import com.tripcrew.report.model.dto.AdminReportResponse;
 import com.tripcrew.report.model.dto.Report;
 import com.tripcrew.report.model.mapper.ReportMapper;
-import com.tripcrew.review.model.mapper.ReviewMapper;
+import com.tripcrew.review.service.ReviewService;
 import com.tripcrew.user.model.dto.User;
 import com.tripcrew.user.model.mapper.UserMapper;
 
@@ -35,7 +35,7 @@ public class AdminReportService {
 
     private final ReportMapper reportMapper;
     private final UserMapper userMapper;
-    private final ReviewMapper reviewMapper;
+    private final ReviewService reviewService;
     private final AdminUserService adminUserService;
 
     /** 신고 목록. status 가 null 이면 전체, 아니면 해당 상태만(보통 OPEN). */
@@ -61,11 +61,11 @@ public class AdminReportService {
         }
         reportMapper.updateStatus(reportId, ReportStatus.RESOLVED);
 
-        // 후기 신고를 처리완료하면 해당 후기를 숨김(soft-delete)으로 전환.
-        // 같은 트랜잭션이라 신고 처리와 후기 숨김이 원자적으로 묶인다.
+        // 후기 신고를 처리완료하면 해당 후기를 숨김(soft-delete)으로 전환하고 평점 집계에서 제외.
+        // 같은 트랜잭션이라 신고 처리·후기 숨김·집계 차감이 원자적으로 묶인다.
         // 하드삭제가 아니므로 아래 findReportedUserId 조인(작성자 식별)은 그대로 동작한다.
         if (report.getTargetType() == ReportTargetType.REVIEW) {
-            reviewMapper.hideById(report.getTargetId());
+            reviewService.hideForReport(report.getTargetId());
         }
 
         Long reportedUserId = reportMapper.findReportedUserId(reportId);

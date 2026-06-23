@@ -56,7 +56,7 @@
               <div class="rating-big">
                 <strong>{{ averageRating.toFixed(1) }}</strong>
                 <div class="stars">{{ averageStars }}</div>
-                <span class="t-caption">{{ reviewCount }} 후기</span>
+                <span class="t-caption">{{ totalCount }} 후기</span>
               </div>
 
               <div class="rating-bars">
@@ -69,11 +69,22 @@
                 </div>
               </div>
             </div>
+
+            <div class="sort-tabs">
+              <button
+                v-for="opt in SORT_OPTIONS"
+                :key="opt.value"
+                :class="['sort-tab', { active: sort === opt.value }]"
+                @click="changeSort(opt.value)"
+              >
+                {{ opt.label }}
+              </button>
+            </div>
           </header>
 
           <p v-if="loading" class="empty-note">불러오는 중…</p>
           <p v-else-if="listError" class="empty-note">{{ listError }}</p>
-          <p v-else-if="reviewCount === 0" class="empty-note">아직 후기가 없어요. 첫 후기를 남겨보세요!</p>
+          <p v-else-if="totalCount === 0" class="empty-note">아직 후기가 없어요. 첫 후기를 남겨보세요!</p>
 
           <ul v-else class="reviews">
             <li v-for="r in reviews" :key="r.id" class="review-item">
@@ -88,20 +99,56 @@
                   <span class="t-caption">· {{ formatDate(r.createdAt) }}</span>
                 </div>
               </header>
-              <p class="review-content">{{ r.content }}</p>
-              <footer class="review-foot">
-                <button
-                  v-if="r.userId !== currentUserId"
-                  class="report-btn"
-                  :disabled="reportedIds.includes(r.id)"
-                  @click="openReport(r)"
-                >
-                  {{ reportedIds.includes(r.id) ? '신고됨' : '신고' }}
-                </button>
-                <span v-else class="own-tag">내 후기</span>
-              </footer>
+
+              <!-- 수정 모드(본인 후기) -->
+              <div v-if="editingId === r.id" class="edit-block">
+                <div class="star-input">
+                  <span
+                    v-for="n in 5"
+                    :key="n"
+                    :class="['star-btn', { active: n <= editRating }]"
+                    @click="editRating = n"
+                  >★</span>
+                  <span class="rating-num">{{ editRating.toFixed(1) }}</span>
+                </div>
+                <textarea v-model="editContent" class="review-textarea" rows="4" maxlength="1000" />
+                <p v-if="editError" class="form-error">{{ editError }}</p>
+                <div class="edit-actions">
+                  <BaseButton variant="secondary" @click="cancelEdit">취소</BaseButton>
+                  <BaseButton variant="primary" :disabled="editSubmitting" @click="saveEdit(r)">
+                    {{ editSubmitting ? '저장 중…' : '저장' }}
+                  </BaseButton>
+                </div>
+              </div>
+
+              <template v-else>
+                <p class="review-content">{{ r.content }}</p>
+                <footer class="review-foot">
+                  <template v-if="r.userId === currentUserId">
+                    <span class="own-tag">내 후기</span>
+                    <button class="edit-btn" @click="startEdit(r)">수정</button>
+                    <button class="delete-btn" :disabled="deletingId === r.id" @click="removeReview(r)">
+                      {{ deletingId === r.id ? '삭제 중…' : '삭제' }}
+                    </button>
+                  </template>
+                  <button
+                    v-else
+                    class="report-btn"
+                    :disabled="reportedIds.includes(r.id)"
+                    @click="openReport(r)"
+                  >
+                    {{ reportedIds.includes(r.id) ? '신고됨' : '신고' }}
+                  </button>
+                </footer>
+              </template>
             </li>
           </ul>
+
+          <div v-if="hasMore" class="load-more">
+            <BaseButton variant="secondary" full :disabled="loadingMore" @click="loadMore">
+              {{ loadingMore ? '불러오는 중…' : '더 보기' }}
+            </BaseButton>
+          </div>
         </section>
       </div>
     </main>
@@ -158,11 +205,25 @@ const auth = useAuthStore()
 const TARGET_TYPE = 'ATTRACTION'
 const targetId = computed(() => Number(route.params.id))
 
+const PAGE_SIZE = 10
+const SORT_OPTIONS = [
+  { value: 'LATEST', label: '최신순' },
+  { value: 'RATING_HIGH', label: '평점 높은순' },
+  { value: 'RATING_LOW', label: '평점 낮은순' },
+]
+
 const attraction = ref(null)
 const reviews = ref([])
 const reportedIds = ref([])
 const loading = ref(false)
+const loadingMore = ref(false)
 const listError = ref('')
+
+// 서버가 내려주는 평점 요약(페이지와 무관한 대상 전체 집계)
+const summary = ref({ average: 0, count: 0, distribution: {} })
+const sort = ref('LATEST')
+const page = ref(0)
+const totalPages = ref(0)
 
 // 작성 폼
 const rating = ref(5)
@@ -170,22 +231,28 @@ const content = ref('')
 const submitting = ref(false)
 const formError = ref('')
 
+// 수정 인라인 폼
+const editingId = ref(null)
+const editRating = ref(5)
+const editContent = ref('')
+const editSubmitting = ref(false)
+const editError = ref('')
+const deletingId = ref(null)
+
 const isAuthenticated = computed(() => auth.isAuthenticated)
 const currentUserId = computed(() => (auth.user ? auth.user.id : null))
 const attractionTitle = computed(() => (attraction.value ? attraction.value.title : '관광지'))
 
-const reviewCount = computed(() => reviews.value.length)
-const averageRating = computed(() => {
-  if (!reviews.value.length) return 0
-  const sum = reviews.value.reduce((acc, r) => acc + r.rating, 0)
-  return sum / reviews.value.length
-})
+const totalCount = computed(() => summary.value.count)
+const averageRating = computed(() => summary.value.average || 0)
 const averageStars = computed(() => starText(Math.round(averageRating.value)))
-// 5★ ~ 1★ 분포
+const hasMore = computed(() => page.value + 1 < totalPages.value)
+// 5★ ~ 1★ 분포(서버 집계 기준)
 const bars = computed(() =>
   [5, 4, 3, 2, 1].map((star) => {
-    const count = reviews.value.filter((r) => r.rating === star).length
-    const pct = reviews.value.length ? Math.round((count / reviews.value.length) * 100) : 0
+    const count = summary.value.distribution[star] || 0
+    const total = summary.value.count || 0
+    const pct = total ? Math.round((count / total) * 100) : 0
     return { star, count, pct }
   }),
 )
@@ -205,20 +272,96 @@ function formatDate(iso) {
   return iso ? iso.slice(0, 10) : ''
 }
 
+function applyPage(res, append) {
+  const list = res.content || []
+  reviews.value = append ? [...reviews.value, ...list] : list
+  page.value = res.page
+  totalPages.value = res.totalPages
+  if (res.summary) summary.value = res.summary
+}
+
 async function loadAll() {
   loading.value = true
   listError.value = ''
   try {
-    const [list, detail] = await Promise.all([
-      reviewApi.listByTarget(TARGET_TYPE, targetId.value),
+    const [res, detail] = await Promise.all([
+      reviewApi.listByTarget(TARGET_TYPE, targetId.value, { page: 0, size: PAGE_SIZE, sort: sort.value }),
       attractionApi.get(targetId.value).catch(() => null),
     ])
-    reviews.value = list
+    applyPage(res, false)
     attraction.value = detail
   } catch (e) {
     listError.value = '후기를 불러오지 못했어요.'
   } finally {
     loading.value = false
+  }
+}
+
+async function loadMore() {
+  if (loadingMore.value || !hasMore.value) return
+  loadingMore.value = true
+  try {
+    const res = await reviewApi.listByTarget(TARGET_TYPE, targetId.value, {
+      page: page.value + 1,
+      size: PAGE_SIZE,
+      sort: sort.value,
+    })
+    applyPage(res, true)
+  } catch (e) {
+    listError.value = '후기를 더 불러오지 못했어요.'
+  } finally {
+    loadingMore.value = false
+  }
+}
+
+function changeSort(value) {
+  if (sort.value === value) return
+  sort.value = value
+  cancelEdit()
+  loadAll()
+}
+
+function startEdit(review) {
+  editingId.value = review.id
+  editRating.value = review.rating
+  editContent.value = review.content || ''
+  editError.value = ''
+}
+function cancelEdit() {
+  editingId.value = null
+  editError.value = ''
+}
+async function saveEdit(review) {
+  if (editContent.value.trim().length === 0) {
+    editError.value = '후기 내용을 입력해주세요.'
+    return
+  }
+  editSubmitting.value = true
+  editError.value = ''
+  try {
+    await reviewApi.update(review.id, {
+      rating: editRating.value,
+      content: editContent.value.trim(),
+    })
+    editingId.value = null
+    await loadAll()
+  } catch (e) {
+    editError.value = e?.response?.data?.message || '후기 수정에 실패했어요.'
+  } finally {
+    editSubmitting.value = false
+  }
+}
+async function removeReview(review) {
+  if (!window.confirm('이 후기를 삭제할까요? 삭제하면 되돌릴 수 없어요.')) return
+  deletingId.value = review.id
+  try {
+    await reviewApi.remove(review.id)
+    if (editingId.value === review.id) editingId.value = null
+    await loadAll()
+  } catch (e) {
+    listError.value = e?.response?.data?.message || '후기 삭제에 실패했어요.'
+  } finally {
+    deletingId.value = null
   }
 }
 
@@ -591,7 +734,9 @@ onMounted(loadAll)
   align-items: center;
 }
 
-.report-btn {
+.report-btn,
+.edit-btn,
+.delete-btn {
   padding: 6px 12px;
   font-size: 12px;
   color: var(--ink-soft);
@@ -599,10 +744,58 @@ onMounted(loadAll)
 
 .report-btn:hover:not(:disabled) { color: var(--danger); }
 .report-btn:disabled { color: var(--muted); cursor: default; }
+.edit-btn:hover:not(:disabled) { color: var(--teal); }
+.delete-btn:hover:not(:disabled) { color: var(--danger); }
+.delete-btn:disabled { color: var(--muted); cursor: default; }
 
 .own-tag {
   font-size: 12px;
   color: var(--muted);
+}
+
+/* 정렬 탭 */
+.sort-tabs {
+  display: flex;
+  gap: 6px;
+  margin-top: 20px;
+}
+
+.sort-tab {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.sort-tab:hover { border-color: var(--teal); }
+.sort-tab.active {
+  color: white;
+  background: var(--teal);
+  border-color: var(--teal);
+}
+
+/* 인라인 수정 폼 */
+.edit-block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* 더 보기 */
+.load-more {
+  margin-top: 20px;
 }
 
 /* 신고 모달 */
