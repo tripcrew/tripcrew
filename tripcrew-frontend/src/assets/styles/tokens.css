@@ -31,6 +31,18 @@
   --line: #E9ECEF;
   --line-2: #DEE2E6;
 
+  /* === Surfaces (cards/panels/inputs) — flips in dark theme === */
+  --surface: #FFFFFF;
+  --surface-2: #FFFFFF;
+  /* Always-dark chrome (admin top bar, dark tooltips, super-admin chip) — stays dark in BOTH themes (white text on it) */
+  --surface-inverse: #1B2027;
+  --glass: rgba(255, 255, 255, 0.82);   /* frosted card over a page bg */
+  --header-bg: rgba(255, 255, 255, 0.92);
+
+  /* === Brand "ink" — teal/coral used as TEXT on soft tints (vs --teal-3/--coral-2 used as dark surfaces) === */
+  --teal-ink: var(--teal-3);
+  --coral-ink: var(--coral-2);
+
   /* === Color: Status === */
   --success: #2BA66A;
   --warning: #E89A3C;
@@ -73,4 +85,53 @@
   /* === Layout === */
   --container-max: 1280px;
   --header-height: 64px;
+
+  color-scheme: light;
+}
+
+/* ============================================
+ * Dark theme — only token *overrides*.
+ * Brand hues (--teal/--coral) stay; their soft tints, inks,
+ * neutrals, surfaces and shadows flip. Applied via
+ * <html data-theme="dark"> (set pre-paint in index.html → no FOUC).
+ * ============================================ */
+[data-theme="dark"] {
+  /* Ink (text) — softened off-white to avoid glare */
+  --ink: #E8EBEF;
+  --ink-2: #CDD3DA;
+  --ink-3: #AAB2BB;
+  --ink-soft: #828B95;
+  --muted: #5C656F;
+
+  /* Backgrounds & lines */
+  --bg: #0E1217;
+  --bg-soft: #12171E;
+  --bg-2: #1B222B;
+  --line: #28303A;
+  --line-2: #353F4A;
+
+  /* Surfaces — elevated above the page */
+  --surface: #161C24;
+  --surface-2: #1E2630;
+  --surface-inverse: #232B35;
+  --glass: rgba(22, 28, 36, 0.72);
+  --header-bg: rgba(16, 20, 26, 0.86);
+
+  /* Brand soft tints (chip / active / selected backgrounds) */
+  --teal-soft: #15352B;
+  --teal-tint: #102620;
+  --coral-soft: #3A2117;
+  --coral-tint: #2C1812;
+
+  /* Brand "ink" — readable teal/coral text on the dark tints above */
+  --teal-ink: #5CCBA7;
+  --coral-ink: #F0875E;
+
+  /* Shadows — deeper/blacker so elevation reads on dark surfaces */
+  --sh-1: 0 1px 2px rgba(0, 0, 0, 0.30), 0 1px 3px rgba(0, 0, 0, 0.36);
+  --sh-2: 0 2px 4px rgba(0, 0, 0, 0.32), 0 4px 12px rgba(0, 0, 0, 0.40);
+  --sh-3: 0 4px 8px rgba(0, 0, 0, 0.34), 0 8px 24px rgba(0, 0, 0, 0.46);
+  --sh-modal: 0 24px 48px rgba(0, 0, 0, 0.56), 0 2px 4px rgba(0, 0, 0, 0.40);
+
+  color-scheme: dark;
 }

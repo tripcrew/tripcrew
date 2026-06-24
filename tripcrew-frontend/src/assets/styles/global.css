@@ -13,6 +13,20 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Smooth light↔dark hand-off. Scoped to color props so layout never animates.
+   Suppressed when the user prefers reduced motion. */
+body,
+body * {
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body,
+  body * {
+    transition: none !important;
+  }
+}
+
 /* ============================================
  * Typography utilities
  * ============================================ */
@@ -107,12 +121,12 @@ body {
 
 .chip--teal {
   background: var(--teal-soft);
-  color: var(--teal-3);
+  color: var(--teal-ink);
 }
 
 .chip--coral {
   background: var(--coral-soft);
-  color: var(--coral-2);
+  color: var(--coral-ink);
 }
 
 .chip--success {

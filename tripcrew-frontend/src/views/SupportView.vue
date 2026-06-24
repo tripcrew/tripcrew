@@ -184,7 +184,7 @@ onMounted(loadMine)
 .back-link {
   display: inline-flex;
   margin-bottom: 24px;
-  color: var(--teal-3);
+  color: var(--teal-ink);
   font-size: 14px;
   font-weight: 700;
 }
@@ -200,7 +200,7 @@ onMounted(loadMine)
 .support-head h1 { margin-top: 8px; color: var(--ink); font-size: 30px; letter-spacing: -0.8px; }
 .support-head__lead { margin-top: 12px; color: var(--ink-3); font-size: 16px; line-height: 1.6; }
 .support-head__hint { margin-top: 8px; color: var(--ink-soft); font-size: 13px; }
-.support-head__hint a { color: var(--teal-3); font-weight: 700; }
+.support-head__hint a { color: var(--teal-ink); font-weight: 700; }
 
 /* 인라인 토스트 */
 .support-flash {
@@ -313,7 +313,7 @@ onMounted(loadMine)
   background: var(--teal-soft);
   border-radius: var(--r-md);
 }
-.inquiry-block--answer .inquiry-block__label { color: var(--teal-3); }
+.inquiry-block--answer .inquiry-block__label { color: var(--teal-ink); }
 .inquiry-pending { margin-top: 14px; font-size: 13px; color: var(--ink-soft); }
 
 .support-button {

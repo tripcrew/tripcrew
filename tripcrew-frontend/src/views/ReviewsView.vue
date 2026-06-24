@@ -505,7 +505,7 @@ onMounted(loadAll)
 
 /* Write form */
 .write-form {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
   padding: 28px;
@@ -582,7 +582,7 @@ onMounted(loadAll)
 
 .review-textarea:focus {
   outline: none;
-  background: white;
+  background: var(--surface);
   border-color: var(--teal);
   box-shadow: 0 0 0 2px var(--teal-soft);
 }
@@ -621,7 +621,7 @@ onMounted(loadAll)
 
 /* Reviews list */
 .reviews-list {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
   padding: 28px;
@@ -653,7 +653,7 @@ onMounted(loadAll)
 .rating-big strong {
   font-size: 48px;
   font-weight: 800;
-  color: var(--teal-3);
+  color: var(--teal-ink);
   letter-spacing: -1.5px;
   line-height: 1;
 }
@@ -861,7 +861,7 @@ onMounted(loadAll)
 }
 
 .modal {
-  background: white;
+  background: var(--surface);
   border-radius: var(--r-xl);
   padding: 28px;
   width: 100%;

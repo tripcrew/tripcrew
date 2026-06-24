@@ -86,7 +86,7 @@ onMounted(load)
 .page-head .t-caption { margin-top: 6px; color: var(--ink-soft); }
 
 .notice-list {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   overflow: hidden;
@@ -110,7 +110,7 @@ onMounted(load)
 .pin-badge {
   font-size: 12px;
   font-weight: 700;
-  color: var(--teal-3);
+  color: var(--teal-ink);
   white-space: nowrap;
 }
 
@@ -133,7 +133,7 @@ onMounted(load)
 .list-empty { padding: 48px 20px; text-align: center; color: var(--muted); }
 
 .state-panel {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   padding: 32px;

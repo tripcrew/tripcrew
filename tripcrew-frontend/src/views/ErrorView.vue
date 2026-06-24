@@ -98,7 +98,7 @@ const def = computed(() => ERRORS[route.params.type] || ERRORS['404'])
 }
 
 .error-card {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
   padding: 36px;

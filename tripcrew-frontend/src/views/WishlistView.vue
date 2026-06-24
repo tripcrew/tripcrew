@@ -267,7 +267,7 @@ onMounted(() => {
   flex-shrink: 0;
   padding: 6px 14px;
   background: var(--teal-tint);
-  color: var(--teal-3);
+  color: var(--teal-ink);
   border-radius: 999px;
   font-weight: 700;
   font-size: 14px;
@@ -287,7 +287,7 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   padding: 64px 16px;
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
   text-align: center;
@@ -316,7 +316,7 @@ onMounted(() => {
 }
 
 .wish-card {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
   overflow: hidden;
@@ -362,7 +362,7 @@ onMounted(() => {
   place-items: center;
   font-size: 18px;
   color: var(--danger);
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--glass);
   border-radius: 50%;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
@@ -371,7 +371,7 @@ onMounted(() => {
 
 .card-heart:hover:not(:disabled) {
   transform: scale(1.1);
-  background: white;
+  background: var(--surface);
 }
 
 .card-heart:disabled {
@@ -442,7 +442,7 @@ onMounted(() => {
 
 .chip--teal {
   background: var(--teal-tint);
-  color: var(--teal-3);
+  color: var(--teal-ink);
 }
 
 .chip--like {
@@ -475,7 +475,7 @@ onMounted(() => {
 }
 
 .modal {
-  background: white;
+  background: var(--surface);
   border-radius: var(--r-xl);
   padding: 28px;
   width: 100%;
@@ -518,7 +518,7 @@ onMounted(() => {
 
 .form-ok {
   font-size: 13px;
-  color: var(--teal-3);
+  color: var(--teal-ink);
   margin-bottom: 8px;
 }
 

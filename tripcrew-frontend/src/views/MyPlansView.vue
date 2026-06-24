@@ -339,7 +339,7 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-md, 12px);
   padding: 14px 16px;
@@ -372,7 +372,7 @@ onMounted(() => {
   font-size: 13px;
   font-weight: 600;
   border: 1px solid var(--line);
-  background: white;
+  background: var(--surface);
   color: var(--ink-3);
   transition: all 0.15s;
 }
@@ -467,7 +467,7 @@ onMounted(() => {
   padding: 18px;
   border: 1px dashed var(--line-2);
   border-radius: var(--r-md);
-  background: rgba(255, 255, 255, 0.55);
+  background: var(--glass);
   color: var(--ink-soft);
   font-size: 13px;
 }
@@ -479,7 +479,7 @@ onMounted(() => {
 }
 
 .plan-card {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   padding: 20px;
@@ -511,7 +511,7 @@ onMounted(() => {
 }
 
 .status--active { background: var(--teal); color: white; }
-.status--ready { background: var(--coral-tint); color: var(--coral-2); }
+.status--ready { background: var(--coral-tint); color: var(--coral-ink); }
 .status--done { background: #E1F5EA; color: #1A7A4A; }
 .status--shared { background: var(--coral-tint, #fff1ec); color: var(--coral, #e06a4f); }
 

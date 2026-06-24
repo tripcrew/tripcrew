@@ -214,7 +214,7 @@ onMounted(load)
 
 /* 작성/수정 폼 */
 .form-card {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   padding: 24px;
@@ -238,7 +238,7 @@ onMounted(load)
 .form-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
 .table-card {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   overflow: hidden;
@@ -263,7 +263,7 @@ onMounted(load)
 .table-empty { text-align: center; padding: 40px 16px; color: var(--muted); }
 
 .state-panel {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   padding: 32px;

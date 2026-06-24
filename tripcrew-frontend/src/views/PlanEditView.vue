@@ -1652,7 +1652,7 @@ onBeforeUnmount(() => {
 
 /* 편집 폼 */
 .edit-card {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
   padding: 24px;
@@ -1716,7 +1716,7 @@ onBeforeUnmount(() => {
 }
 
 .plan-main {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
   padding: 24px;
@@ -1736,7 +1736,7 @@ onBeforeUnmount(() => {
   height: 38px;
   border: 1px solid var(--line-2);
   border-radius: 10px;
-  background: white;
+  background: var(--surface);
   color: var(--ink-3);
   font-size: 16px;
   font-weight: 800;
@@ -1765,7 +1765,7 @@ onBeforeUnmount(() => {
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 0 12px;
-  background: white;
+  background: var(--surface);
   color: var(--ink);
   font: inherit;
 }
@@ -1784,7 +1784,7 @@ onBeforeUnmount(() => {
 }
 
 .day-go-btn {
-  background: white;
+  background: var(--surface);
   border-color: var(--line-2);
 }
 
@@ -1807,7 +1807,7 @@ onBeforeUnmount(() => {
 .place-search {
   padding: 16px;
   margin-bottom: 18px;
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 12px;
 }
@@ -1848,7 +1848,7 @@ onBeforeUnmount(() => {
   padding: 0 8px;
   border: 1px solid var(--line-2);
   border-radius: 7px;
-  background: white;
+  background: var(--surface);
   color: var(--ink-3);
   font: inherit;
   font-size: 12px;
@@ -1904,7 +1904,7 @@ onBeforeUnmount(() => {
 .attraction-result__image {
   display: grid;
   place-items: center;
-  background: white;
+  background: var(--surface);
 }
 
 .attraction-result__body {
@@ -1925,7 +1925,7 @@ onBeforeUnmount(() => {
 .attraction-result__body small { color: var(--ink-soft); }
 
 .attraction-result__add {
-  color: var(--teal-3);
+  color: var(--teal-ink);
   font-size: 12px;
   font-weight: 800;
 }
@@ -2022,7 +2022,7 @@ onBeforeUnmount(() => {
   gap: 12px;
   min-height: 70px;
   padding: 14px;
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 10px;
 }
@@ -2070,7 +2070,7 @@ onBeforeUnmount(() => {
   border-right: 0;
   border-radius: 8px 0 0 8px;
   padding: 0 8px;
-  background: white;
+  background: var(--surface);
   color: var(--ink);
   font: inherit;
   font-size: 12px;
@@ -2087,7 +2087,7 @@ onBeforeUnmount(() => {
   padding: 0 9px;
   border: 1px solid var(--line-2);
   border-radius: 8px;
-  background: white;
+  background: var(--surface);
   color: var(--ink-3);
   font-size: 12px;
   font-weight: 700;
@@ -2123,7 +2123,7 @@ onBeforeUnmount(() => {
 .meta-conflict__msg {
   font-size: 13px;
   font-weight: 600;
-  color: var(--teal-3);
+  color: var(--teal-ink);
 }
 
 .meta-conflict__actions {
@@ -2135,7 +2135,7 @@ onBeforeUnmount(() => {
 .plan-map {
   position: sticky;
   top: 88px;
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
   overflow: hidden;
@@ -2182,7 +2182,7 @@ onBeforeUnmount(() => {
   padding: 0 12px;
   border: 1px solid var(--line-2);
   border-radius: 9px;
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--glass);
   color: var(--ink-3);
   box-shadow: var(--sh-1);
   font-size: 12px;
@@ -2191,7 +2191,7 @@ onBeforeUnmount(() => {
 
 .map-fit-btn:hover {
   border-color: var(--teal);
-  color: var(--teal-3);
+  color: var(--teal-ink);
 }
 
 .map-traffic-legend {
@@ -2204,7 +2204,7 @@ onBeforeUnmount(() => {
   padding: 8px 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--glass);
   box-shadow: var(--sh-1);
   color: var(--ink-3);
   font-size: 11px;
@@ -2240,7 +2240,7 @@ onBeforeUnmount(() => {
   padding: 8px 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: white;
+  background: var(--surface);
   color: var(--ink);
   box-shadow: var(--sh-2);
   font-size: 12px;
@@ -2252,7 +2252,7 @@ onBeforeUnmount(() => {
 
 .map-info {
   padding: 14px 18px;
-  background: white;
+  background: var(--surface);
   border-top: 1px solid var(--line);
   display: flex;
   justify-content: space-between;
@@ -2288,7 +2288,7 @@ onBeforeUnmount(() => {
 }
 
 .route-cost-card__head > span {
-  color: var(--teal-3);
+  color: var(--teal-ink);
   font-size: 13px;
   font-weight: 800;
 }
@@ -2309,7 +2309,7 @@ onBeforeUnmount(() => {
   padding: 4px 7px;
   border: 1px solid rgba(15, 110, 86, 0.14);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--glass);
   color: var(--ink-3);
   font-family: var(--font-mono);
   font-size: 11px;
@@ -2326,7 +2326,7 @@ onBeforeUnmount(() => {
 }
 
 .route-cost-card__total strong {
-  color: var(--teal-3);
+  color: var(--teal-ink);
   font-family: var(--font-mono);
   font-size: 16px;
 }
@@ -2363,7 +2363,7 @@ onBeforeUnmount(() => {
   width: min(520px, 100%);
   padding: 28px;
   border-radius: 22px;
-  background: white;
+  background: var(--surface);
   box-shadow: 0 24px 80px rgba(20, 38, 46, 0.24);
 }
 
@@ -2491,7 +2491,7 @@ onBeforeUnmount(() => {
   padding: 54px;
   border: 1px solid rgba(255, 255, 255, 0.7);
   border-radius: 26px;
-  background: white;
+  background: var(--surface);
   box-shadow: 0 24px 80px rgba(20, 38, 46, 0.24);
 }
 

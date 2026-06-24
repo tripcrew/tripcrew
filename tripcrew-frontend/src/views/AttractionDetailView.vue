@@ -525,7 +525,7 @@ onMounted(loadAll)
   display: grid;
   place-items: center;
   min-height: 320px;
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
   color: var(--ink-soft);
@@ -598,7 +598,7 @@ onMounted(loadAll)
   gap: 2px;
   padding: 10px 12px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--glass);
   color: var(--ink);
   font-size: 12px;
   box-shadow: var(--sh-1);
@@ -627,7 +627,7 @@ onMounted(loadAll)
 }
 
 .detail-main {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
   padding: 32px;
@@ -837,7 +837,7 @@ onMounted(loadAll)
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 0 12px;
-  background: white;
+  background: var(--surface);
   font: inherit;
 }
 
@@ -943,7 +943,7 @@ onMounted(loadAll)
 }
 
 .info-card {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   padding: 20px;

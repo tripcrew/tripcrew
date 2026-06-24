@@ -150,7 +150,7 @@ onMounted(load)
 .head-actions { display: flex; gap: 8px; }
 
 .table-card {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   overflow: hidden;
@@ -195,7 +195,7 @@ onMounted(load)
 
 .role--user { background: var(--bg-2); color: var(--ink-3); }
 .role--admin { background: var(--coral); color: white; }
-.role--super_admin { background: var(--ink); color: white; }
+.role--super_admin { background: var(--surface-inverse); color: white; }
 
 .count-hot { color: var(--danger); font-weight: 800; }
 
@@ -215,7 +215,7 @@ onMounted(load)
 .table-empty { text-align: center; padding: 40px 16px; color: var(--muted); }
 
 .state-panel {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   padding: 32px;

@@ -197,7 +197,7 @@ onMounted(load)
 .head-actions { display: flex; gap: 8px; }
 
 .table-card {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   overflow: hidden;
@@ -261,7 +261,7 @@ onMounted(load)
   font-weight: 700;
 }
 
-.type--review { background: var(--teal-soft); color: var(--teal-3); }
+.type--review { background: var(--teal-soft); color: var(--teal-ink); }
 .type--user { background: #FFE5E8; color: #B12C3A; }
 
 .reason { font-weight: 600; }
@@ -286,7 +286,7 @@ onMounted(load)
 .table-empty { text-align: center; padding: 40px 16px; color: var(--muted); }
 
 .state-panel {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   padding: 32px;

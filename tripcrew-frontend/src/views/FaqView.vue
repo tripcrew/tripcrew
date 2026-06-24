@@ -111,7 +111,7 @@ function toggleAnswer(index) {
 .back-link {
   display: inline-flex;
   margin-bottom: 24px;
-  color: var(--teal-3);
+  color: var(--teal-ink);
   font-size: 14px;
   font-weight: 700;
 }
@@ -170,7 +170,7 @@ function toggleAnswer(index) {
 .faq-answer__link {
   display: inline-flex;
   margin-top: 14px;
-  color: var(--teal-3);
+  color: var(--teal-ink);
   font-size: 14px;
   font-weight: 700;
 }
@@ -187,7 +187,7 @@ function toggleAnswer(index) {
 }
 .help-box strong { color: var(--ink); }
 .help-box p { margin-top: 4px; color: var(--ink-3); font-size: 14px; }
-.help-box__link { color: var(--coral-2); font-size: 14px; font-weight: 700; white-space: nowrap; }
+.help-box__link { color: var(--coral-ink); font-size: 14px; font-weight: 700; white-space: nowrap; }
 
 @media (max-width: 640px) {
   .faq-page { padding: 32px var(--space-4) 0; }

@@ -393,7 +393,7 @@ onMounted(() => {
 .period-picker { display: flex; gap: 6px; }
 
 .period-select {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 6px 10px;
@@ -414,7 +414,7 @@ onMounted(() => {
 }
 
 .stat-card {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   padding: 20px;
@@ -475,7 +475,7 @@ onMounted(() => {
   stroke-linejoin: round;
 }
 
-.stat-ico--teal { background: var(--teal-soft); color: var(--teal-3); }
+.stat-ico--teal { background: var(--teal-soft); color: var(--teal-ink); }
 .stat-ico--coral { background: #FBEAE2; color: var(--coral); }
 .stat-ico--mute { background: var(--bg-2); color: var(--muted); }
 
@@ -505,7 +505,7 @@ onMounted(() => {
 }
 
 .panel {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   padding: 20px;

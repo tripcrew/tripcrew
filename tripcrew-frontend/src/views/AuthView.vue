@@ -326,7 +326,7 @@ function getRedirectTarget() {
 .logo {
   font-size: 22px;
   font-weight: 800;
-  color: var(--teal-3);
+  color: var(--teal-ink);
   letter-spacing: -0.6px;
 }
 .logo .dot { color: var(--coral); }
@@ -352,7 +352,7 @@ function getRedirectTarget() {
 }
 
 .auth-left__title .brand {
-  color: var(--teal-3);
+  color: var(--teal-ink);
 }
 
 .auth-left__title .accent {
@@ -410,7 +410,7 @@ function getRedirectTarget() {
 }
 
 .auth-card {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
   box-shadow: var(--sh-2);
@@ -453,13 +453,13 @@ function getRedirectTarget() {
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.12em;
-  color: var(--teal-3);
+  color: var(--teal-ink);
 }
 
 .auth-trip-card__badge {
   padding: 4px 8px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--glass);
   color: var(--ink-3);
   font-size: 11px;
   font-weight: 700;
@@ -535,7 +535,7 @@ function getRedirectTarget() {
 }
 
 .auth-tab.active {
-  background: white;
+  background: var(--surface);
   color: var(--ink);
   box-shadow: var(--sh-1);
 }
@@ -582,7 +582,7 @@ function getRedirectTarget() {
 
 .field input:focus {
   outline: none;
-  background: white;
+  background: var(--surface);
   border-color: var(--teal);
   box-shadow: 0 0 0 2px var(--teal-soft);
 }

@@ -161,7 +161,7 @@ const document = computed(() => documents[props.documentType] || documents.terms
 .back-link {
   display: inline-flex;
   margin-bottom: 24px;
-  color: var(--teal-3);
+  color: var(--teal-ink);
   font-size: 14px;
   font-weight: 700;
 }
@@ -217,7 +217,7 @@ const document = computed(() => documents[props.documentType] || documents.terms
   line-height: 1.55;
 }
 
-.notice-box strong { color: var(--teal-3); white-space: nowrap; }
+.notice-box strong { color: var(--teal-ink); white-space: nowrap; }
 
 .legal-document {
   margin-top: 20px;

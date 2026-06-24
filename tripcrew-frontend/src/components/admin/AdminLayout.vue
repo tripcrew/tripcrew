@@ -12,6 +12,22 @@
         <span class="status-item"><span class="sd" :class="healthDotClass"></span>{{ healthText }}</span>
       </div>
 
+      <button
+        class="top-icon-btn"
+        type="button"
+        :aria-label="isDark ? '라이트 모드로 전환' : '다크 모드로 전환'"
+        :title="isDark ? '라이트 모드' : '다크 모드'"
+        @click="toggleTheme"
+      >
+        <svg v-if="isDark" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4.2"/>
+          <path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/>
+        </svg>
+        <svg v-else viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.5A8.5 8.5 0 1 1 11.5 3a6.5 6.5 0 0 0 9.5 9.5z"/>
+        </svg>
+      </button>
+
       <button class="logout-btn" title="로그아웃" @click="handleLogout">
         <svg class="logout-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -75,8 +91,11 @@ import { RouterLink, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 
 import { http } from '@/api/http'
+import { useTheme } from '@/composables/useTheme'
 import { useAuthStore } from '@/stores/auth'
 import { useAdminMetaStore } from '@/stores/adminMeta'
+
+const { isDark, toggle: toggleTheme } = useTheme()
 
 defineProps({
   /** 활성 사이드바 항목('dashboard' | 'users' | 'reports' | 'banned' | 'inquiries' | 'notices') */
@@ -131,7 +150,7 @@ onMounted(() => {
 /* Top bar */
 .admin-top {
   height: 60px;
-  background: var(--ink);
+  background: var(--surface-inverse);
   color: white;
   padding: 0 24px;
   display: flex;
@@ -154,6 +173,27 @@ onMounted(() => {
 }
 
 .logo .dot { color: var(--coral); }
+
+/* 다크 톱바용 아이콘 ghost 버튼(테마 토글) */
+.top-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.top-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.32);
+  color: white;
+}
 
 /* 로그아웃 — 다크 톱바용 ghost 버튼. hover 시 '나가기'를 암시하는 coral 톤 */
 .logout-btn {
@@ -254,7 +294,7 @@ onMounted(() => {
 
 /* Sidebar */
 .admin-sidebar {
-  background: white;
+  background: var(--surface);
   border-right: 1px solid var(--line);
   padding: 24px 16px;
 }
@@ -293,7 +333,7 @@ onMounted(() => {
 
 .nav-item.active {
   background: var(--teal-soft);
-  color: var(--teal-3);
+  color: var(--teal-ink);
 }
 
 /* 아직 라우트가 없는(준비 중) 메뉴 — 클릭 불가, 깨진 링크처럼 보이지 않게 명시 */
