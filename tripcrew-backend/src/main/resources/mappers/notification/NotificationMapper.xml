@@ -56,4 +56,9 @@
            AND user_id = #{userId}
     </delete>
 
+    <delete id="deleteAllByUser">
+        DELETE FROM notifications
+         WHERE user_id = #{userId}
+    </delete>
+
 </mapper>

@@ -24,6 +24,7 @@ import lombok.RequiredArgsConstructor;
  *   GET   /api/me/notifications/unread-count  미읽음 개수(벨 뱃지)
  *   PATCH /api/me/notifications/{id}/read     한 건 읽음
  *   PATCH /api/me/notifications/read-all      전부 읽음
+ *   DELETE /api/me/notifications              전체 삭제
  */
 @RestController
 @RequestMapping("/api/me/notifications")
@@ -52,6 +53,12 @@ public class MyNotificationController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void markAllRead(@AuthenticationPrincipal Long userId) {
         notificationService.markAllRead(userId);
+    }
+
+    @DeleteMapping
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteAll(@AuthenticationPrincipal Long userId) {
+        notificationService.deleteAll(userId);
     }
 
     @DeleteMapping("/{id}")

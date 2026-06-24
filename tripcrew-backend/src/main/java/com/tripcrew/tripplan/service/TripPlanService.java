@@ -62,6 +62,16 @@ public class TripPlanService {
     }
 
     /**
+     * 계획 편집 화면에 처음 진입한 멤버의 열람을 기록한다.
+     * 단순 재조회(GET)와 분리해 실시간 동기화·충돌 확인으로 조회수가 늘지 않게 한다.
+     */
+    @Transactional
+    public void recordView(Long id, Long userId) {
+        accessService.requireMember(id, userId);
+        tripPlanMapper.incrementViewCount(id);
+    }
+
+    /**
      * 내가 접근 가능한 여행계획 목록(최신순). 내가 소유한 계획(OWNER)과
      * 협업자로 초대받아 공유받은 계획(EDITOR/VIEWER)을 합쳐서 반환한다.
      */

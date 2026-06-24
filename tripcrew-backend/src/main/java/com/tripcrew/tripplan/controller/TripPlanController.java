@@ -53,6 +53,12 @@ public class TripPlanController {
         return tripPlanService.get(id, userId);
     }
 
+    @PostMapping("/{id}/views")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void recordView(@AuthenticationPrincipal Long userId, @PathVariable Long id) {
+        tripPlanService.recordView(id, userId);
+    }
+
     @PutMapping("/{id}")
     public TripPlanResponse update(@AuthenticationPrincipal Long userId,
                                    @PathVariable Long id,

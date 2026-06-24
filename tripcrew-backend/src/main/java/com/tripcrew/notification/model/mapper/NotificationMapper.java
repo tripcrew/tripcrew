@@ -27,4 +27,7 @@ public interface NotificationMapper {
 
     /** 알림 한 건 삭제(본인 것만). @return 영향 행 수(0이면 없거나 내 것이 아님). */
     int deleteByIdAndUser(@Param("id") Long id, @Param("userId") Long userId);
+
+    /** 내 알림 전체 삭제. */
+    int deleteAllByUser(@Param("userId") Long userId);
 }

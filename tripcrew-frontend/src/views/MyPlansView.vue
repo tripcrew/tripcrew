@@ -57,39 +57,58 @@
 
       <!-- 목록 -->
       <section v-else class="section-block">
-        <h2 class="t-h2 section-title">전체 <span class="muted">{{ plans.length }}개</span></h2>
-        <div class="plans-grid">
-          <article
-            v-for="p in plans"
-            :key="p.id"
-            class="plan-card"
-            @click="$router.push(`/plans/${p.id}/edit`)"
-          >
-            <div class="plan-card__top">
-              <div class="chip-group">
-                <span class="status-chip status--draft">계획</span>
-                <span v-if="p.myRole && p.myRole !== 'OWNER'" class="status-chip status--shared">
-                  {{ roleText(p.myRole) }} · 공유받음
-                </span>
-              </div>
-              <span class="t-mono muted">v.{{ p.version }}</span>
-            </div>
-            <span class="updated t-caption">수정 {{ formatRelative(p.updatedAt) }}</span>
-            <h3>{{ p.title }}</h3>
-            <p class="meta">{{ formatDates(p.startDate, p.endDate) }}</p>
+        <header class="plans-overview">
+          <div>
+            <p class="plans-overview__eyebrow">MY TRIPS</p>
+            <h2 class="t-h2">여행 계획 <span class="muted">{{ plans.length }}개</span></h2>
+          </div>
+          <p class="t-caption">여행 날짜를 기준으로 정리했어요.</p>
+        </header>
 
-            <div class="card-footer">
-              <span class="t-caption muted">조회 {{ p.viewCount }}</span>
+        <section v-for="group in planGroups" :key="group.key" :class="['plan-status-group', `plan-status-group--${group.key}`]">
+          <header class="plan-status-group__head">
+            <div>
+              <span :class="['status-dot', `status-dot--${group.key}`]"></span>
+              <h3>{{ group.title }}</h3>
+              <span class="plan-status-group__count">{{ group.plans.length }}</span>
             </div>
-          </article>
-        </div>
+            <p>{{ group.description }}</p>
+          </header>
+
+          <div v-if="group.plans.length > 0" class="plans-grid">
+            <article
+              v-for="p in group.plans"
+              :key="p.id"
+              class="plan-card"
+              @click="$router.push(`/plans/${p.id}/edit`)"
+            >
+              <div class="plan-card__top">
+                <div class="chip-group">
+                  <span :class="['status-chip', `status--${p.status.key}`]">{{ p.status.label }}</span>
+                  <span v-if="p.myRole && p.myRole !== 'OWNER'" class="status-chip status--shared">
+                    {{ roleText(p.myRole) }} · 공유받음
+                  </span>
+                </div>
+                <span class="t-mono muted">v.{{ p.version }}</span>
+              </div>
+              <span class="updated t-caption">수정 {{ formatRelative(p.updatedAt) }}</span>
+              <h3>{{ p.title }}</h3>
+              <p class="meta">{{ formatDates(p.startDate, p.endDate) }}</p>
+
+              <div class="card-footer">
+                <span class="t-caption muted">조회 {{ p.viewCount }}</span>
+              </div>
+            </article>
+          </div>
+          <p v-else class="plan-status-empty">{{ group.emptyMessage }}</p>
+        </section>
       </section>
     </main>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import AppHeader from '@/components/common/AppHeader.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
@@ -106,6 +125,30 @@ const invites = ref([])
 const loading = ref(true)
 const error = ref('')
 const creating = ref(false)
+const today = startOfDay(new Date())
+
+const planGroups = computed(() => {
+  const grouped = {
+    active: [],
+    ready: [],
+    done: [],
+  }
+
+  plans.value.forEach((plan) => {
+    const status = getStatus(plan)
+    grouped[status.key].push({ ...plan, status })
+  })
+
+  grouped.active.sort((left, right) => getSortTime(left.startDate, left.updatedAt) - getSortTime(right.startDate, right.updatedAt))
+  grouped.ready.sort((left, right) => getSortTime(left.startDate, left.updatedAt) - getSortTime(right.startDate, right.updatedAt))
+  grouped.done.sort((left, right) => getSortTime(right.endDate, right.updatedAt) - getSortTime(left.endDate, left.updatedAt))
+
+  return [
+    { key: 'active', title: '진행 중', description: '지금 여행 중인 계획이에요.', plans: grouped.active, emptyMessage: '진행 중인 여행 계획이 없어요.' },
+    { key: 'ready', title: '예정', description: '곧 떠날 여행과 날짜를 정할 계획이에요.', plans: grouped.ready, emptyMessage: '예정된 여행 계획이 없어요.' },
+    { key: 'done', title: '완료', description: '다녀온 여행 계획을 다시 확인할 수 있어요.', plans: grouped.done, emptyMessage: '완료된 여행 계획이 없어요.' },
+  ]
+})
 
 async function load() {
   loading.value = true
@@ -173,6 +216,31 @@ function formatDates(start, end) {
   if (!start && !end) return '날짜 미정'
   if (start && end) return `${start} — ${end}`
   return start || end
+}
+
+function getStatus(plan) {
+  const start = parseDate(plan.startDate)
+  const end = parseDate(plan.endDate)
+  if (!start || !end || today < start) return { key: 'ready', label: '예정' }
+  if (today > end) return { key: 'done', label: '완료' }
+  return { key: 'active', label: '진행 중' }
+}
+
+function parseDate(value) {
+  if (!value) return null
+  const [year, month, day] = value.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function startOfDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
+function getSortTime(dateValue, updatedAt) {
+  const date = parseDate(dateValue)
+  if (date) return date.getTime()
+  return updatedAt ? new Date(updatedAt).getTime() : Number.MAX_SAFE_INTEGER
 }
 
 function formatRelative(iso) {
@@ -327,6 +395,83 @@ onMounted(() => {
 
 .muted { color: var(--ink-soft); font-weight: 500; }
 
+.plans-overview {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.plans-overview__eyebrow {
+  margin-bottom: 5px;
+  color: var(--coral);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.plan-status-group + .plan-status-group {
+  margin-top: 32px;
+}
+
+.plan-status-group__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.plan-status-group__head > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.plan-status-group__head h3 {
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.plan-status-group__head > p {
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.plan-status-group__count {
+  min-width: 22px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--bg-2);
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.status-dot--active { background: var(--teal); box-shadow: 0 0 0 4px var(--teal-soft); }
+.status-dot--ready { background: var(--coral); box-shadow: 0 0 0 4px var(--coral-tint); }
+.status-dot--done { background: var(--success); box-shadow: 0 0 0 4px #E1F5EA; }
+
+.plan-status-empty {
+  padding: 18px;
+  border: 1px dashed var(--line-2);
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
 .plans-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -365,7 +510,9 @@ onMounted(() => {
   border-radius: 999px;
 }
 
-.status--draft { background: var(--bg-2); color: var(--ink-3); }
+.status--active { background: var(--teal); color: white; }
+.status--ready { background: var(--coral-tint); color: var(--coral-2); }
+.status--done { background: #E1F5EA; color: #1A7A4A; }
 .status--shared { background: var(--coral-tint, #fff1ec); color: var(--coral, #e06a4f); }
 
 .chip-group {
@@ -399,5 +546,16 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-top: auto;
+}
+
+@media (max-width: 900px) {
+  .plans-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .my-plans-layout { padding: 28px var(--space-4) 56px; }
+  .page-header, .plans-overview, .plan-status-group__head { align-items: flex-start; flex-direction: column; }
+  .plans-grid { grid-template-columns: 1fr; }
+  .plans-overview { margin-bottom: 24px; }
 }
 </style>

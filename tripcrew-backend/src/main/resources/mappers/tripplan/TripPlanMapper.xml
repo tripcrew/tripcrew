@@ -24,6 +24,12 @@
          ORDER BY created_at DESC, id DESC
     </select>
 
+    <update id="incrementViewCount">
+        UPDATE trip_plans
+           SET view_count = view_count + 1
+         WHERE id = #{id}
+    </update>
+
     <!-- 낙관적 락: 기대 version 과 일치할 때만 갱신하고 version 을 +1. affected rows 0 = 충돌 -->
     <update id="updateWithVersion">
         UPDATE trip_plans
