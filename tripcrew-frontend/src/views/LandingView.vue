@@ -116,7 +116,7 @@
             <h2 class="t-h1">동행자와 함께 계획하면<br />더 빠릅니다</h2>
             <p class="t-body" style="margin-top: 12px; color: var(--ink-3);">
               회원가입 후 친구를 초대하고 실시간으로 함께 일정을 편집하세요.<br />
-              최대 10명까지 동시 편집 · WebSocket 기반 즉시 동기화.
+              최대 10명까지 동시 편집.
             </p>
             <div style="margin-top: 24px;">
               <BaseButton variant="primary" size="lg" @click="$router.push({ path: '/auth', query: { mode: 'signup' } })">
