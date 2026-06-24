@@ -96,8 +96,8 @@
                   <span :class="['role-chip', `role--${u.role.toLowerCase()}`]">{{ u.role }}</span>
                 </td>
                 <td>
-                  <span :class="['status-chip', u.status === 'BANNED' ? 'status--locked' : 'status--active']">
-                    {{ u.status === 'BANNED' ? '영구정지' : '정상' }}
+                  <span :class="['status-chip', statusClass(u)]">
+                    {{ statusLabel(u) }}
                   </span>
                   <div v-if="u.activeRestrictions && u.activeRestrictions.length" class="restriction-chips">
                     <span
@@ -134,6 +134,12 @@
                     disabled
                     title="최고관리자 권한은 이 화면에서 변경할 수 없습니다"
                   >최고관리자</button>
+                  <button
+                    v-else-if="isWithdrawn(u)"
+                    class="action-btn"
+                    disabled
+                    title="탈퇴한 계정입니다"
+                  >—</button>
                   <button
                     v-else
                     class="action-btn"
@@ -264,17 +270,32 @@ function daysLeft(until) {
 
 // 신고 누적 15회 이상이면 영구정지 검토 플래그(서버 SanctionService 임계와 동일).
 function sanctionFlag(u) {
-  return u.status !== 'BANNED' && (u.reportCount || 0) >= 15
+  return u.status === 'ACTIVE' && (u.reportCount || 0) >= 15
 }
 
-// 수동 영구정지 가능 여부: 본인·SUPER_ADMIN 불가, ADMIN 대상은 SUPER_ADMIN 만(서버 가드와 짝).
+// 상태 칩: 영구정지(BANNED)·탈퇴(WITHDRAWN, 자진 탈퇴)·정상(ACTIVE)
+function statusLabel(u) {
+  if (u.status === 'BANNED') return '영구정지'
+  if (u.status === 'WITHDRAWN') return '탈퇴'
+  return '정상'
+}
+function statusClass(u) {
+  if (u.status === 'BANNED') return 'status--locked'
+  if (u.status === 'WITHDRAWN') return 'status--dormant'
+  return 'status--active'
+}
+const isWithdrawn = (u) => u.status === 'WITHDRAWN'
+
+// 수동 영구정지 가능 여부: 탈퇴·본인·SUPER_ADMIN 불가, ADMIN 대상은 SUPER_ADMIN 만(서버 가드와 짝).
 function canSanction(u) {
+  if (u.status === 'WITHDRAWN') return false
   if (u.id === currentUserId.value) return false
   if (u.role === 'SUPER_ADMIN') return false
   if (u.role === 'ADMIN') return isSuperAdmin.value
   return true
 }
 function sanctionDisabledReason(u) {
+  if (u.status === 'WITHDRAWN') return '탈퇴한 계정입니다'
   if (u.id === currentUserId.value) return '본인 계정은 제재할 수 없습니다'
   if (u.role === 'SUPER_ADMIN') return '최고관리자는 제재할 수 없습니다'
   if (u.role === 'ADMIN') return 'ADMIN 계정은 최고관리자만 제재할 수 있습니다'
