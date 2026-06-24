@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.tripcrew.admin.model.dto.AdminDashboardResponse;
+import com.tripcrew.admin.model.dto.AdminDashboardStatsResponse;
 import com.tripcrew.admin.service.AdminDashboardService;
 
 import lombok.RequiredArgsConstructor;
@@ -23,5 +24,11 @@ public class AdminDashboardController {
     @GetMapping
     public AdminDashboardResponse summary() {
         return adminDashboardService.summary();
+    }
+
+    /** 차트용 통계(최근 14일 추이 + 역할/상태 분포). */
+    @GetMapping("/stats")
+    public AdminDashboardStatsResponse stats() {
+        return adminDashboardService.stats();
     }
 }

@@ -74,6 +74,27 @@
         </RouterLink>
       </div>
 
+      <!-- 통계: 실제 도메인 데이터(가입/후기/신고/회원 분포) 기반 차트 -->
+      <h2 class="section-label">통계 <span class="section-note">최근 14일 · 실데이터</span></h2>
+      <div class="chart-grid">
+        <section class="panel">
+          <h3 class="panel-title">가입 추이</h3>
+          <MiniBarChart :data="signupSeries" aria-label="최근 14일 가입 추이" />
+        </section>
+        <section class="panel">
+          <h3 class="panel-title">콘텐츠 활동 추이</h3>
+          <MiniLineChart :series="activitySeries" aria-label="최근 14일 후기·신고 추이" />
+        </section>
+        <section class="panel">
+          <h3 class="panel-title">회원 역할 분포</h3>
+          <MiniDonutChart :data="roleSegments" aria-label="회원 역할 분포" />
+        </section>
+        <section class="panel">
+          <h3 class="panel-title">회원 상태 분포</h3>
+          <MiniDonutChart :data="statusSegments" aria-label="회원 상태 분포" />
+        </section>
+      </div>
+
       <!-- 하단: 바로가기(정지된 계정 등) + 시스템 상태 -->
       <div class="dash-cols">
         <section class="panel">
@@ -128,6 +149,9 @@ import { http } from '@/api/http'
 import { adminApi } from '@/api/admin'
 import AdminLayout from '@/components/admin/AdminLayout.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
+import MiniBarChart from '@/components/admin/charts/MiniBarChart.vue'
+import MiniLineChart from '@/components/admin/charts/MiniLineChart.vue'
+import MiniDonutChart from '@/components/admin/charts/MiniDonutChart.vue'
 
 const summary = ref({
   userCount: null,
@@ -144,6 +168,42 @@ const forbidden = ref(false)
 const hasOpenReports = computed(() => (summary.value.openReportCount || 0) > 0)
 const hasBanned = computed(() => (summary.value.bannedUserCount || 0) > 0)
 
+// 차트 데이터(최근 14일 추이 + 역할/상태 분포)
+const stats = ref({ signups: [], reviews: [], reports: [], roleDistribution: [], statusDistribution: [] })
+
+function toSeries(rows) {
+  return (rows || []).map((r) => ({ label: r.day, value: r.count }))
+}
+
+const signupSeries = computed(() => toSeries(stats.value.signups))
+
+const activitySeries = computed(() => [
+  { name: '후기', color: 'var(--teal)', data: toSeries(stats.value.reviews) },
+  { name: '신고', color: 'var(--coral)', data: toSeries(stats.value.reports) },
+])
+
+// enum name → 한글 라벨 + 색. 미정의 라벨은 원문 + 회색으로 폴백.
+const ROLE_META = {
+  USER: { label: '일반 회원', color: 'var(--teal)' },
+  ADMIN: { label: '관리자', color: 'var(--coral)' },
+  SUPER_ADMIN: { label: '최고관리자', color: 'var(--ink)' },
+}
+const STATUS_META = {
+  ACTIVE: { label: '정상', color: 'var(--success)' },
+  BANNED: { label: '정지', color: 'var(--danger)' },
+  WITHDRAWN: { label: '탈퇴', color: 'var(--muted)' },
+}
+
+function toSegments(rows, metaMap) {
+  return (rows || []).map((r) => {
+    const meta = metaMap[r.label] || { label: r.label, color: 'var(--ink-3)' }
+    return { label: meta.label, value: r.count, color: meta.color }
+  })
+}
+
+const roleSegments = computed(() => toSegments(stats.value.roleDistribution, ROLE_META))
+const statusSegments = computed(() => toSegments(stats.value.statusDistribution, STATUS_META))
+
 // 숫자가 아직 안 왔으면(로딩/null) 대시 표시
 function display(value) {
   return value === null || value === undefined ? '—' : value
@@ -154,7 +214,9 @@ async function load() {
   error.value = ''
   forbidden.value = false
   try {
-    summary.value = await adminApi.dashboard()
+    const [summaryData, statsData] = await Promise.all([adminApi.dashboard(), adminApi.dashboardStats()])
+    summary.value = summaryData
+    stats.value = statsData
   } catch (e) {
     if (e.response && e.response.status === 403) {
       forbidden.value = true
@@ -219,6 +281,29 @@ onMounted(() => {
   font-weight: 700;
   letter-spacing: 1.4px;
   color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.section-note {
+  font-family: var(--font-sans, inherit);
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--ink-soft);
+  text-transform: none;
+}
+
+/* 차트 2x2 그리드 */
+.chart-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.chart-grid .panel-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-2);
   margin-bottom: 12px;
 }
 
@@ -421,6 +506,7 @@ onMounted(() => {
 
 @media (max-width: 980px) {
   .card-grid { grid-template-columns: repeat(2, 1fr); }
+  .chart-grid { grid-template-columns: 1fr; }
   .dash-cols { grid-template-columns: 1fr; }
 }
 </style>

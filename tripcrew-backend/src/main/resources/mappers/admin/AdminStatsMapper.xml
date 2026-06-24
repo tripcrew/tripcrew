@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.tripcrew.admin.model.mapper.AdminStatsMapper">
+
+    <!-- 일자별 추이: DATE(created_at) 로 묶어 건수. 빈 날짜는 서비스에서 0 으로 채운다. -->
+    <select id="signupsByDay" resultType="DailyCount">
+        SELECT DATE(created_at) AS day, COUNT(*) AS count
+          FROM users
+         WHERE created_at &gt;= #{since}
+         GROUP BY DATE(created_at)
+         ORDER BY day
+    </select>
+
+    <select id="reviewsByDay" resultType="DailyCount">
+        SELECT DATE(created_at) AS day, COUNT(*) AS count
+          FROM reviews
+         WHERE created_at &gt;= #{since}
+         GROUP BY DATE(created_at)
+         ORDER BY day
+    </select>
+
+    <select id="reportsByDay" resultType="DailyCount">
+        SELECT DATE(created_at) AS day, COUNT(*) AS count
+          FROM reports
+         WHERE created_at &gt;= #{since}
+         GROUP BY DATE(created_at)
+         ORDER BY day
+    </select>
+
+    <!-- 분포: 역할/상태별 건수(도넛 차트). -->
+    <select id="roleDistribution" resultType="LabelCount">
+        SELECT role AS label, COUNT(*) AS count
+          FROM users
+         GROUP BY role
+    </select>
+
+    <select id="statusDistribution" resultType="LabelCount">
+        SELECT status AS label, COUNT(*) AS count
+          FROM users
+         GROUP BY status
+    </select>
+
+</mapper>
