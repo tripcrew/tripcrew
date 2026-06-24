@@ -65,13 +65,24 @@
 
         <RouterLink class="stat-card stat-card--link" to="/admin/notices">
           <div class="stat-top">
-            <span class="stat-label">공지사항 / Q&amp;A</span>
+            <span class="stat-label">공지사항</span>
             <span class="stat-ico stat-ico--teal" aria-hidden="true">
               <svg viewBox="0 0 24 24"><path d="m3 11 17-5v12L3 13v-2Z"/><path d="M11 15v4a2 2 0 0 1-4 0v-5"/><path d="M22 9v6"/></svg>
             </span>
           </div>
           <strong class="stat-value">{{ display(summary.noticeCount) }}</strong>
-          <span class="stat-delta">공지 {{ display(summary.noticeCount) }}건 · Q&amp;A 준비 중 →</span>
+          <span class="stat-delta">게시된 공지 · 공지 관리 →</span>
+        </RouterLink>
+
+        <RouterLink class="stat-card stat-card--link" :class="{ 'stat-card--alert': hasOpenInquiries }" to="/admin/inquiries">
+          <div class="stat-top">
+            <span class="stat-label">1:1 문의</span>
+            <span class="stat-ico" :class="hasOpenInquiries ? 'stat-ico--coral' : 'stat-ico--mute'" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </span>
+          </div>
+          <strong class="stat-value" :class="{ 'stat-value--alert': hasOpenInquiries }">{{ display(summary.qnaCount) }}</strong>
+          <span class="stat-delta" :class="{ 'delta--alert': hasOpenInquiries }">미답변 문의 · 문의 관리 →</span>
         </RouterLink>
       </div>
 
@@ -134,6 +145,16 @@
               </span>
               <span class="quick-count" :class="{ 'quick-count--alert': hasOpenReports }">{{ display(summary.openReportCount) }}</span>
             </RouterLink>
+            <RouterLink class="quick-row" to="/admin/inquiries">
+              <span class="quick-ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </span>
+              <span class="quick-text">
+                <strong>1:1 문의</strong>
+                <em>미답변 문의 확인 · 답변</em>
+              </span>
+              <span class="quick-count" :class="{ 'quick-count--alert': hasOpenInquiries }">{{ display(summary.qnaCount) }}</span>
+            </RouterLink>
           </div>
         </section>
 
@@ -182,6 +203,7 @@ const forbidden = ref(false)
 
 const hasOpenReports = computed(() => (summary.value.openReportCount || 0) > 0)
 const hasBanned = computed(() => (summary.value.bannedUserCount || 0) > 0)
+const hasOpenInquiries = computed(() => (summary.value.qnaCount || 0) > 0)
 
 // 차트 데이터(최근 14일 활동 추이 + 역할/상태 분포)
 const stats = ref({ reviews: [], reports: [], chat: [], roleDistribution: [], statusDistribution: [] })
@@ -382,10 +404,11 @@ onMounted(() => {
 }
 .period-select:focus { outline: none; border-color: var(--teal); }
 
-/* 메인 카드 그리드 */
+/* 메인 카드 그리드 — 카드 수(현재 5개)에 맞춰 폭에 따라 자연스럽게 줄바꿈.
+   최소 220px 보장(auto-fit) → 넓으면 한 줄, 좁히면 단계적으로 접힌다. */
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 16px;
   margin-bottom: 28px;
 }
@@ -581,15 +604,10 @@ onMounted(() => {
   line-height: 1.5;
 }
 
-/* 화면을 줄이면 칸 수를 단계적으로 줄여 자연스럽게 접힌다 (회원관리 등과 동일한 유동 동작) */
-@media (max-width: 1200px) {
-  .card-grid { grid-template-columns: repeat(2, 1fr); }
-}
+/* 화면을 줄이면 칸 수를 단계적으로 줄여 자연스럽게 접힌다 (회원관리 등과 동일한 유동 동작).
+   카드 그리드는 auto-fit(minmax 220px)으로 폭에 따라 스스로 접히므로 별도 분기 불필요. */
 @media (max-width: 1024px) {
   .chart-grid { grid-template-columns: 1fr; }
   .dash-cols { grid-template-columns: 1fr; }
-}
-@media (max-width: 560px) {
-  .card-grid { grid-template-columns: 1fr; }
 }
 </style>

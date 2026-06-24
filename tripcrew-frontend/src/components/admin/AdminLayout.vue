@@ -4,7 +4,7 @@
     <header class="admin-top">
       <div class="admin-brand">
         <span class="logo">TripCrew<span class="dot">.</span></span>
-        <span class="admin-badge">Admin <span class="t-mono">v.2026.05</span></span>
+        <span class="admin-badge">Admin</span>
       </div>
 
       <div class="system-status">
@@ -48,6 +48,11 @@
             <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></svg>
             정지된 계정
           </RouterLink>
+          <RouterLink class="nav-item" :class="{ active: active === 'inquiries' }" to="/admin/inquiries">
+            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            1:1 문의
+            <span v-if="openInquiryCount > 0" class="nav-count nav-count--alert">{{ openInquiryCount }}</span>
+          </RouterLink>
           <RouterLink class="nav-item" :class="{ active: active === 'notices' }" to="/admin/notices">
             <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 17-5v12L3 13v-2Z"/><path d="M11 15v4a2 2 0 0 1-4 0v-5"/><path d="M22 9v6"/></svg>
             공지사항
@@ -74,7 +79,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useAdminMetaStore } from '@/stores/adminMeta'
 
 defineProps({
-  /** 활성 사이드바 항목('dashboard' | 'users' | 'reports' | 'banned' | 'notices') */
+  /** 활성 사이드바 항목('dashboard' | 'users' | 'reports' | 'banned' | 'inquiries' | 'notices') */
   active: { type: String, default: '' },
 })
 
@@ -106,11 +111,12 @@ async function handleLogout() {
   router.replace('/')
 }
 
-// 신고 관리 배지(미처리 OPEN 수)는 어느 관리자 페이지에서든 보이도록 store 에서 가져온다.
+// 사이드바 배지(미처리 신고·미답변 문의)는 어느 관리자 페이지에서든 보이도록 store 에서 가져온다.
 const adminMeta = useAdminMetaStore()
-const { openReportCount } = storeToRefs(adminMeta)
+const { openReportCount, openInquiryCount } = storeToRefs(adminMeta)
 onMounted(() => {
   adminMeta.refreshOpenReportCount()
+  adminMeta.refreshOpenInquiryCount()
   checkHealth()
 })
 </script>

@@ -14,5 +14,7 @@ public enum NotificationType {
     /** 여행 종료 후 후기 작성 격려(ref_id = 여행계획 id) */
     REVIEW_NUDGE,
     /** 여행계획 공동편집 초대(ref_id = 여행계획 id) */
-    INVITE
+    INVITE,
+    /** 내 1:1 문의에 관리자 답변이 등록됨(ref_id = 문의 id) */
+    INQUIRY_ANSWERED
 }

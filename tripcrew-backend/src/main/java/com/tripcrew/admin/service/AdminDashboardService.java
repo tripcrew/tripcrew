@@ -17,6 +17,8 @@ import com.tripcrew.admin.model.dto.AdminDashboardStatsResponse;
 import com.tripcrew.admin.model.dto.DailyCount;
 import com.tripcrew.admin.model.dto.LabelCount;
 import com.tripcrew.admin.model.mapper.AdminStatsMapper;
+import com.tripcrew.inquiry.model.InquiryStatus;
+import com.tripcrew.inquiry.model.mapper.InquiryMapper;
 import com.tripcrew.notice.model.mapper.NoticeMapper;
 import com.tripcrew.report.model.ReportStatus;
 import com.tripcrew.report.model.mapper.ReportMapper;
@@ -39,6 +41,7 @@ public class AdminDashboardService {
     private final UserMapper userMapper;
     private final ReportMapper reportMapper;
     private final NoticeMapper noticeMapper;
+    private final InquiryMapper inquiryMapper;
     private final AdminStatsMapper adminStatsMapper;
 
     @Transactional(readOnly = true)
@@ -48,9 +51,10 @@ public class AdminDashboardService {
         long openReportCount = reportMapper.countByStatus(ReportStatus.OPEN);
         long noticeCount = noticeMapper.countAll();
         // 챗봇 사용현황 = chat_messages 의 누적 사용자 턴(role='USER'). F05 가 이미 적재하므로 읽기만 한다.
-        // Q&A(1:1 문의 ②) 는 출처가 생기면 연동 — 그전까지 null("준비 중").
         long chatbotUsageCount = adminStatsMapper.countChatbotRequests();
-        return new AdminDashboardResponse(userCount, bannedUserCount, openReportCount, noticeCount, chatbotUsageCount, null);
+        // Q&A(1:1 문의 ③) = 미답변(OPEN) 문의 건수 — openReportCount 와 같은 '미처리 업무' 성격.
+        long qnaCount = inquiryMapper.countByStatus(InquiryStatus.OPEN);
+        return new AdminDashboardResponse(userCount, bannedUserCount, openReportCount, noticeCount, chatbotUsageCount, qnaCount);
     }
 
     /** 차트용 통계: 최근 14일 후기/신고 활동 추이(0 채움) + 역할/상태 분포. */

@@ -149,6 +149,12 @@ const routes = [
     meta: { title: '관리자 · 정지된 계정', requiresAuth: true, roles: ['ADMIN', 'SUPER_ADMIN'] }
   },
   {
+    path: '/admin/inquiries',
+    name: 'admin-inquiries',
+    component: () => import('@/views/AdminInquiriesView.vue'),
+    meta: { title: '관리자 · 1:1 문의', requiresAuth: true, roles: ['ADMIN', 'SUPER_ADMIN'] }
+  },
+  {
     path: '/errors/:type?',
     name: 'errors',
     component: () => import('@/views/ErrorView.vue'),
