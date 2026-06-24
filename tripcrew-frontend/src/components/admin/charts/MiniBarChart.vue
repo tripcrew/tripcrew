@@ -13,12 +13,21 @@
           class="bar"
           :class="{ 'bar--active': hoverIndex === bar.key }"
           :style="{ animationDelay: bar.key * 16 + 'ms' }"
-          @mouseenter="hoverIndex = bar.key"
-          @mouseleave="hoverIndex = -1"
         />
         <text v-if="bar.showValue" :x="bar.cx" :y="bar.y - 5" class="val" text-anchor="middle">{{ bar.value }}</text>
         <text v-if="bar.showTick" :x="bar.cx" :y="H - 6" class="tick" text-anchor="middle">{{ bar.tick }}</text>
       </g>
+
+      <!-- 마우스 추적용 투명 오버레이: 차트 안 어디서든 가장 가까운 막대를 활성화(라인 차트와 동일 UX) -->
+      <rect
+        :x="plotL"
+        :y="plotTop"
+        :width="Math.max(0, plotR - plotL)"
+        :height="plotBottom - plotTop"
+        fill="transparent"
+        @mousemove="onMove"
+        @mouseleave="hoverIndex = -1"
+      />
     </svg>
     <div v-if="tip" class="chart-tip" :style="tipStyle">
       <strong>{{ tip.title }}</strong>
@@ -87,6 +96,19 @@ const bars = computed(() => {
     }
   })
 })
+
+// 차트 안에서 마우스 x 위치 → 가장 가까운 막대 index 로 매핑(막대 위가 아니어도 활성화)
+function onMove(e) {
+  const n = props.data.length
+  if (!n) return
+  const rect = e.currentTarget.getBoundingClientRect()
+  const mx = e.clientX - rect.left
+  const plotW = Math.max(1, plotR.value - plotL)
+  let idx = Math.floor((mx / plotW) * n)
+  if (idx < 0) idx = 0
+  if (idx > n - 1) idx = n - 1
+  hoverIndex.value = idx
+}
 
 const tip = computed(() => {
   if (hoverIndex.value < 0) return null
