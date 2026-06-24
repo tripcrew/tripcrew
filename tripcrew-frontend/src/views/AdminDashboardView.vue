@@ -288,10 +288,11 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 콘텐츠 폭 상한 — 큰 모니터는 넉넉히 채우되 초광폭에서 과도하게 늘어지지 않게.
-   차트는 높이 고정(ResizeObserver 픽셀 렌더)이라 폭이 넓어져도 세로로 길어지지 않는다. */
+/* 다른 관리자 페이지(회원관리 등)와 동일하게 admin-main 폭을 그대로 꽉 채운다(유동).
+   차트는 높이 고정(ResizeObserver 픽셀 렌더)이라 폭이 넓어져도 세로로 길어지지 않으므로
+   상한 없이 디스플레이에 맞춰 늘어나고, 화면을 줄이면 아래 브레이크포인트로 자연스럽게 접힌다. */
 .dash {
-  max-width: 1680px;
+  width: 100%;
 }
 
 .admin-breadcrumb {
@@ -577,9 +578,15 @@ onMounted(() => {
   line-height: 1.5;
 }
 
-@media (max-width: 980px) {
+/* 화면을 줄이면 칸 수를 단계적으로 줄여 자연스럽게 접힌다 (회원관리 등과 동일한 유동 동작) */
+@media (max-width: 1200px) {
   .card-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 1024px) {
   .chart-grid { grid-template-columns: 1fr; }
   .dash-cols { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .card-grid { grid-template-columns: 1fr; }
 }
 </style>
