@@ -37,26 +37,39 @@
               <div class="notif__list">
                 <p v-if="notifLoading" class="notif__empty">불러오는 중…</p>
                 <p v-else-if="notifications.length === 0" class="notif__empty">새로운 알림이 없어요</p>
-                <button
-                  v-for="n in notifications"
+                <div
+                  v-for="n in visibleNotifications"
                   :key="n.id"
                   class="notif__item"
                   :class="{ 'notif__item--unread': !n.read }"
-                  @click="handleNotifClick(n)"
+                  @contextmenu.prevent="handleDelete(n)"
                 >
-                  <span v-if="!n.read" class="notif__dot" aria-hidden="true"></span>
-                  <span class="notif__body">
-                    <span class="notif__msg">{{ n.message }}</span>
-                    <span class="notif__meta">
-                      <span
-                        v-if="chipFor(n)"
-                        class="notif__chip"
-                        :class="chipFor(n).cls"
-                      >{{ chipFor(n).label }}</span>
-                      <span class="notif__time">{{ formatRelative(n.createdAt) }}</span>
+                  <button class="notif__main" @click="handleNotifClick(n)">
+                    <span v-if="!n.read" class="notif__dot" aria-hidden="true"></span>
+                    <span class="notif__body">
+                      <span class="notif__msg">{{ n.message }}</span>
+                      <span class="notif__meta">
+                        <span
+                          v-if="chipFor(n)"
+                          class="notif__chip"
+                          :class="chipFor(n).cls"
+                        >{{ chipFor(n).label }}</span>
+                        <span class="notif__time">{{ formatRelative(n.createdAt) }}</span>
+                      </span>
                     </span>
-                  </span>
-                </button>
+                  </button>
+                  <button class="notif__del" aria-label="알림 삭제" title="삭제" @click.stop="handleDelete(n)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                      <line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/>
+                    </svg>
+                  </button>
+                </div>
+
+                <button
+                  v-if="!notifLoading && notifications.length > visibleCount"
+                  class="notif__more"
+                  @click="showMore"
+                >더보기 ({{ notifications.length - visibleCount }})</button>
               </div>
             </div>
           </div>
@@ -107,13 +120,16 @@ async function handleLogout() {
    벨 뱃지(미읽음 수)는 진입 시 + 60초 폴링으로 갱신,
    드롭다운을 열 때 최근 목록을 불러온다. 클릭 시 읽음 처리 + ref 경로로 이동. */
 const UNREAD_POLL_MS = 60000
+const NOTIF_PAGE = 10 // 한 번에 보여줄 개수(그 이상은 '더보기')
 
 const notifRef = ref(null)
 const notifOpen = ref(false)
 const notifLoading = ref(false)
 const notifications = ref([])
 const unreadCount = ref(0)
+const visibleCount = ref(NOTIF_PAGE)
 const badgeText = computed(() => (unreadCount.value > 9 ? '9+' : String(unreadCount.value)))
+const visibleNotifications = computed(() => notifications.value.slice(0, visibleCount.value))
 
 let pollTimer = null
 
@@ -129,6 +145,7 @@ async function refreshUnread() {
 async function toggleNotif() {
   notifOpen.value = !notifOpen.value
   if (!notifOpen.value) return
+  visibleCount.value = NOTIF_PAGE // 열 때마다 처음 N개부터
   notifLoading.value = true
   try {
     notifications.value = await notificationApi.list()
@@ -136,6 +153,21 @@ async function toggleNotif() {
     notifications.value = []
   } finally {
     notifLoading.value = false
+  }
+}
+
+function showMore() {
+  visibleCount.value += NOTIF_PAGE
+}
+
+async function handleDelete(n) {
+  const wasUnread = !n.read
+  try {
+    await notificationApi.remove(n.id)
+    notifications.value = notifications.value.filter((x) => x.id !== n.id)
+    if (wasUnread) unreadCount.value = Math.max(0, unreadCount.value - 1)
+  } catch {
+    /* 무시 */
   }
 }
 
@@ -391,11 +423,8 @@ const avatarText = computed(() => displayName.value.trim().slice(0, 1).toUpperCa
 
 .notif__item {
   display: flex;
-  align-items: flex-start;
-  gap: 8px;
+  align-items: stretch;
   width: 100%;
-  padding: 12px 16px;
-  text-align: left;
   border-bottom: 1px solid var(--bg-2);
   transition: background 0.15s;
 }
@@ -414,6 +443,50 @@ const avatarText = computed(() => displayName.value.trim().slice(0, 1).toUpperCa
 
 .notif__item--unread:hover {
   background: var(--teal-soft);
+}
+
+/* 클릭 영역(읽음+이동). 행의 대부분을 차지 */
+.notif__main {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px 8px 12px 16px;
+  text-align: left;
+}
+
+/* 삭제(x). 평소 흐릿, hover/포커스 시 또렷. 우클릭으로도 삭제 가능 */
+.notif__del {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  color: var(--ink-3);
+  opacity: 0.4;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.notif__item:hover .notif__del {
+  opacity: 1;
+}
+
+.notif__del:hover {
+  color: var(--coral);
+}
+
+.notif__more {
+  width: 100%;
+  padding: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--teal-3);
+  border-top: 1px solid var(--line);
+  transition: background 0.15s;
+}
+
+.notif__more:hover {
+  background: var(--bg-2);
 }
 
 .notif__dot {

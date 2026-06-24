@@ -24,4 +24,7 @@ public interface NotificationMapper {
 
     /** 내 미읽음 알림 전부 읽음 처리. @return 읽음으로 바뀐 행 수. */
     int markAllRead(@Param("userId") Long userId);
+
+    /** 알림 한 건 삭제(본인 것만). @return 영향 행 수(0이면 없거나 내 것이 아님). */
+    int deleteByIdAndUser(@Param("id") Long id, @Param("userId") Long userId);
 }
