@@ -48,24 +48,33 @@
 
         <!-- F03 편집 폼 -->
         <section class="edit-card">
+          <!-- F06 P2b — 다른 사용자가 메타를 저장했는데 내가 편집 중이면, 덮어쓰지 않고 선택권을 준다 -->
+          <div v-if="metaConflict.open" class="meta-conflict">
+            <span class="meta-conflict__msg">{{ metaConflict.by }}님이 계획 정보를 수정했어요. 내 변경을 유지할까요?</span>
+            <div class="meta-conflict__actions">
+              <button type="button" class="mini-btn" @click="loadServerMeta">최신 내용 불러오기</button>
+              <button type="button" class="mini-btn mini-btn--primary" @click="keepMyMeta">내 변경 유지</button>
+            </div>
+          </div>
+
           <div class="field">
             <label>제목</label>
-            <input v-model="form.title" type="text" maxlength="150" placeholder="여행 제목" :disabled="!canEdit" />
+            <input v-model="form.title" type="text" maxlength="150" placeholder="여행 제목" :disabled="!canEdit" @input="touchMeta" />
           </div>
 
           <div class="field">
             <label>설명</label>
-            <textarea v-model="form.description" rows="4" placeholder="이번 여행에 대한 메모" :disabled="!canEdit"></textarea>
+            <textarea v-model="form.description" rows="4" placeholder="이번 여행에 대한 메모" :disabled="!canEdit" @input="touchMeta"></textarea>
           </div>
 
           <div class="field-row">
             <div class="field">
               <label>시작일</label>
-              <input v-model="form.startDate" type="date" min="0001-01-01" max="9999-12-31" :disabled="!canEdit" />
+              <input v-model="form.startDate" type="date" min="0001-01-01" max="9999-12-31" :disabled="!canEdit" @change="touchMeta" />
             </div>
             <div class="field">
               <label>종료일</label>
-              <input v-model="form.endDate" type="date" min="0001-01-01" max="9999-12-31" :disabled="!canEdit" />
+              <input v-model="form.endDate" type="date" min="0001-01-01" max="9999-12-31" :disabled="!canEdit" @change="touchMeta" />
             </div>
           </div>
 
@@ -496,6 +505,30 @@ const toastMsg = ref('')
 const toastVisible = ref(false)
 let toastTimer = null
 
+// F06 P2b — 메타(제목/설명/날짜) 변경 보호.
+// metaDirty:   내가 메타를 편집했는데 아직 저장 안 함(미저장 입력).
+// metaTouched: 이 세션에서 메타를 한 번이라도 편집/저장함(= 내 기여). 저장해도 유지하고,
+//              상대 내용을 받아들일 때만 해제 → 내가 저장한 내용이 남에게 덮어써지는 것도 알려준다.
+// metaConflict: 들어온 저장이 내 화면과 다른데 내 기여가 있으면 → 덮어쓰지 않고 선택 배너(plan=서버 최신본).
+const metaDirty = ref(false)
+const metaTouched = ref(false)
+const metaConflict = ref({ open: false, by: '', plan: null })
+
+// 메타 입력 시: 미저장 + 기여 표시
+function touchMeta() {
+  metaDirty.value = true
+  metaTouched.value = true
+}
+
+// 들어온 서버 메타가 지금 내 폼과 같은지(빈값 null/'' 정규화). 같으면 충돌이 아니라 그냥 반영.
+function metaMatches(plan) {
+  const norm = (v) => v ?? ''
+  return norm(plan.title) === norm(form.value.title)
+    && norm(plan.description) === norm(form.value.description)
+    && norm(plan.startDate) === norm(form.value.startDate)
+    && norm(plan.endDate) === norm(form.value.endDate)
+}
+
 const presenceNames = computed(() =>
   roster.value
     .map((u) => (u.userId === myUserId.value ? `${u.nickname} (나)` : u.nickname))
@@ -526,6 +559,7 @@ const localBusy = computed(
 )
 let pendingRefetch = false
 let pendingPlanRefetch = false // SAVED: 장소뿐 아니라 계획 메타(제목/날짜)도 다시 불러와야 함
+let savedByNickname = '' // SAVED 알림을 보낸 사람(충돌 배너 문구용)
 
 async function applyRemoteRefetch() {
   const reloadPlan = pendingPlanRefetch
@@ -534,7 +568,13 @@ async function applyRemoteRefetch() {
   try {
     if (reloadPlan) {
       const plan = await tripPlanApi.get(id)
-      fill(plan) // 상대가 저장한 제목/설명/날짜·version 을 반영
+      // 내 기여(편집 중이거나 이미 저장함)가 있고, 들어온 내용이 내 화면과 다르면 → 선택권을 준다(P2b).
+      if ((metaDirty.value || metaTouched.value) && !metaMatches(plan)) {
+        metaConflict.value = { open: true, by: savedByNickname, plan }
+      } else {
+        fill(plan) // 상대가 저장한 제목/설명/날짜·version 을 반영
+        if (savedByNickname) showToast(`${savedByNickname}님이 ${PLACE_ACTION_TEXT.SAVED}`)
+      }
     }
     await loadPlaces()
   } catch {
@@ -556,9 +596,13 @@ async function handlePlaceChange(event) {
     }
     return
   }
-  const text = PLACE_ACTION_TEXT[event.action] || '계획을 수정했어요'
-  showToast(`${event.actorNickname}님이 ${text}`)
-  if (event.action === 'SAVED') pendingPlanRefetch = true
+  if (event.action === 'SAVED') {
+    savedByNickname = event.actorNickname
+    pendingPlanRefetch = true
+    // 토스트 vs 선택 배너는 applyRemoteRefetch 에서 충돌 여부로 결정(중복 안내 방지)
+  } else {
+    showToast(`${event.actorNickname}님이 ${PLACE_ACTION_TEXT[event.action] || '계획을 수정했어요'}`)
+  }
   if (localBusy.value) {
     pendingRefetch = true // 내 조작이 끝나면 watch 에서 한 번에 반영
     return
@@ -693,6 +737,7 @@ function fill(plan) {
     version: plan.version,
   }
   if (plan.myRole !== undefined) myRole.value = plan.myRole
+  metaDirty.value = false // 서버값으로 동기화됨 → 미저장 변경 없음
 }
 
 // F06 공동편집 — 멤버(협업자) 관리
@@ -1110,9 +1155,13 @@ async function save() {
   } catch (e) {
     const status = e.response?.status
     if (status === 409) {
-      // 낙관적 락 충돌: 다른 사용자가 먼저 수정 → 최신본으로 재동기화
-      formError.value = '다른 사용자가 먼저 수정했습니다. 최신 내용을 다시 불러왔어요.'
-      await load()
+      // 낙관적 락 충돌: 덮어쓰지 않고 최신본을 받아 선택 배너로 안내(내 입력 보존)
+      try {
+        const latest = await tripPlanApi.get(id)
+        metaConflict.value = { open: true, by: '다른 사용자', plan: latest }
+      } catch {
+        formError.value = '다른 사용자가 먼저 수정했습니다. 새로고침 후 다시 시도해 주세요.'
+      }
     } else if (status === 400) {
       formError.value = e.response?.data?.message || '입력값을 확인해 주세요.'
     } else {
@@ -1121,6 +1170,19 @@ async function save() {
   } finally {
     saving.value = false
   }
+}
+
+// 충돌 배너 — 최신 내용 불러오기(서버본 적용, 내 변경/기여 버림)
+function loadServerMeta() {
+  if (metaConflict.value.plan) fill(metaConflict.value.plan)
+  metaTouched.value = false // 상대 내용을 받아들임 → 더는 내 기여 아님
+  metaConflict.value = { open: false, by: '', plan: null }
+}
+
+// 충돌 배너 — 내 변경 유지(최신 version 을 채택 → 다음 저장이 상대 변경을 덮어쓴다)
+function keepMyMeta() {
+  if (metaConflict.value.plan) form.value.version = metaConflict.value.plan.version
+  metaConflict.value = { open: false, by: '', plan: null }
 }
 
 async function removePlan() {
@@ -1953,6 +2015,38 @@ onBeforeUnmount(() => {
 }
 
 .mini-btn--danger { color: var(--coral); }
+
+.mini-btn--primary {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: white;
+}
+
+/* F06 P2b — 메타 충돌(상대 저장 vs 내 미저장 변경) 선택 배너 */
+.meta-conflict {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--teal);
+  background: var(--teal-soft);
+  border-radius: 10px;
+}
+
+.meta-conflict__msg {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--teal-3);
+}
+
+.meta-conflict__actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
 
 .plan-map {
   position: sticky;
