@@ -34,15 +34,23 @@
               <span class="t-mono ml">PREVIEW · TRIPBOT</span>
             </div>
             <div class="chatbot-preview__body">
-              <div class="bubble bubble--user">"여수 2박3일 바다 위주"</div>
-              <div class="bubble bubble--bot">
-                <strong>5초 안에 코스 5개</strong>를 추천해드릴게요 ✨
-                <div class="preview-cards">
-                  <div class="preview-card">★ 4.7 · 8h · 바다와 동백</div>
-                  <div class="preview-card preview-card--accent">★ 4.8 · 7h · 우천 대비 코스</div>
-                  <div class="preview-card">★ 4.5 · 6h · 여유 산책</div>
+              <transition name="msg">
+                <div v-if="showUser" class="bubble bubble--user">"여수 2박3일 바다 위주"</div>
+              </transition>
+              <transition name="msg" mode="out-in">
+                <div v-if="showThinking" key="thinking" class="bubble bubble--bot bubble--typing">
+                  <span class="typing-dots"><i></i><i></i><i></i></span>
+                  <span class="typing-text">열심히 계획하고 있어요</span>
                 </div>
-              </div>
+                <div v-else-if="showAnswer" key="answer" class="bubble bubble--bot">
+                  <strong>5초 안에 코스 5개</strong>를 추천해드릴게요 ✨
+                  <div class="preview-cards">
+                    <div class="preview-card">★ 4.7 · 8h · 바다와 동백</div>
+                    <div class="preview-card preview-card--accent">★ 4.8 · 7h · 우천 대비 코스</div>
+                    <div class="preview-card">★ 4.5 · 6h · 여유 산책</div>
+                  </div>
+                </div>
+              </transition>
             </div>
           </div>
         </div>
@@ -125,14 +133,14 @@
             </div>
           </div>
 
-          <div class="co-edit-preview">
+          <div class="co-edit-preview" ref="coEditPreview" :class="{ 'is-in': presenceIn }">
             <div class="presence">
               <div class="avatar avatar--lg" style="background: var(--teal);">민</div>
               <div class="avatar avatar--lg" style="background: var(--coral);">지</div>
               <div class="avatar avatar--lg" style="background: var(--violet);">현</div>
               <div class="avatar avatar--lg avatar--more">+2</div>
             </div>
-            <div class="presence-label">5명이 함께 편집 중 · v.42</div>
+            <div class="presence-label"><span class="live-now"></span>5명이 함께 편집 중 · v.42</div>
           </div>
         </div>
       </div>
@@ -156,6 +164,36 @@ const rankingLoading = ref(true)
 const rankingError = ref('')
 let rankingTimer = null
 
+// 협업 섹션 presence 아바타 등장 — 화면에 들어왔을 때 1회만(스크롤마다 X)
+const coEditPreview = ref(null)
+const presenceIn = ref(false)
+let presenceObserver = null
+
+// Hero 챗봇 대화 연출: 입력 → 생각 중(타이핑) → 추천 답변 순서로 시간차 재생
+const showUser = ref(false)
+const showThinking = ref(false)
+const showAnswer = ref(false)
+let heroTimers = []
+
+function prefersReduced() {
+  return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+function playHeroSequence() {
+  if (prefersReduced()) {
+    // 모션 최소 선호 시 타이핑 단계 없이 최종 대화 상태를 즉시 표시
+    showUser.value = true
+    showAnswer.value = true
+    return
+  }
+  heroTimers.push(window.setTimeout(() => { showUser.value = true }, 350))
+  heroTimers.push(window.setTimeout(() => { showThinking.value = true }, 950))
+  heroTimers.push(window.setTimeout(() => {
+    showThinking.value = false
+    showAnswer.value = true
+  }, 2350))
+}
+
 async function loadRanking() {
   try {
     popular.value = await rankingApi.getAttractions()
@@ -175,10 +213,27 @@ function goToAttraction(id) {
 onMounted(() => {
   loadRanking()
   rankingTimer = window.setInterval(loadRanking, 30_000)
+  playHeroSequence()
+
+  // reduced-motion 이거나 IO 미지원이면 바로 노출, 아니면 뷰포트 진입 시 1회 재생
+  if (prefersReduced() || !('IntersectionObserver' in window)) {
+    presenceIn.value = true
+  } else if (coEditPreview.value) {
+    presenceObserver = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        presenceIn.value = true
+        presenceObserver.disconnect()
+        presenceObserver = null
+      }
+    }, { threshold: 0.4 })
+    presenceObserver.observe(coEditPreview.value)
+  }
 })
 
 onBeforeUnmount(() => {
   if (rankingTimer) window.clearInterval(rankingTimer)
+  if (presenceObserver) presenceObserver.disconnect()
+  heroTimers.forEach((t) => window.clearTimeout(t))
 })
 </script>
 
@@ -337,6 +392,69 @@ onBeforeUnmount(() => {
   background: var(--coral-tint);
   color: var(--coral-ink);
   font-weight: 600;
+}
+
+/* Hero 챗봇 preview — 버블/카드가 차례로 fade-up (최초 마운트 1회).
+   reduced-motion 이면 media 블록이 적용 안 돼 즉시 최종 상태로 보인다. */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+/* 추천 코스(주황) 카드가 등장 후 아주 은은하게 위아래로 떠다니며 시선을 끈다 */
+@keyframes float-accent {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+/* '생각 중' 타이핑 점 — 차례로 통통 */
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.45; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
+/* Hero 왼쪽 카피/CTA — 마운트 시 위에서부터 차례로 가볍게 fade-up (오른쪽 챗봇 연출과 균형) */
+@media (prefers-reduced-motion: no-preference) {
+  .hero__eyebrow { animation: rise 0.5s ease-out both; }
+  .hero__title   { animation: rise 0.5s ease-out 0.08s both; }
+  .hero__lead    { animation: rise 0.5s ease-out 0.16s both; }
+  .hero__cta     { animation: rise 0.5s ease-out 0.24s both; }
+}
+
+/* 메시지 등장/교체(입력→타이핑→답변)는 Vue <transition name="msg"> 로 부드럽게.
+   reduced-motion 이면 global.css 의 전역 transition:none 으로 즉시 처리된다. */
+.msg-enter-active { transition: opacity 0.35s ease, transform 0.35s ease; }
+.msg-leave-active { transition: opacity 0.2s ease; }
+.msg-enter-from { opacity: 0; transform: translateY(8px); }
+.msg-leave-to { opacity: 0; }
+
+.bubble--typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink-soft);
+}
+.typing-dots { display: inline-flex; align-items: center; gap: 4px; }
+.typing-dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.typing-text { font-size: 14px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* 답변이 뜨면 카드 3개가 차례로 fade-up (마운트 기준 stagger) */
+  .chatbot-preview .preview-card { animation: rise 0.5s ease-out both; }
+  .chatbot-preview .preview-card:nth-child(1) { animation-delay: 0.05s; }
+  .chatbot-preview .preview-card:nth-child(3) { animation-delay: 0.29s; }
+  /* 카드 2 = 추천(주황) 카드: 등장(delay 0.17s) 뒤 가벼운 float 시작 */
+  .chatbot-preview .preview-card--accent {
+    animation:
+      rise 0.5s ease-out 0.17s both,
+      float-accent 2.8s ease-in-out 1.1s infinite;
+  }
+  .typing-dots i { animation: typing-bounce 1.2s ease-in-out infinite; }
+  .typing-dots i:nth-child(2) { animation-delay: 0.15s; }
+  .typing-dots i:nth-child(3) { animation-delay: 0.30s; }
 }
 
 /* Sections */
@@ -588,5 +706,35 @@ onBeforeUnmount(() => {
   padding: 8px 16px;
   border-radius: 999px;
   border: 1px solid var(--line);
+}
+
+/* 동시편집을 암시하는 초록 presence 점 — 랭킹 '실시간 집계' 점과 같은 pulse(숨쉬기) 효과로 통일 */
+.live-now {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 7px;
+  vertical-align: middle;
+  border-radius: 50%;
+  background: var(--success);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .live-dot, .live-now { animation: none; }
+}
+
+/* 협업 아바타 — 섹션이 뷰포트에 들어오면(is-in) 차례로 pop-in.
+   reduced-motion 이면 이 블록 자체가 비활성 → 처음부터 보임(JS는 is-in 만 토글). */
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.9); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .co-edit-preview .presence .avatar { opacity: 0; }
+  .co-edit-preview.is-in .presence .avatar { animation: pop-in 0.55s ease-out forwards; }
+  .co-edit-preview.is-in .presence .avatar:nth-child(1) { animation-delay: 0.00s; }
+  .co-edit-preview.is-in .presence .avatar:nth-child(2) { animation-delay: 0.13s; }
+  .co-edit-preview.is-in .presence .avatar:nth-child(3) { animation-delay: 0.26s; }
+  .co-edit-preview.is-in .presence .avatar:nth-child(4) { animation-delay: 0.39s; }
 }
 </style>
