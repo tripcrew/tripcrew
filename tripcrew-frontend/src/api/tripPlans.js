@@ -46,4 +46,10 @@ export const tripPlanApi = {
   updateMemberRole: (id, userId, role) =>
     http.patch(`/trip-plans/${id}/members/${userId}`, { role }),
   removeMember: (id, userId) => http.delete(`/trip-plans/${id}/members/${userId}`),
+
+  // F06 P4 — 받은 초대(수락 대기). 초대 시 PENDING → 수락=ACCEPTED 전환, 거절=행 삭제
+  //   초대 한 건: { planId, planTitle, inviterNickname, role, invitedAt }
+  listInvites: () => http.get('/me/invites').then((r) => r.data),
+  acceptInvite: (planId) => http.post(`/me/invites/${planId}/accept`),
+  rejectInvite: (planId) => http.delete(`/me/invites/${planId}`),
 }

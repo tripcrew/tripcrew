@@ -11,5 +11,9 @@ public enum PlaceChangeAction {
     SCHEDULED,
     REORDERED,
     OPTIMIZED,
-    REMOVED
+    REMOVED,
+    /** 계획 메타(제목/설명/날짜) 저장 — 수신측은 장소뿐 아니라 계획 정보까지 다시 불러온다. */
+    SAVED,
+    /** 멤버 내보내기 — 대상(targetUserId)은 접근 권한을 잃으므로 편집 화면에서 내보내진다. */
+    MEMBER_REMOVED
 }

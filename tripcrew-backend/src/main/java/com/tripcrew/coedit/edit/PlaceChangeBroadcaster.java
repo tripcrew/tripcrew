@@ -26,12 +26,21 @@ public class PlaceChangeBroadcaster {
     private final SimpMessagingTemplate messagingTemplate;
     private final UserMapper userMapper;
 
+    /** 일반 장소 동작 브로드캐스트(특정 대상 없음). */
     public void broadcast(Long planId, Long actorId, PlaceChangeAction action) {
+        broadcast(planId, actorId, action, null);
+    }
+
+    /**
+     * 특정 사용자를 겨냥한 동작도 함께 알린다(예: MEMBER_REMOVED 내보내기 — targetUserId 가 그 대상).
+     * 수신측은 본인이 대상일 때만 반응한다.
+     */
+    public void broadcast(Long planId, Long actorId, PlaceChangeAction action, Long targetUserId) {
         String nickname = userMapper.findById(actorId)
                 .map(User::getNickname)
                 .orElse("사용자");
         messagingTemplate.convertAndSend(
                 "/topic/plans/" + planId + "/places",
-                new PlaceChangeEvent(actorId, nickname, action.name()));
+                new PlaceChangeEvent(actorId, nickname, action.name(), targetUserId));
     }
 }

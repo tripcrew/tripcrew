@@ -299,6 +299,7 @@
               <strong>{{ member.email }}</strong>
               <span v-if="member.userId === myUserId" class="member-me">나</span>
               <span class="member-role">{{ roleText(member.role) }}</span>
+              <span v-if="member.status === 'PENDING'" class="member-pending">대기중</span>
             </div>
             <div class="member-actions">
               <select
@@ -489,6 +490,7 @@ const PLACE_ACTION_TEXT = {
   REORDERED: '장소 순서를 변경했어요',
   OPTIMIZED: '동선을 최적화했어요',
   REMOVED: '장소를 삭제했어요',
+  SAVED: '저장을 완료했어요',
 }
 const toastMsg = ref('')
 const toastVisible = ref(false)
@@ -523,10 +525,17 @@ const localBusy = computed(
   () => placeReordering.value || placeSaving.value || optimizing.value || draggedPlaceId.value !== null,
 )
 let pendingRefetch = false
+let pendingPlanRefetch = false // SAVED: 장소뿐 아니라 계획 메타(제목/날짜)도 다시 불러와야 함
 
 async function applyRemoteRefetch() {
+  const reloadPlan = pendingPlanRefetch
   pendingRefetch = false
+  pendingPlanRefetch = false
   try {
+    if (reloadPlan) {
+      const plan = await tripPlanApi.get(id)
+      fill(plan) // 상대가 저장한 제목/설명/날짜·version 을 반영
+    }
     await loadPlaces()
   } catch {
     // 재조회 실패는 조용히 무시 — 다음 변경/새로고침 때 다시 동기화된다.
@@ -534,14 +543,22 @@ async function applyRemoteRefetch() {
 }
 
 watch(localBusy, (busy) => {
-  if (!busy && pendingRefetch) applyRemoteRefetch()
+  if (!busy && (pendingRefetch || pendingPlanRefetch)) applyRemoteRefetch()
 })
 
-// 다른 접속자의 장소 변경 알림 → 목록을 다시 불러오고 누가 바꿨는지 토스트로 안내.
+// 다른 접속자의 변경 알림 → 내용을 다시 불러오고 누가 바꿨는지 토스트로 안내.
 async function handlePlaceChange(event) {
   if (!event || event.actorId === myUserId.value) return // 내 변경은 이미 반영됨
+  // 내가 내보내진 경우: 접근 권한을 잃었으니 안내와 함께 내 계획 목록으로 이동. 대상이 아니면 무시.
+  if (event.action === 'MEMBER_REMOVED') {
+    if (event.targetUserId === myUserId.value) {
+      router.push({ path: '/plans', query: { left: 'removed' } })
+    }
+    return
+  }
   const text = PLACE_ACTION_TEXT[event.action] || '계획을 수정했어요'
   showToast(`${event.actorNickname}님이 ${text}`)
+  if (event.action === 'SAVED') pendingPlanRefetch = true
   if (localBusy.value) {
     pendingRefetch = true // 내 조작이 끝나면 watch 에서 한 번에 반영
     return
@@ -752,6 +769,11 @@ async function kickMember(member) {
   membersError.value = ''
   try {
     await tripPlanApi.removeMember(id, member.userId)
+    if (leavingSelf) {
+      // 더 이상 멤버가 아니므로 이 계획에 머무를 수 없다 → 내 계획 목록으로 이동
+      router.push('/plans')
+      return
+    }
     await loadMembers()
   } catch (e) {
     membersError.value = leavingSelf ? '계획에서 나가지 못했습니다.' : '멤버 제거에 실패했습니다.'
@@ -1084,7 +1106,7 @@ async function save() {
       version: form.value.version,
     })
     fill(updated)
-    saveMsg.value = '저장됨'
+    saveMsg.value = '저장을 완료했어요'
   } catch (e) {
     const status = e.response?.status
     if (status === 409) {
@@ -2147,6 +2169,17 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
   font-size: 12px;
   color: var(--muted, #7b8a91);
+}
+
+/* 수락 대기 중인 초대(아직 미참여) */
+.member-pending {
+  flex-shrink: 0;
+  padding: 1px 7px;
+  border-radius: 8px;
+  background: var(--bg-2, #f1f4f5);
+  color: var(--ink-3, #7b8a91);
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .member-actions {

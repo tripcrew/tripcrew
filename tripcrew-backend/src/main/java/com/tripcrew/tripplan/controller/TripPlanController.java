@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.tripcrew.coedit.dto.PlaceChangeAction;
+import com.tripcrew.coedit.edit.PlaceChangeBroadcaster;
 import com.tripcrew.tripplan.model.dto.TripPlanCreateRequest;
 import com.tripcrew.tripplan.model.dto.TripPlanResponse;
 import com.tripcrew.tripplan.model.dto.TripPlanUpdateRequest;
@@ -32,6 +34,7 @@ import lombok.RequiredArgsConstructor;
 public class TripPlanController {
 
     private final TripPlanService tripPlanService;
+    private final PlaceChangeBroadcaster placeChangeBroadcaster;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -54,7 +57,10 @@ public class TripPlanController {
     public TripPlanResponse update(@AuthenticationPrincipal Long userId,
                                    @PathVariable Long id,
                                    @Valid @RequestBody TripPlanUpdateRequest request) {
-        return tripPlanService.update(id, userId, request);
+        TripPlanResponse updated = tripPlanService.update(id, userId, request);
+        // 트랜잭션 커밋 후(컨트롤러) 공동 편집자들에게 저장 사실을 알림 → 상대는 계획을 다시 불러온다.
+        placeChangeBroadcaster.broadcast(id, userId, PlaceChangeAction.SAVED);
+        return updated;
     }
 
     @DeleteMapping("/{id}")

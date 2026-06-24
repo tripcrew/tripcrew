@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.tripcrew.tripplan.exception.TripPlanAccessDeniedException;
 import com.tripcrew.tripplan.exception.TripPlanNotFoundException;
 import com.tripcrew.tripplan.model.TripMemberRole;
+import com.tripcrew.tripplan.model.TripMemberStatus;
 import com.tripcrew.tripplan.model.dto.TripPlan;
 import com.tripcrew.tripplan.model.mapper.TripMemberMapper;
 import com.tripcrew.tripplan.model.mapper.TripPlanMapper;
@@ -39,12 +40,13 @@ public class TripPlanAccessService {
         return resolveRole(plan, userId);
     }
 
-    /** 이미 조회한 plan 으로 역할 판정(중복 조회 회피). */
+    /** 이미 조회한 plan 으로 역할 판정(중복 조회 회피). 수락(ACCEPTED)한 멤버만 권한 인정 — PENDING 은 접근 불가. */
     public TripMemberRole resolveRole(TripPlan plan, Long userId) {
         if (plan.getOwnerId().equals(userId)) {
             return TripMemberRole.OWNER;
         }
         return tripMemberMapper.findByPlanAndUser(plan.getId(), userId)
+                .filter(m -> m.getStatus() == TripMemberStatus.ACCEPTED)
                 .map(m -> m.getRole())
                 .orElse(null);
     }
