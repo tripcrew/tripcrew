@@ -107,20 +107,16 @@ public class AdminReportService {
                 reportId, dismissedMessage(report));
     }
 
-    /** 처리완료 알림 문구. 어떤 신고(대상·사유)였는지 맥락을 담되 피신고자 신원은 노출하지 않는다. */
+    /** 처리완료 알림 문구. 사유로 맥락을 주되 대상 종류·피신고자 신원은 노출하지 않는다(상태는 칩으로 구분). */
     private String resolvedMessage(Report report) {
-        return String.format("신고하신 %s에 대한 검토가 완료되어 조치했습니다. (사유: %s) 신고해 주셔서 감사합니다.",
-                targetLabel(report.getTargetType()), reasonLabel(report.getReason()));
+        return String.format("신고하신 내용에 대한 검토가 완료되어 조치했습니다. (사유: %s) 신고해 주셔서 감사합니다.",
+                reasonLabel(report.getReason()));
     }
 
     /** 기각 알림 문구. */
     private String dismissedMessage(Report report) {
-        return String.format("신고하신 %s에 대한 건은 검토 결과 별도 조치 없이 종료되었습니다. (사유: %s) 신고해 주셔서 감사합니다.",
-                targetLabel(report.getTargetType()), reasonLabel(report.getReason()));
-    }
-
-    private String targetLabel(ReportTargetType targetType) {
-        return targetType == ReportTargetType.REVIEW ? "후기" : "회원";
+        return String.format("신고하신 내용은 검토 결과 별도 조치 없이 종료되었습니다. (사유: %s) 신고해 주셔서 감사합니다.",
+                reasonLabel(report.getReason()));
     }
 
     private String reasonLabel(ReportReason reason) {
