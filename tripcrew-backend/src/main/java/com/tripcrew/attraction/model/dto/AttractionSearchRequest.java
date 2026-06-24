@@ -23,6 +23,7 @@ public class AttractionSearchRequest {
     private Integer sidoCode;
     private Integer gugunCode;
     private List<Integer> contentTypeIds;
+    private Double minRating;
 
     @Builder.Default
     private Integer page = 1;
@@ -36,6 +37,9 @@ public class AttractionSearchRequest {
             if (keyword.length() < MIN_KEYWORD_LENGTH) {
                 keyword = null;
             }
+        }
+        if (minRating != null && (minRating < 1 || minRating > 5)) {
+            minRating = null;
         }
     }
 
