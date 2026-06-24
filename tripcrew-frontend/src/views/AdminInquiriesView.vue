@@ -39,7 +39,7 @@
       <p v-else-if="inquiries.length === 0" class="list-empty">{{ emptyText }}</p>
 
       <ul v-else class="iq-list">
-        <li v-for="iq in inquiries" :key="iq.id" class="iq-card">
+        <li v-for="iq in pagedInquiries" :key="iq.id" class="iq-card">
           <div class="iq-card__top">
             <div class="iq-card__headinfo">
               <span :class="['status-chip', iq.status === 'ANSWERED' ? 'status-chip--answered' : 'status-chip--open']">
@@ -90,6 +90,8 @@
           </div>
         </li>
       </ul>
+
+      <BasePagination v-if="inquiries.length > 0" v-model="page" :total="inquiries.length" :page-size="PAGE_SIZE" />
     </template>
 
     <p v-if="notice" :class="['toast', notice.type === 'error' ? 'toast--error' : 'toast--ok']">
@@ -99,11 +101,12 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
 import { adminApi } from '@/api/admin'
 import AdminLayout from '@/components/admin/AdminLayout.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
+import BasePagination from '@/components/common/BasePagination.vue'
 import { useAdminMetaStore } from '@/stores/adminMeta'
 
 const adminMeta = useAdminMetaStore()
@@ -123,6 +126,14 @@ const busyId = ref(null)
 const notice = ref(null)
 const drafts = ref({})
 const editingIds = ref(new Set())
+const page = ref(1)
+const PAGE_SIZE = 15
+
+const pagedInquiries = computed(() => inquiries.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE))
+watch(() => inquiries.value.length, (len) => {
+  const maxPage = Math.max(1, Math.ceil(len / PAGE_SIZE))
+  if (page.value > maxPage) page.value = maxPage
+})
 
 const headSub = computed(() => {
   if (statusFilter.value === 'OPEN') return `미답변 문의 ${inquiries.value.length}건 · 답변하면 답변완료로 이동합니다`
@@ -149,6 +160,7 @@ function flash(type, text) {
 function setFilter(value) {
   if (statusFilter.value === value) return
   statusFilter.value = value
+  page.value = 1
   load()
 }
 

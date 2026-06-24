@@ -56,7 +56,7 @@
           <tr v-else-if="reports.length === 0">
             <td colspan="7" class="table-empty">{{ emptyText }}</td>
           </tr>
-          <tr v-for="rp in reports" :key="rp.id">
+          <tr v-for="rp in pagedReports" :key="rp.id">
             <td class="t-mono">{{ formatDate(rp.createdAt) }}</td>
             <td><span :class="['type-chip', `type--${rp.targetType.toLowerCase()}`]">{{ targetLabel(rp.targetType) }}</span></td>
             <td class="email-cell">{{ rp.reporterEmail }}</td>
@@ -98,6 +98,8 @@
       </table>
     </section>
 
+    <BasePagination v-if="!forbidden && !error" v-model="page" :total="reports.length" :page-size="PAGE_SIZE" />
+
     <p v-if="notice" :class="['toast', notice.type === 'error' ? 'toast--error' : 'toast--ok']">
       {{ notice.text }}
     </p>
@@ -106,11 +108,12 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
 import { adminApi } from '@/api/admin'
 import AdminLayout from '@/components/admin/AdminLayout.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
+import BasePagination from '@/components/common/BasePagination.vue'
 import { useAdminMetaStore } from '@/stores/adminMeta'
 
 const adminMeta = useAdminMetaStore()
@@ -128,6 +131,15 @@ const forbidden = ref(false)
 const busyId = ref(null)
 const notice = ref(null)
 const statusFilter = ref('OPEN')
+const page = ref(1)
+const PAGE_SIZE = 15
+
+const pagedReports = computed(() => reports.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE))
+// 마지막 페이지 항목을 모두 처리해 페이지가 비면 한 칸 앞으로 당긴다
+watch(() => reports.value.length, (len) => {
+  const maxPage = Math.max(1, Math.ceil(len / PAGE_SIZE))
+  if (page.value > maxPage) page.value = maxPage
+})
 
 const isOpenTab = computed(() => statusFilter.value === 'OPEN')
 const headSub = computed(() => {
@@ -177,6 +189,7 @@ async function load() {
 function selectTab(value) {
   if (statusFilter.value === value) return
   statusFilter.value = value
+  page.value = 1
   notice.value = null
   load()
 }
