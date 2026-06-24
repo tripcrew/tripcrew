@@ -12,6 +12,7 @@
           rx="2"
           class="bar"
           :class="{ 'bar--active': hoverIndex === bar.key }"
+          :style="{ animationDelay: bar.key * 12 + 'ms' }"
           @mouseenter="hoverIndex = bar.key"
           @mouseleave="hoverIndex = -1"
         />
@@ -115,8 +116,22 @@ function fullDate(label) {
 <style scoped>
 .chart-wrap { width: 100%; min-width: 0; position: relative; }
 .chart-svg { display: block; max-width: 100%; }
-.bar { fill: var(--teal); transition: fill 0.12s; }
+.bar {
+  fill: var(--teal);
+  transition: fill 0.12s;
+  transform-box: fill-box;
+  transform-origin: bottom;
+  animation: bar-grow 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
 .bar--active { fill: var(--teal-3); }
+
+@keyframes bar-grow {
+  from { transform: scaleY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar { animation: none; }
+}
 .grid { stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 3; }
 .axis { stroke: var(--line); stroke-width: 1; }
 .tick { fill: var(--muted); font-size: 10px; font-family: var(--font-mono); }
