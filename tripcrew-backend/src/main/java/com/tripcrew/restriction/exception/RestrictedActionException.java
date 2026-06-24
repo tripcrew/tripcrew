@@ -27,6 +27,6 @@ public class RestrictedActionException extends BusinessException {
             case ACCOUNT_SUSPEND -> "계정 이용";
         };
         String suffix = until == null ? "" : " (해제: " + until.format(FMT) + ")";
-        return "신고 누적으로 " + action + "이(가) 제한된 상태입니다." + suffix;
+        return "신고 누적으로 " + action + "이 제한된 상태입니다." + suffix;
     }
 }
