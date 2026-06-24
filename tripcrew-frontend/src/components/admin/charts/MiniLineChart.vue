@@ -164,8 +164,8 @@ function fullDate(label) {
 </script>
 
 <style scoped>
-.chart-wrap { width: 100%; position: relative; }
-.chart-svg { display: block; }
+.chart-wrap { width: 100%; min-width: 0; position: relative; }
+.chart-svg { display: block; max-width: 100%; }
 .series-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
 .grid { stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 3; }
 .axis { stroke: var(--line); stroke-width: 1; }

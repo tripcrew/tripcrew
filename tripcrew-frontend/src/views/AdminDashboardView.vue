@@ -399,6 +399,8 @@ onMounted(() => {
   gap: 6px;
   text-decoration: none;
   color: inherit;
+  /* 그리드 칸이 내용(숫자/아이콘)보다 작게도 줄어들 수 있게 — 가로 오버플로 방지 */
+  min-width: 0;
 }
 
 .stat-card--link {
@@ -486,6 +488,9 @@ onMounted(() => {
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   padding: 20px;
+  /* 차트 SVG 의 고정 픽셀 width 가 그리드 칸 최소폭을 키워 가로 오버플로를 만드는 것을 막는다.
+     이게 있어야 창을 줄일 때 칸→차트가 같이 줄고 ResizeObserver 가 재계산한다. */
+  min-width: 0;
 }
 
 .panel-title {
