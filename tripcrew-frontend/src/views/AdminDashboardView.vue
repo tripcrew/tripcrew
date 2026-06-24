@@ -27,8 +27,8 @@
     </section>
 
     <template v-else>
-      <!-- TODAY: 메인 집계 카드(클릭 시 해당 관리 페이지로) -->
-      <h2 class="section-label">TODAY</h2>
+      <!-- 현황: 핵심 집계 카드(누적/스냅샷, 클릭 시 해당 관리 페이지로) -->
+      <h2 class="section-label">현황</h2>
       <div class="card-grid">
         <RouterLink class="stat-card stat-card--link" to="/admin/users">
           <div class="stat-top">
