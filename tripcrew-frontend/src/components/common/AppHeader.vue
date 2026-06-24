@@ -16,11 +16,43 @@
 
       <div class="app-header__actions">
         <template v-if="isLoggedIn">
-          <button class="icon-btn" aria-label="알림">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M18 16v-5a6 6 0 1 0-12 0v5l-2 2h16l-2-2zM10 21a2 2 0 0 0 4 0"/>
-            </svg>
-          </button>
+          <div class="notif" ref="notifRef">
+            <button class="icon-btn notif__bell" aria-label="알림" @click="toggleNotif">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 16v-5a6 6 0 1 0-12 0v5l-2 2h16l-2-2zM10 21a2 2 0 0 0 4 0"/>
+              </svg>
+              <span v-if="unreadCount > 0" class="notif__badge">{{ badgeText }}</span>
+            </button>
+
+            <div v-if="notifOpen" class="notif__panel">
+              <div class="notif__head">
+                <span class="notif__title">알림</span>
+                <button
+                  v-if="unreadCount > 0"
+                  class="notif__readall"
+                  @click="handleReadAll"
+                >모두 읽음</button>
+              </div>
+
+              <div class="notif__list">
+                <p v-if="notifLoading" class="notif__empty">불러오는 중…</p>
+                <p v-else-if="notifications.length === 0" class="notif__empty">새로운 알림이 없어요</p>
+                <button
+                  v-for="n in notifications"
+                  :key="n.id"
+                  class="notif__item"
+                  :class="{ 'notif__item--unread': !n.read }"
+                  @click="handleNotifClick(n)"
+                >
+                  <span v-if="!n.read" class="notif__dot" aria-hidden="true"></span>
+                  <span class="notif__body">
+                    <span class="notif__msg">{{ n.message }}</span>
+                    <span class="notif__time">{{ formatRelative(n.createdAt) }}</span>
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
           <router-link to="/profile" class="avatar avatar--sm" :aria-label="`${displayName} 프로필`">
             {{ avatarText }}
           </router-link>
@@ -43,9 +75,10 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
+import { notificationApi, notificationRoute } from '@/api/notifications'
 import { useAuthStore } from '@/stores/auth'
 
 const props = defineProps({
@@ -62,6 +95,124 @@ async function handleLogout() {
   await authStore.logout()
   router.replace('/')
 }
+
+/* ── 알림 ─────────────────────────────────────────────
+   벨 뱃지(미읽음 수)는 진입 시 + 60초 폴링으로 갱신,
+   드롭다운을 열 때 최근 목록을 불러온다. 클릭 시 읽음 처리 + ref 경로로 이동. */
+const UNREAD_POLL_MS = 60000
+
+const notifRef = ref(null)
+const notifOpen = ref(false)
+const notifLoading = ref(false)
+const notifications = ref([])
+const unreadCount = ref(0)
+const badgeText = computed(() => (unreadCount.value > 9 ? '9+' : String(unreadCount.value)))
+
+let pollTimer = null
+
+async function refreshUnread() {
+  if (!isLoggedIn.value) return
+  try {
+    unreadCount.value = await notificationApi.unreadCount()
+  } catch {
+    /* 네트워크/인증 오류는 조용히 무시(뱃지 비핵심) */
+  }
+}
+
+async function toggleNotif() {
+  notifOpen.value = !notifOpen.value
+  if (!notifOpen.value) return
+  notifLoading.value = true
+  try {
+    notifications.value = await notificationApi.list()
+  } catch {
+    notifications.value = []
+  } finally {
+    notifLoading.value = false
+  }
+}
+
+async function handleReadAll() {
+  try {
+    await notificationApi.markAllRead()
+    notifications.value = notifications.value.map((n) => ({ ...n, read: true }))
+    unreadCount.value = 0
+  } catch {
+    /* 무시 */
+  }
+}
+
+async function handleNotifClick(n) {
+  if (!n.read) {
+    try {
+      await notificationApi.markRead(n.id)
+      n.read = true
+      unreadCount.value = Math.max(0, unreadCount.value - 1)
+    } catch {
+      /* 읽음 실패해도 이동은 진행 */
+    }
+  }
+  const to = notificationRoute(n)
+  notifOpen.value = false
+  if (to) router.push(to)
+}
+
+/** 상대 시각(방금/n분 전/n시간 전/n일 전), 그 이상은 날짜. */
+function formatRelative(iso) {
+  if (!iso) return ''
+  const then = new Date(iso).getTime()
+  if (Number.isNaN(then)) return ''
+  const diff = Date.now() - then
+  const min = Math.floor(diff / 60000)
+  if (min < 1) return '방금'
+  if (min < 60) return `${min}분 전`
+  const hour = Math.floor(min / 60)
+  if (hour < 24) return `${hour}시간 전`
+  const day = Math.floor(hour / 24)
+  if (day < 7) return `${day}일 전`
+  return new Date(iso).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })
+}
+
+function onDocClick(e) {
+  if (notifOpen.value && notifRef.value && !notifRef.value.contains(e.target)) {
+    notifOpen.value = false
+  }
+}
+
+function startPolling() {
+  stopPolling()
+  refreshUnread()
+  pollTimer = window.setInterval(refreshUnread, UNREAD_POLL_MS)
+}
+
+function stopPolling() {
+  if (pollTimer) {
+    window.clearInterval(pollTimer)
+    pollTimer = null
+  }
+}
+
+// 로그인 상태가 바뀌면 폴링 시작/정지 (로그아웃 시 뱃지 초기화)
+watch(isLoggedIn, (loggedIn) => {
+  if (loggedIn) {
+    startPolling()
+  } else {
+    stopPolling()
+    notifOpen.value = false
+    notifications.value = []
+    unreadCount.value = 0
+  }
+})
+
+onMounted(() => {
+  document.addEventListener('click', onDocClick)
+  if (isLoggedIn.value) startPolling()
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onDocClick)
+  stopPolling()
+})
 const logoTo = computed(() => isLoggedIn.value ? '/home' : '/')
 const displayName = computed(() => authStore.user?.nickname || authStore.user?.email || '사용자')
 const avatarText = computed(() => displayName.value.trim().slice(0, 1).toUpperCase() || 'U')
@@ -145,6 +296,137 @@ const avatarText = computed(() => displayName.value.trim().slice(0, 1).toUpperCa
 .icon-btn:hover {
   background: var(--bg-2);
   color: var(--ink);
+}
+
+/* ── 알림 벨 + 드롭다운 ── */
+.notif {
+  position: relative;
+}
+
+.notif__bell {
+  position: relative;
+}
+
+.notif__badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--coral);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.92);
+}
+
+.notif__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 320px;
+  max-height: 420px;
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  z-index: 200;
+}
+
+.notif__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.notif__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.notif__readall {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--teal-3);
+}
+
+.notif__readall:hover {
+  text-decoration: underline;
+}
+
+.notif__list {
+  overflow-y: auto;
+}
+
+.notif__empty {
+  padding: 28px 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.notif__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--bg-2);
+  transition: background 0.15s;
+}
+
+.notif__item:last-child {
+  border-bottom: none;
+}
+
+.notif__item:hover {
+  background: var(--bg-2);
+}
+
+.notif__item--unread {
+  background: var(--teal-soft);
+}
+
+.notif__item--unread:hover {
+  background: var(--teal-soft);
+}
+
+.notif__dot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--coral);
+}
+
+.notif__body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.notif__msg {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink);
+}
+
+.notif__time {
+  font-size: 11px;
+  color: var(--ink-3);
 }
 
 /* 로그아웃: 아이콘 + 텍스트. hover 시 '나가기'를 암시하는 coral 틴트 */
