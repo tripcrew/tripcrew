@@ -59,22 +59,22 @@
 
           <div class="field">
             <label>제목</label>
-            <input v-model="form.title" type="text" maxlength="150" placeholder="여행 제목" :disabled="!canEdit" @input="metaDirty = true" />
+            <input v-model="form.title" type="text" maxlength="150" placeholder="여행 제목" :disabled="!canEdit" @input="touchMeta" />
           </div>
 
           <div class="field">
             <label>설명</label>
-            <textarea v-model="form.description" rows="4" placeholder="이번 여행에 대한 메모" :disabled="!canEdit" @input="metaDirty = true"></textarea>
+            <textarea v-model="form.description" rows="4" placeholder="이번 여행에 대한 메모" :disabled="!canEdit" @input="touchMeta"></textarea>
           </div>
 
           <div class="field-row">
             <div class="field">
               <label>시작일</label>
-              <input v-model="form.startDate" type="date" min="0001-01-01" max="9999-12-31" :disabled="!canEdit" @change="metaDirty = true" />
+              <input v-model="form.startDate" type="date" min="0001-01-01" max="9999-12-31" :disabled="!canEdit" @change="touchMeta" />
             </div>
             <div class="field">
               <label>종료일</label>
-              <input v-model="form.endDate" type="date" min="0001-01-01" max="9999-12-31" :disabled="!canEdit" @change="metaDirty = true" />
+              <input v-model="form.endDate" type="date" min="0001-01-01" max="9999-12-31" :disabled="!canEdit" @change="touchMeta" />
             </div>
           </div>
 
@@ -505,11 +505,29 @@ const toastMsg = ref('')
 const toastVisible = ref(false)
 let toastTimer = null
 
-// F06 P2b — 메타(제목/설명/날짜) 미저장 변경 보호.
-// metaDirty: 내가 메타를 편집했는데 아직 저장 안 함.
-// metaConflict: 그 와중에 상대가 저장 → 덮어쓰지 않고 선택 배너를 띄운다(plan=서버 최신본).
+// F06 P2b — 메타(제목/설명/날짜) 변경 보호.
+// metaDirty:   내가 메타를 편집했는데 아직 저장 안 함(미저장 입력).
+// metaTouched: 이 세션에서 메타를 한 번이라도 편집/저장함(= 내 기여). 저장해도 유지하고,
+//              상대 내용을 받아들일 때만 해제 → 내가 저장한 내용이 남에게 덮어써지는 것도 알려준다.
+// metaConflict: 들어온 저장이 내 화면과 다른데 내 기여가 있으면 → 덮어쓰지 않고 선택 배너(plan=서버 최신본).
 const metaDirty = ref(false)
+const metaTouched = ref(false)
 const metaConflict = ref({ open: false, by: '', plan: null })
+
+// 메타 입력 시: 미저장 + 기여 표시
+function touchMeta() {
+  metaDirty.value = true
+  metaTouched.value = true
+}
+
+// 들어온 서버 메타가 지금 내 폼과 같은지(빈값 null/'' 정규화). 같으면 충돌이 아니라 그냥 반영.
+function metaMatches(plan) {
+  const norm = (v) => v ?? ''
+  return norm(plan.title) === norm(form.value.title)
+    && norm(plan.description) === norm(form.value.description)
+    && norm(plan.startDate) === norm(form.value.startDate)
+    && norm(plan.endDate) === norm(form.value.endDate)
+}
 
 const presenceNames = computed(() =>
   roster.value
@@ -550,11 +568,12 @@ async function applyRemoteRefetch() {
   try {
     if (reloadPlan) {
       const plan = await tripPlanApi.get(id)
-      if (metaDirty.value) {
-        // 내 미저장 메타 변경이 있으면 덮어쓰지 않고 선택권을 준다(P2b)
+      // 내 기여(편집 중이거나 이미 저장함)가 있고, 들어온 내용이 내 화면과 다르면 → 선택권을 준다(P2b).
+      if ((metaDirty.value || metaTouched.value) && !metaMatches(plan)) {
         metaConflict.value = { open: true, by: savedByNickname, plan }
       } else {
         fill(plan) // 상대가 저장한 제목/설명/날짜·version 을 반영
+        if (savedByNickname) showToast(`${savedByNickname}님이 ${PLACE_ACTION_TEXT.SAVED}`)
       }
     }
     await loadPlaces()
@@ -580,8 +599,7 @@ async function handlePlaceChange(event) {
   if (event.action === 'SAVED') {
     savedByNickname = event.actorNickname
     pendingPlanRefetch = true
-    // 내가 메타 편집 중이면 토스트 대신 선택 배너(applyRemoteRefetch)에서 안내
-    if (!metaDirty.value) showToast(`${event.actorNickname}님이 ${PLACE_ACTION_TEXT.SAVED}`)
+    // 토스트 vs 선택 배너는 applyRemoteRefetch 에서 충돌 여부로 결정(중복 안내 방지)
   } else {
     showToast(`${event.actorNickname}님이 ${PLACE_ACTION_TEXT[event.action] || '계획을 수정했어요'}`)
   }
@@ -1154,9 +1172,10 @@ async function save() {
   }
 }
 
-// 충돌 배너 — 최신 내용 불러오기(서버본 적용, 내 변경 버림)
+// 충돌 배너 — 최신 내용 불러오기(서버본 적용, 내 변경/기여 버림)
 function loadServerMeta() {
   if (metaConflict.value.plan) fill(metaConflict.value.plan)
+  metaTouched.value = false // 상대 내용을 받아들임 → 더는 내 기여 아님
   metaConflict.value = { open: false, by: '', plan: null }
 }
 
