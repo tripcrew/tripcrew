@@ -93,12 +93,14 @@
 </template>
 
 <script setup>
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 
 import { chatApi } from '@/api/chat'
 import AppHeader from '@/components/common/AppHeader.vue'
 
 const input = ref('')
+const route = useRoute()
 const loading = ref(false)
 const errorMessage = ref('')
 const chatBodyRef = ref(null)
@@ -113,6 +115,14 @@ const suggestedPrompts = [
 const messages = ref([createWelcomeMessage()])
 
 const canSend = computed(() => input.value.trim().length > 0 && !loading.value)
+
+watch(
+  () => route.query.prompt,
+  (prompt) => {
+    input.value = typeof prompt === 'string' ? prompt : ''
+  },
+  { immediate: true },
+)
 
 function messageClass(role) {
   return role === 'USER' ? 'msg--user' : 'msg--bot'

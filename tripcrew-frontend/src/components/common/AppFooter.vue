@@ -1,7 +1,7 @@
 <template>
   <footer class="app-footer">
     <div class="app-footer__inner">
-      <div class="app-footer__brand">
+      <div v-if="!compact" class="app-footer__brand">
         <div class="logo">TripCrew<span class="dot">.</span></div>
         <p class="t-caption">공공데이터 · AI · 동선 최적화로 만드는 여행 계획 플랫폼</p>
       </div>
@@ -9,10 +9,20 @@
       <div class="app-footer__links">
         <div class="link-group">
           <h4>서비스</h4>
-          <router-link to="/attractions">관광지</router-link>
-          <router-link to="/plans">여행 계획</router-link>
-          <router-link to="/chat">AI 챗봇</router-link>
-          <router-link to="/wishlist">찜 목록</router-link>
+          <ul class="feature-list">
+            <li>
+              <span class="feature-list__mark">✦</span>
+              <span><strong>AI 맞춤 여행 추천</strong><small>한 줄의 취향으로 시작</small></span>
+            </li>
+            <li>
+              <span class="feature-list__mark">✦</span>
+              <span><strong>효율적인 동선 설계</strong><small>여행지 사이의 이동을 더 가볍게</small></span>
+            </li>
+            <li>
+              <span class="feature-list__mark">✦</span>
+              <span><strong>실시간 공동 편집</strong><small>동행자와 함께 완성하는 일정</small></span>
+            </li>
+          </ul>
         </div>
         <div class="link-group">
           <h4>고객지원</h4>
@@ -94,6 +104,41 @@
 
 .link-group a:hover {
   color: white;
+}
+
+.feature-list {
+  display: grid;
+  gap: 14px;
+}
+
+.feature-list li {
+  display: flex;
+  gap: 9px;
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.feature-list__mark {
+  color: var(--coral);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.feature-list strong,
+.feature-list small {
+  display: block;
+}
+
+.feature-list strong {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.feature-list small {
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .app-footer__bottom {

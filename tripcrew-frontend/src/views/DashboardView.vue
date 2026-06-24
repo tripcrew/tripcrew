@@ -1,24 +1,71 @@
 <template>
-  <div class="page page-soft">
+  <div class="page dashboard-page">
     <AppHeader />
 
     <main class="container dashboard">
-      <!-- Welcome -->
-      <section class="welcome">
-        <div>
-          <h1 class="welcome__title">안녕하세요, {{ displayName }} 님</h1>
-          <p class="welcome__sub">
-            {{ welcomeMessage }}
-          </p>
+      <section class="dashboard-hero">
+        <div class="dashboard-hero__copy">
+          <p class="dashboard-hero__eyebrow">YOUR TRAVEL DESK</p>
+          <h1>안녕하세요, {{ displayName }} 님.<br /><span>다음 여행을 시작해 볼까요?</span></h1>
+          <p>{{ welcomeMessage }}</p>
+          <div class="dashboard-hero__actions">
+            <BaseButton variant="primary" size="lg" @click="$router.push('/plans')">+ 새 계획 만들기</BaseButton>
+            <button type="button" class="text-action" @click="$router.push('/wishlist')">찜한 여행지 보기 <span>→</span></button>
+          </div>
         </div>
-        <BaseButton variant="primary" size="lg" @click="$router.push('/plans')">+ 새 계획 만들기</BaseButton>
+        <div class="dashboard-hero__stats" aria-label="여행 현황">
+          <div class="stat-card stat-card--plans">
+            <span>진행 중인 계획</span>
+            <strong>{{ dashboardPlans.length }}</strong>
+            <small>개 여행을 준비 중이에요</small>
+          </div>
+          <div class="stat-card stat-card--guide">
+            <span class="stat-card__spark">✦</span>
+            <strong>여행은<br />가볍게 시작해요</strong>
+            <small>아래 도우미가 취향을 정리해드려요.</small>
+          </div>
+        </div>
       </section>
 
-      <!-- Active plans -->
-      <section class="block">
+      <section class="trip-starter">
+        <div class="trip-starter__head">
+          <div>
+            <p class="section-kicker">QUICK START</p>
+            <h2>어떤 여행을 떠나고 싶으세요?</h2>
+          </div>
+          <p>테마를 고르면 TripBot에 딱 맞는 질문을 준비해둘게요.</p>
+        </div>
+
+        <div class="theme-grid">
+          <button
+            v-for="theme in travelThemes"
+            :key="theme.key"
+            type="button"
+            :class="['theme-card', { 'theme-card--selected': selectedTheme.key === theme.key }]"
+            @click="selectedThemeKey = theme.key"
+          >
+            <span class="theme-card__icon">{{ theme.icon }}</span>
+            <span class="theme-card__body">
+              <strong>{{ theme.title }}</strong>
+              <small>{{ theme.description }}</small>
+            </span>
+            <span class="theme-card__check">{{ selectedTheme.key === theme.key ? '✓' : '' }}</span>
+          </button>
+        </div>
+
+        <div class="trip-starter__bottom">
+          <p><span>TIP</span> {{ selectedTheme.prompt }}</p>
+          <BaseButton variant="primary" @click="startTravelWithTheme">TripBot에게 추천받기 →</BaseButton>
+        </div>
+      </section>
+
+      <section class="block plans-block">
         <div class="block__head">
-          <h2 class="t-h2">진행 중인 여행 계획</h2>
-          <span class="t-mono muted">{{ dashboardPlans.length }}개</span>
+          <div>
+            <p class="section-kicker">MY PLANS</p>
+            <h2 class="t-h2">이어가는 여행 계획</h2>
+          </div>
+          <button type="button" class="view-all" @click="$router.push('/plans')">전체 보기 →</button>
         </div>
 
         <p v-if="plansLoading" class="plan-state">여행 계획을 불러오는 중입니다.</p>
@@ -64,29 +111,24 @@
         </div>
       </section>
 
-      <!-- Two columns -->
       <div class="two-col">
-        <!-- Recommendations -->
-        <section class="block">
-          <div class="block__head">
-            <h2 class="t-h2">취향에 맞는 추천 여행지</h2>
-            <span class="t-caption">자연 · 해변 위주 · 12개</span>
-          </div>
-
-          <div class="rec-grid">
-            <article v-for="r in recommendations" :key="r.id" class="rec-card">
-              <div class="rec-card__thumb"></div>
-              <div class="rec-card__body">
-                <h4>{{ r.name }}</h4>
-                <p class="t-caption">★ {{ r.rating }} · {{ r.tag }}</p>
-              </div>
-            </article>
+        <section class="block explore-block">
+          <p class="section-kicker">EXPLORE</p>
+          <h2 class="t-h2">여행 준비, 이렇게 이어가 보세요</h2>
+          <div class="explore-steps">
+            <button type="button" class="explore-step" @click="$router.push('/attractions')">
+              <span>01</span><strong>관광지 둘러보기</strong><small>가보고 싶은 장소를 찾아보세요.</small><b>→</b>
+            </button>
+            <button type="button" class="explore-step" @click="$router.push('/wishlist')">
+              <span>02</span><strong>마음에 드는 곳 저장</strong><small>찜 목록에 모아 비교해 보세요.</small><b>→</b>
+            </button>
+            <button type="button" class="explore-step" @click="$router.push('/plans')">
+              <span>03</span><strong>나만의 일정 완성</strong><small>동행자와 함께 계획을 다듬어요.</small><b>→</b>
+            </button>
           </div>
         </section>
 
-        <!-- Right column -->
         <aside class="side-col">
-          <!-- Ranking -->
           <section class="block block--soft">
             <div class="block__head">
               <h2 class="t-h2">실시간 랭킹</h2>
@@ -118,7 +160,6 @@
             </ol>
           </section>
 
-          <!-- Activity -->
           <section class="block block--soft">
             <div class="block__head">
               <h2 class="t-h2">최근 활동</h2>
@@ -139,6 +180,8 @@
         </aside>
       </div>
     </main>
+
+    <AppFooter />
   </div>
 </template>
 
@@ -146,6 +189,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
+import AppFooter from '@/components/common/AppFooter.vue'
 import AppHeader from '@/components/common/AppHeader.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
 import { activityApi } from '@/api/activities'
@@ -175,6 +219,14 @@ const planDrag = ref({
 const suppressPlanClick = ref(false)
 let rankingTimer = null
 
+const travelThemes = [
+  { key: 'rest', icon: '☁️', title: '느긋한 휴식', description: '카페와 산책, 여유로운 하루', prompt: '주말에 가볍게 쉬고 싶어요. 카페와 산책을 중심으로 여유로운 여행 코스를 추천해주세요.' },
+  { key: 'food', icon: '🍜', title: '맛있는 미식 여행', description: '지역의 맛을 따라 떠나는 코스', prompt: '지역 맛집과 시장을 중심으로 떠나는 미식 여행 코스를 추천해주세요.' },
+  { key: 'nature', icon: '🌿', title: '자연 속으로', description: '바다와 숲, 풍경을 만나는 시간', prompt: '자연 풍경과 산책을 즐길 수 있는 여행 코스를 추천해주세요.' },
+  { key: 'together', icon: '👋', title: '함께하는 여행', description: '친구·가족과 좋은 추억 만들기', prompt: '친구 또는 가족과 함께 즐기기 좋은 여행 코스를 추천해주세요.' },
+]
+const selectedThemeKey = ref('rest')
+
 const today = startOfDay(new Date())
 
 const dashboardPlans = computed(() =>
@@ -192,13 +244,9 @@ const welcomeMessage = computed(() => {
     ? `${next.ddayLabel} · ${next.title} 계획이 기다리고 있습니다.`
     : `${next.title} 계획을 이어서 정리해 보세요.`
 })
-
-const recommendations = [
-  { id: 1, name: '통영 동피랑', rating: 4.6, tag: '자연' },
-  { id: 2, name: '속초 영금정', rating: 4.5, tag: '자연' },
-  { id: 3, name: '남해 독일마을', rating: 4.4, tag: '문화' },
-  { id: 4, name: '가평 자라섬', rating: 4.3, tag: '자연' }
-]
+const selectedTheme = computed(() =>
+  travelThemes.find((theme) => theme.key === selectedThemeKey.value) || travelThemes[0],
+)
 
 async function loadPlans() {
   plansLoading.value = true
@@ -260,6 +308,10 @@ function openPlan(planId) {
 
 function goToAttraction(id) {
   router.push(`/attractions/${id}`)
+}
+
+function startTravelWithTheme() {
+  router.push({ path: '/chat', query: { prompt: selectedTheme.value.prompt } })
 }
 
 function startPlanDrag(event) {
@@ -848,5 +900,201 @@ onBeforeUnmount(() => {
   .plan-empty {
     grid-template-columns: 1fr;
   }
+}
+
+/* Dashboard refresh */
+.dashboard-page {
+  background:
+    radial-gradient(circle at 87% 8%, rgba(216, 90, 48, 0.12), transparent 24%),
+    radial-gradient(circle at 12% 15%, rgba(15, 110, 86, 0.12), transparent 29%),
+    var(--bg-soft);
+}
+
+.dashboard {
+  padding-top: 32px;
+}
+
+.dashboard-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.74fr);
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.dashboard-hero__copy {
+  padding: 38px 40px;
+  border-radius: var(--r-xl);
+  background: var(--teal-3);
+  box-shadow: var(--sh-2);
+  color: white;
+}
+
+.dashboard-hero__eyebrow,
+.section-kicker {
+  margin-bottom: 9px;
+  color: var(--coral);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.dashboard-hero h1 {
+  font-size: clamp(28px, 3vw, 40px);
+  font-weight: 800;
+  line-height: 1.22;
+  letter-spacing: -1.3px;
+}
+
+.dashboard-hero h1 span { color: #b8e2d3; }
+
+.dashboard-hero__copy > p:not(.dashboard-hero__eyebrow) {
+  margin-top: 15px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 15px;
+}
+
+.dashboard-hero__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 28px;
+}
+
+.dashboard-hero__actions .btn--primary { background: var(--coral); }
+.dashboard-hero__actions .btn--primary:hover { background: var(--coral-2); }
+
+.text-action {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+  font-weight: 700;
+}
+.text-action:hover { color: white; }
+.text-action span { margin-left: 4px; }
+
+.dashboard-hero__stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.stat-card {
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  padding: 26px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  background: white;
+  box-shadow: var(--sh-1);
+}
+
+.stat-card > span:not(.stat-card__spark) {
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 700;
+}
+.stat-card > strong { margin-top: auto; color: var(--teal-3); font-size: 46px; line-height: 1; letter-spacing: -2px; }
+.stat-card > small { margin-top: 8px; color: var(--ink-soft); font-size: 12px; line-height: 1.4; }
+.stat-card--guide { background: var(--coral-tint); border-color: var(--coral-soft); }
+.stat-card--guide > strong { margin-top: 18px; color: var(--coral-2); font-size: 20px; line-height: 1.35; letter-spacing: -0.4px; }
+.stat-card--guide > small { margin-top: auto; }
+.stat-card__spark { color: var(--coral); font-size: 25px; }
+
+.trip-starter {
+  margin-bottom: 24px;
+  padding: 30px;
+  border-radius: var(--r-xl);
+  background: white;
+  border: 1px solid var(--line);
+  box-shadow: var(--sh-1);
+}
+
+.trip-starter__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 24px;
+  margin-bottom: 22px;
+}
+.trip-starter__head h2 { font-size: 24px; letter-spacing: -0.6px; }
+.trip-starter__head > p { max-width: 290px; color: var(--ink-soft); font-size: 14px; line-height: 1.5; }
+
+.theme-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.theme-card {
+  position: relative;
+  min-height: 132px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--bg-soft);
+  text-align: left;
+  transition: transform 0.15s, border-color 0.15s, background 0.15s;
+}
+.theme-card:hover { transform: translateY(-2px); border-color: var(--teal); background: var(--teal-tint); }
+.theme-card--selected { border-color: var(--teal); background: var(--teal-soft); box-shadow: inset 0 0 0 1px var(--teal); }
+.theme-card__icon { font-size: 24px; }
+.theme-card__body { margin-top: auto; }
+.theme-card__body strong, .theme-card__body small { display: block; }
+.theme-card__body strong { color: var(--ink); font-size: 15px; }
+.theme-card__body small { margin-top: 4px; color: var(--ink-soft); font-size: 12px; line-height: 1.35; }
+.theme-card__check { position: absolute; top: 14px; right: 14px; color: var(--teal-3); font-weight: 800; }
+
+.trip-starter__bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  margin-top: 20px;
+  padding: 16px 18px;
+  border-radius: var(--r-md);
+  background: var(--bg-soft);
+}
+.trip-starter__bottom p { color: var(--ink-3); font-size: 13px; }
+.trip-starter__bottom p span { margin-right: 8px; color: var(--coral); font-family: var(--font-mono); font-size: 11px; font-weight: 700; }
+
+.plans-block .block__head { margin-bottom: 22px; }
+.plans-block .section-kicker, .explore-block .section-kicker { margin-bottom: 5px; }
+.view-all { color: var(--teal-3); font-size: 14px; font-weight: 700; }
+.view-all:hover { color: var(--teal); }
+
+.explore-block { padding: 30px; }
+.explore-block > .t-h2 { margin-bottom: 18px; }
+.explore-steps { display: grid; gap: 10px; }
+.explore-step {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  column-gap: 10px;
+  align-items: center;
+  padding: 14px;
+  border-radius: var(--r-md);
+  background: var(--bg-soft);
+  text-align: left;
+}
+.explore-step:hover { background: var(--teal-tint); }
+.explore-step > span { grid-row: span 2; color: var(--coral); font-family: var(--font-mono); font-size: 12px; font-weight: 700; }
+.explore-step strong { color: var(--ink); font-size: 14px; }
+.explore-step small { color: var(--ink-soft); font-size: 12px; }
+.explore-step b { grid-row: span 2; color: var(--teal); font-size: 18px; }
+
+@media (max-width: 900px) {
+  .dashboard-hero, .two-col { grid-template-columns: 1fr; }
+  .theme-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .dashboard { padding: 20px var(--space-4) 56px; }
+  .dashboard-hero__copy, .trip-starter, .block { padding: 24px; }
+  .dashboard-hero__stats { grid-template-columns: 1fr 1fr; }
+  .stat-card { min-height: 155px; padding: 18px; }
+  .stat-card > strong { font-size: 36px; }
+  .trip-starter__head, .trip-starter__bottom { align-items: flex-start; flex-direction: column; }
+  .theme-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .theme-card { min-height: 120px; padding: 14px; }
+  .trip-starter__bottom .btn { width: 100%; }
 }
 </style>
