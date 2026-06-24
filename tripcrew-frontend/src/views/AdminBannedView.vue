@@ -55,11 +55,19 @@
             </td>
             <td class="t-mono">{{ formatDate(u.createdAt) }}</td>
             <td>
+              <template v-if="confirmId === u.id">
+                <button
+                  class="action-btn action-btn--promote"
+                  :disabled="busyId === u.id"
+                  @click="unban(u)"
+                >{{ busyId === u.id ? '처리 중…' : '해제 확정' }}</button>
+                <button class="action-btn" @click="confirmId = null">취소</button>
+              </template>
               <button
+                v-else
                 class="action-btn action-btn--promote"
-                :disabled="busyId === u.id"
-                @click="unban(u)"
-              >{{ busyId === u.id ? '처리 중…' : '제재 해제' }}</button>
+                @click="confirmId = u.id"
+              >제재 해제</button>
             </td>
           </tr>
         </tbody>
@@ -85,6 +93,7 @@ const loading = ref(false)
 const error = ref('')
 const forbidden = ref(false)
 const busyId = ref(null)
+const confirmId = ref(null)
 const notice = ref(null)
 
 const bannedUsers = computed(() => users.value.filter((u) => u.status === 'BANNED'))
@@ -117,6 +126,7 @@ async function unban(user) {
   try {
     await adminApi.unban(user.id)
     user.status = 'ACTIVE' // 목록(bannedUsers)에서 자동 제외
+    confirmId.value = null
     flash('ok', `${user.nickname}님의 제재를 해제했습니다.`)
   } catch (e) {
     const status = e.response?.status
