@@ -68,6 +68,7 @@
           <table class="admin-table">
             <thead>
               <tr>
+                <th>#</th>
                 <th>ID</th>
                 <th>이메일</th>
                 <th>닉네임</th>
@@ -81,13 +82,14 @@
             </thead>
             <tbody>
               <tr v-if="loading">
-                <td colspan="9" class="table-empty">불러오는 중…</td>
+                <td colspan="10" class="table-empty">불러오는 중…</td>
               </tr>
               <tr v-else-if="filteredUsers.length === 0">
-                <td colspan="9" class="table-empty">표시할 회원이 없습니다.</td>
+                <td colspan="10" class="table-empty">표시할 회원이 없습니다.</td>
               </tr>
-              <tr v-for="u in pagedUsers" :key="u.id">
-                <td class="t-mono">{{ u.id }}</td>
+              <tr v-for="(u, idx) in pagedUsers" :key="u.id">
+                <td class="t-mono row-no">{{ (page - 1) * PAGE_SIZE + idx + 1 }}</td>
+                <td class="t-mono id-cell">{{ u.id }}</td>
                 <td>{{ u.email }}</td>
                 <td><strong>{{ u.nickname }}</strong></td>
                 <td>
@@ -549,6 +551,11 @@ onMounted(load)
 .admin-table input[type="checkbox"] { accent-color: var(--teal); }
 
 .muted { color: var(--muted); }
+
+/* 표시용 순번(정렬을 따라 1..N) — 실제 PK(ID)와 별개, 이게 시각 기준 */
+.row-no { font-weight: 700; color: var(--ink-2); }
+/* 실제 ID(PK)는 안 바뀌는 대리키라 들쭉날쭉 정상 — 보조로 약하게 */
+.id-cell { color: var(--muted); }
 
 .role-chip {
   display: inline-block;
