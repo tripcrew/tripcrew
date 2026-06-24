@@ -146,12 +146,19 @@
                 </td>
                 <td class="sanction-cell">
                   <!-- 영구정지/해제: 누적 자동 단계제재와 별개로 관리자가 즉시 영구정지(BANNED) 가능 -->
+                  <template v-if="u.status === 'BANNED' && confirmUnbanId === u.id">
+                    <button
+                      class="action-btn action-btn--promote"
+                      :disabled="banningId === u.id"
+                      @click="unban(u)"
+                    >{{ banningId === u.id ? '해제 중…' : '해제 확정' }}</button>
+                    <button class="action-btn" @click="confirmUnbanId = null">취소</button>
+                  </template>
                   <button
-                    v-if="u.status === 'BANNED'"
+                    v-else-if="u.status === 'BANNED'"
                     class="action-btn action-btn--promote"
-                    :disabled="banningId === u.id"
-                    @click="unban(u)"
-                  >{{ banningId === u.id ? '해제 중…' : '정지 해제' }}</button>
+                    @click="confirmUnbanId = u.id"
+                  >정지 해제</button>
                   <button
                     v-else-if="!canSanction(u)"
                     class="action-btn"
@@ -172,14 +179,21 @@
                     @click="confirmBanId = u.id"
                   >영구정지</button>
 
-                  <!-- 단계 제재 해제: 활성 제재가 있으면(밴 여부와 무관) 즉시 전부 해제 -->
+                  <!-- 단계 제재 해제: 활성 제재가 있으면(밴 여부와 무관) 확인 후 전부 해제 -->
+                  <template v-if="u.activeRestrictions && u.activeRestrictions.length && confirmClearId === u.id">
+                    <button
+                      class="action-btn action-btn--lift"
+                      :disabled="clearingId === u.id"
+                      @click="clearRestrictions(u)"
+                    >{{ clearingId === u.id ? '해제 중…' : '제재 해제 확정' }}</button>
+                    <button class="action-btn" @click="confirmClearId = null">취소</button>
+                  </template>
                   <button
-                    v-if="u.activeRestrictions && u.activeRestrictions.length"
+                    v-else-if="u.activeRestrictions && u.activeRestrictions.length"
                     class="action-btn action-btn--lift"
-                    :disabled="clearingId === u.id"
                     title="후기/계획 금지·임시정지 등 단계 제재를 즉시 모두 해제합니다"
-                    @click="clearRestrictions(u)"
-                  >{{ clearingId === u.id ? '해제 중…' : '제재 해제' }}</button>
+                    @click="confirmClearId = u.id"
+                  >제재 해제</button>
                 </td>
               </tr>
             </tbody>
@@ -213,6 +227,8 @@ const forbidden = ref(false)
 const savingId = ref(null)
 const banningId = ref(null)
 const confirmBanId = ref(null)
+const confirmUnbanId = ref(null)
+const confirmClearId = ref(null)
 const clearingId = ref(null)
 const notice = ref(null)
 
@@ -364,6 +380,7 @@ async function unban(user) {
   try {
     await adminApi.unban(user.id)
     user.status = 'ACTIVE'
+    confirmUnbanId.value = null
     flash('ok', `${user.nickname}님의 정지를 해제했습니다. (단계 제재는 만료 시각까지 유지)`)
   } catch (e) {
     const status = e.response?.status
@@ -380,6 +397,7 @@ async function clearRestrictions(user) {
   try {
     await adminApi.clearRestrictions(user.id)
     user.activeRestrictions = [] // 204 → 로컬 반영(칩 제거)
+    confirmClearId.value = null
     flash('ok', `${user.nickname}님의 단계 제재를 모두 해제했습니다.`)
   } catch (e) {
     const status = e.response?.status
