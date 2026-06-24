@@ -1019,7 +1019,7 @@ onBeforeUnmount(() => {
   margin-bottom: 22px;
 }
 .trip-starter__head h2 { font-size: 24px; letter-spacing: -0.6px; }
-.trip-starter__head > p { max-width: 290px; color: var(--ink-soft); font-size: 14px; line-height: 1.5; }
+.trip-starter__head > p { color: var(--ink-soft); font-size: 14px; line-height: 1.5; white-space: nowrap; }
 
 .theme-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 .theme-card {
