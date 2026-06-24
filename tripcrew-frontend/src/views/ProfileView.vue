@@ -98,6 +98,7 @@
         </div>
       </section>
     </main>
+    <transition name="overlay">
     <div v-if="showWithdrawConfirm" class="confirm-backdrop" @click.self="showWithdrawConfirm = false">
       <section class="confirm-dialog" role="dialog" aria-modal="true">
         <h2>정말 탈퇴하시겠습니까?</h2>
@@ -110,6 +111,7 @@
         </div>
       </section>
     </div>
+    </transition>
   </div>
 </template>
 

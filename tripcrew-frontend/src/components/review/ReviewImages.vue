@@ -16,6 +16,7 @@
 
   <!-- 라이트박스 -->
   <Teleport to="body">
+    <transition name="fade">
     <div v-if="lightboxOpen" class="lightbox" @click.self="close">
       <button class="lb-close" type="button" aria-label="닫기" @click="close">×</button>
       <button v-if="urls.length > 1" class="lb-nav lb-prev" type="button" aria-label="이전" @click.stop="prev">‹</button>
@@ -23,6 +24,7 @@
       <button v-if="urls.length > 1" class="lb-nav lb-next" type="button" aria-label="다음" @click.stop="next">›</button>
       <span v-if="urls.length > 1" class="lb-count">{{ activeIndex + 1 }} / {{ urls.length }}</span>
     </div>
+    </transition>
   </Teleport>
 </template>
 
