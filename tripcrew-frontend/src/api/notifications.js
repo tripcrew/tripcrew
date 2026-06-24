@@ -31,6 +31,9 @@ export function notificationRoute(notification) {
     case 'INVITE':
       // 공동편집 초대 → 내 계획 화면의 '받은 초대' 섹션(수락 전엔 계획 자체엔 접근 불가)
       return '/plans'
+    case 'INQUIRY_ANSWERED':
+      // 1:1 문의 답변 등록 → 내 문의 화면(/support)에서 답변 확인
+      return '/support'
     case 'REPORT_RESOLVED':
     default:
       // 신고 처리완료는 전용 도착 화면이 없어 읽음 처리만 한다.

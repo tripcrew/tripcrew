@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.tripcrew.inquiry.model.mapper.InquiryMapper">
+
+    <!-- status / created_at / updated_at 는 DB DEFAULT 로 채워진다. 생성 id 를 dto 에 반환. -->
+    <insert id="insert" parameterType="Inquiry" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO inquiries (user_id, title, content)
+        VALUES (#{userId}, #{title}, #{content})
+    </insert>
+
+    <select id="findById" resultType="Inquiry">
+        SELECT id, user_id, title, content, status, answer, answered_by, answered_at, created_at, updated_at
+          FROM inquiries
+         WHERE id = #{id}
+    </select>
+
+    <!-- 내 문의 목록(최신순). 답변(answer/answered_at)도 함께 내려 펼침 표시에 쓴다. -->
+    <select id="findByUser" resultType="Inquiry">
+        SELECT id, user_id, title, content, status, answer, answered_by, answered_at, created_at, updated_at
+          FROM inquiries
+         WHERE user_id = #{userId}
+         ORDER BY created_at DESC, id DESC
+    </select>
+
+    <!--
+      관리자 문의 목록. 작성자는 이메일로 식별해 내려준다(PK 대신).
+      status 가 null 이면 전체, 아니면 해당 상태만(보통 OPEN 미답변).
+    -->
+    <select id="findAllForAdmin" resultType="AdminInquiryRow">
+        SELECT
+            iq.id,
+            u.email      AS user_email,
+            iq.title,
+            iq.content,
+            iq.status,
+            iq.answer,
+            iq.answered_at,
+            iq.created_at
+          FROM inquiries iq
+          JOIN users u ON u.id = iq.user_id
+        <where>
+            <if test="status != null">
+                iq.status = #{status}
+            </if>
+        </where>
+         ORDER BY iq.created_at DESC, iq.id DESC
+    </select>
+
+    <!-- 관리자 대시보드 집계: 상태별 문의 수(보통 OPEN 미답변 건수). -->
+    <select id="countByStatus" resultType="long">
+        SELECT COUNT(*) FROM inquiries WHERE status = #{status}
+    </select>
+
+    <!-- 답변 등록/수정. 재답변(수정) 시에도 answered_by/answered_at 을 최신으로 갱신한다. -->
+    <update id="answer">
+        UPDATE inquiries
+           SET status = 'ANSWERED',
+               answer = #{answer},
+               answered_by = #{answeredBy},
+               answered_at = #{answeredAt}
+         WHERE id = #{id}
+    </update>
+
+</mapper>

@@ -71,7 +71,7 @@
             </span>
           </div>
           <strong class="stat-value">{{ display(summary.noticeCount) }}</strong>
-          <span class="stat-delta">공지 {{ display(summary.noticeCount) }}건 · Q&amp;A 준비 중 →</span>
+          <span class="stat-delta" :class="{ 'delta--alert': hasOpenInquiries }">공지 {{ display(summary.noticeCount) }}건 · 미답변 문의 {{ display(summary.qnaCount) }}건 →</span>
         </RouterLink>
       </div>
 
@@ -134,6 +134,16 @@
               </span>
               <span class="quick-count" :class="{ 'quick-count--alert': hasOpenReports }">{{ display(summary.openReportCount) }}</span>
             </RouterLink>
+            <RouterLink class="quick-row" to="/admin/inquiries">
+              <span class="quick-ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </span>
+              <span class="quick-text">
+                <strong>1:1 문의</strong>
+                <em>미답변 문의 확인 · 답변</em>
+              </span>
+              <span class="quick-count" :class="{ 'quick-count--alert': hasOpenInquiries }">{{ display(summary.qnaCount) }}</span>
+            </RouterLink>
           </div>
         </section>
 
@@ -182,6 +192,7 @@ const forbidden = ref(false)
 
 const hasOpenReports = computed(() => (summary.value.openReportCount || 0) > 0)
 const hasBanned = computed(() => (summary.value.bannedUserCount || 0) > 0)
+const hasOpenInquiries = computed(() => (summary.value.qnaCount || 0) > 0)
 
 // 차트 데이터(최근 14일 활동 추이 + 역할/상태 분포)
 const stats = ref({ reviews: [], reports: [], chat: [], roleDistribution: [], statusDistribution: [] })

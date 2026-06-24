@@ -9,6 +9,8 @@ import { http } from './http'
  *   GET   /api/admin/reports                신고 목록(이메일+후기내용, 보통 OPEN만) — ROLE_ADMIN 전용
  *   PATCH /api/admin/reports/{id}/resolve   처리완료(누적+1, 3회시 자동제재) → 204 — ROLE_ADMIN 전용
  *   PATCH /api/admin/reports/{id}/dismiss   기각(카운트 없음) → 204 — ROLE_ADMIN 전용
+ *   GET   /api/admin/inquiries?status=        1:1 문의 목록(작성자 이메일 포함, 보통 OPEN) — ROLE_ADMIN 전용
+ *   PATCH /api/admin/inquiries/{id}/answer    답변 등록/수정(최초 답변 시 작성자 알림) → 204 — ROLE_ADMIN 전용
  *
  * /api/admin/** 은 서버 SecurityConfig 에서 ROLE_ADMIN 전용, 그중 role 변경은
  * SUPER_ADMIN 전용이라 일반 USER 는 401/403, ADMIN 도 role 변경엔 403 이 떨어진다
@@ -28,4 +30,7 @@ export const adminApi = {
     http.get('/admin/reports', { params: status ? { status } : {} }).then((r) => r.data),
   resolveReport: (id) => http.patch(`/admin/reports/${id}/resolve`),
   dismissReport: (id) => http.patch(`/admin/reports/${id}/dismiss`),
+  listInquiries: (status) =>
+    http.get('/admin/inquiries', { params: status ? { status } : {} }).then((r) => r.data),
+  answerInquiry: (id, answer) => http.patch(`/admin/inquiries/${id}/answer`, { answer }),
 }
