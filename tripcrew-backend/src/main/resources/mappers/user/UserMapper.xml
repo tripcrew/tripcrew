@@ -60,6 +60,12 @@
          WHERE id = #{id}
     </update>
 
+    <update id="updatePassword">
+        UPDATE users
+           SET password = #{password}
+         WHERE id = #{id}
+    </update>
+
     <!-- 신고 처리완료 시 누적 신고 횟수 +1 -->
     <update id="incrementReportCount">
         UPDATE users

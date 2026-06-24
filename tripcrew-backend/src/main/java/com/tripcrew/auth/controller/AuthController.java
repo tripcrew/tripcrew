@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.tripcrew.auth.model.dto.LoginRequest;
 import com.tripcrew.auth.model.dto.NicknameUpdateRequest;
+import com.tripcrew.auth.model.dto.PasswordUpdateRequest;
 import com.tripcrew.auth.model.dto.PasswordVerificationRequest;
 import com.tripcrew.auth.model.dto.ReissueRequest;
 import com.tripcrew.auth.model.dto.SignupRequest;
@@ -64,6 +65,13 @@ public class AuthController {
     public UserResponse updateNickname(@AuthenticationPrincipal Long userId,
             @Valid @RequestBody NicknameUpdateRequest request) {
         return authService.updateNickname(userId, request.nickname(), request.currentPassword());
+    }
+
+    @PatchMapping("/me/password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void updatePassword(@AuthenticationPrincipal Long userId,
+            @Valid @RequestBody PasswordUpdateRequest request) {
+        authService.updatePassword(userId, request.currentPassword(), request.newPassword());
     }
 
     @DeleteMapping("/me")

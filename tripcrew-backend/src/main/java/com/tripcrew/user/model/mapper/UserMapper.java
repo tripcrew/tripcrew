@@ -39,6 +39,8 @@ public interface UserMapper {
 
     int updateNickname(@Param("id") Long id, @Param("nickname") String nickname);
 
+    int updatePassword(@Param("id") Long id, @Param("password") String password);
+
     /** 신고 처리완료 시 누적 신고 횟수 +1. (임계 도달 시 호출측에서 단계 제재) */
     int incrementReportCount(@Param("id") Long id);
 
