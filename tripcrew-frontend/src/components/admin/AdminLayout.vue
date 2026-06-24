@@ -52,13 +52,7 @@
             <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 17-5v12L3 13v-2Z"/><path d="M11 15v4a2 2 0 0 1-4 0v-5"/><path d="M22 9v6"/></svg>
             공지사항
           </RouterLink>
-
-          <h4 class="nav-title">모니터링</h4>
-          <!-- 시스템 상태는 대시보드 내 패널. 사이드바 항목은 대시보드의 해당 패널로 이동/스크롤. -->
-          <RouterLink class="nav-item" to="/admin#system">
-            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="6" rx="1"/><rect x="3" y="14" width="18" height="6" rx="1"/><path d="M7 7h.01M7 17h.01"/></svg>
-            시스템 상태
-          </RouterLink>
+          <!-- 시스템 상태는 대시보드 하단 패널로 제공 — 사이드바 중복 항목/모니터링 그룹 제거 -->
         </nav>
       </aside>
 
