@@ -762,6 +762,11 @@ async function kickMember(member) {
   membersError.value = ''
   try {
     await tripPlanApi.removeMember(id, member.userId)
+    if (leavingSelf) {
+      // 더 이상 멤버가 아니므로 이 계획에 머무를 수 없다 → 내 계획 목록으로 이동
+      router.push('/plans')
+      return
+    }
     await loadMembers()
   } catch (e) {
     membersError.value = leavingSelf ? '계획에서 나가지 못했습니다.' : '멤버 제거에 실패했습니다.'
