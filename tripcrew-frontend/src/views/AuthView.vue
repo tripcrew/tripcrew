@@ -37,14 +37,14 @@
             <div class="feature-icon">✓</div>
             <div>
               <strong>실제 이동 시간 기반</strong>
-              <span>네이버 Directions 동선 최적화</span>
+              <span>네이버 지도 기반 동선 최적화</span>
             </div>
           </li>
           <li>
             <div class="feature-icon">✓</div>
             <div>
               <strong>최대 10명까지 동시 편집</strong>
-              <span>WebSocket 실시간 동기화</span>
+              <span>실시간 동기화</span>
             </div>
           </li>
           <li>
