@@ -63,9 +63,11 @@ const bars = computed(() => {
   const plotW = plotR.value - plotL
   const step = plotW / n
   const barW = Math.max(2, Math.min(40, step * 0.62))
-  // 라벨이 겹치지 않도록 가용 폭에 맞춰 눈금 솎아냄
-  const maxLabels = Math.max(6, Math.floor(plotW / 34))
-  const tickEvery = Math.ceil(n / maxLabels)
+  // 눈금(날짜) 솎기: 그 달의 실제 일수(28~31)가 아니라 항상 최대 31일을 기준으로 간격을 정한다.
+  // (n 기준이면 30일 달은 다 나오고 31일 달만 한 칸씩 건너뛰는 등 달마다 밀도가 달라짐)
+  const REF_DAYS = 31
+  const MIN_LABEL_GAP = 26 // 라벨 사이 최소 px
+  const tickEvery = Math.max(1, Math.ceil((REF_DAYS * MIN_LABEL_GAP) / plotW))
   return props.data.map((d, i) => {
     const h = (d.value / maxValue.value) * plotH
     const cx = plotL + i * step + step / 2
