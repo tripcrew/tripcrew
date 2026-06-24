@@ -12,4 +12,7 @@ export const attractionLikeApi = {
   like: (no) => http.post(`/attractions/${no}/likes`).then((r) => r.data),
   unlike: (no) => http.delete(`/attractions/${no}/likes`).then((r) => r.data),
   mine: () => http.get('/me/likes').then((r) => r.data),
+  // 카드용 배치: 여러 관광지의 총 찜 수 + 내 찜 여부 → [{ no, likeCount, liked }]
+  counts: (nos) =>
+    http.get('/attractions/likes/counts', { params: { nos: nos.join(',') } }).then((r) => r.data),
 }
