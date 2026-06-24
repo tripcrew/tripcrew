@@ -11,5 +11,7 @@ public enum PlaceChangeAction {
     SCHEDULED,
     REORDERED,
     OPTIMIZED,
-    REMOVED
+    REMOVED,
+    /** 계획 메타(제목/설명/날짜) 저장 — 수신측은 장소뿐 아니라 계획 정보까지 다시 불러온다. */
+    SAVED
 }

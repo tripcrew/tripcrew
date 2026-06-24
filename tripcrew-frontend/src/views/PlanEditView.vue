@@ -490,6 +490,7 @@ const PLACE_ACTION_TEXT = {
   REORDERED: '장소 순서를 변경했어요',
   OPTIMIZED: '동선을 최적화했어요',
   REMOVED: '장소를 삭제했어요',
+  SAVED: '저장을 완료했어요',
 }
 const toastMsg = ref('')
 const toastVisible = ref(false)
@@ -524,10 +525,17 @@ const localBusy = computed(
   () => placeReordering.value || placeSaving.value || optimizing.value || draggedPlaceId.value !== null,
 )
 let pendingRefetch = false
+let pendingPlanRefetch = false // SAVED: 장소뿐 아니라 계획 메타(제목/날짜)도 다시 불러와야 함
 
 async function applyRemoteRefetch() {
+  const reloadPlan = pendingPlanRefetch
   pendingRefetch = false
+  pendingPlanRefetch = false
   try {
+    if (reloadPlan) {
+      const plan = await tripPlanApi.get(id)
+      fill(plan) // 상대가 저장한 제목/설명/날짜·version 을 반영
+    }
     await loadPlaces()
   } catch {
     // 재조회 실패는 조용히 무시 — 다음 변경/새로고침 때 다시 동기화된다.
@@ -535,14 +543,15 @@ async function applyRemoteRefetch() {
 }
 
 watch(localBusy, (busy) => {
-  if (!busy && pendingRefetch) applyRemoteRefetch()
+  if (!busy && (pendingRefetch || pendingPlanRefetch)) applyRemoteRefetch()
 })
 
-// 다른 접속자의 장소 변경 알림 → 목록을 다시 불러오고 누가 바꿨는지 토스트로 안내.
+// 다른 접속자의 변경 알림 → 내용을 다시 불러오고 누가 바꿨는지 토스트로 안내.
 async function handlePlaceChange(event) {
   if (!event || event.actorId === myUserId.value) return // 내 변경은 이미 반영됨
   const text = PLACE_ACTION_TEXT[event.action] || '계획을 수정했어요'
   showToast(`${event.actorNickname}님이 ${text}`)
+  if (event.action === 'SAVED') pendingPlanRefetch = true
   if (localBusy.value) {
     pendingRefetch = true // 내 조작이 끝나면 watch 에서 한 번에 반영
     return
@@ -1085,7 +1094,7 @@ async function save() {
       version: form.value.version,
     })
     fill(updated)
-    saveMsg.value = '저장됨'
+    saveMsg.value = '저장을 완료했어요'
   } catch (e) {
     const status = e.response?.status
     if (status === 409) {

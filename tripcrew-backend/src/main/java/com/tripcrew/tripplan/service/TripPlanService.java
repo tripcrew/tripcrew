@@ -101,7 +101,9 @@ public class TripPlanService {
             throw new OptimisticLockConflictException();
         }
 
-        return TripPlanResponse.from(findOrThrow(id));
+        // 내 역할을 함께 내려준다(미포함이면 프론트에서 myRole=null → 편집 UI 가 사라짐).
+        TripPlan updated = findOrThrow(id);
+        return TripPlanResponse.from(updated, accessService.resolveRole(updated, userId));
     }
 
     /** 여행계획 삭제. 소유자만 가능. */
