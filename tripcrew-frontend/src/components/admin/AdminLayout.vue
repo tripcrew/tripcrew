@@ -32,36 +32,36 @@
         <nav class="admin-nav">
           <h4 class="nav-title">관리</h4>
           <RouterLink class="nav-item" :class="{ active: active === 'users' }" to="/admin/users">
-            <span class="nav-icon">👥</span>
+            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             회원 관리
           </RouterLink>
           <RouterLink class="nav-item" :class="{ active: active === 'reports' }" to="/admin/reports">
-            <span class="nav-icon">🚩</span>
+            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 22V4"/><path d="M5 5c5-4 8 4 14 0v10c-6 4-9-4-14 0"/></svg>
             신고 관리
             <span v-if="openReportCount > 0" class="nav-count nav-count--alert">{{ openReportCount }}</span>
           </RouterLink>
           <RouterLink class="nav-item" :class="{ active: active === 'banned' }" to="/admin/banned">
-            <span class="nav-icon">🚫</span>
+            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></svg>
             정지된 계정
           </RouterLink>
           <RouterLink class="nav-item" :class="{ active: active === 'notices' }" to="/admin/notices">
-            <span class="nav-icon">📢</span>
+            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 17-5v12L3 13v-2Z"/><path d="M11 15v4a2 2 0 0 1-4 0v-5"/><path d="M22 9v6"/></svg>
             공지사항
           </RouterLink>
           <span class="nav-item nav-item--soon" title="준비 중인 메뉴입니다" aria-disabled="true">
-            <span class="nav-icon">📍</span>
+            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>
             관광지 관리
             <span class="nav-soon">준비 중</span>
           </span>
 
           <h4 class="nav-title">모니터링</h4>
           <span class="nav-item nav-item--soon" title="준비 중인 메뉴입니다" aria-disabled="true">
-            <span class="nav-icon">📊</span>
+            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg>
             통계 대시보드
             <span class="nav-soon">준비 중</span>
           </span>
           <span class="nav-item nav-item--soon" title="준비 중인 메뉴입니다" aria-disabled="true">
-            <span class="nav-icon">⚙️</span>
+            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="6" rx="1"/><rect x="3" y="14" width="18" height="6" rx="1"/><path d="M7 7h.01M7 17h.01"/></svg>
             시스템 상태
             <span class="nav-soon">준비 중</span>
           </span>
@@ -323,7 +323,16 @@ onMounted(() => {
   border-radius: 999px;
 }
 
-.nav-icon { font-size: 16px; }
+.nav-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 
 .nav-count {
   margin-left: auto;
