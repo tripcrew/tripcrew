@@ -1,11 +1,14 @@
 package com.tripcrew.like.service;
 
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.tripcrew.common.exception.BusinessException;
 import com.tripcrew.like.dto.LikeStatusResponse;
+import com.tripcrew.like.dto.WishlistItemResponse;
 import com.tripcrew.like.model.mapper.AttractionLikeMapper;
 
 import lombok.RequiredArgsConstructor;
@@ -42,6 +45,12 @@ public class AttractionLikeService {
         requireAttraction(attractionNo);
         likeMapper.delete(userId, attractionNo);
         return new LikeStatusResponse(false, likeMapper.countByAttraction(attractionNo));
+    }
+
+    /** 내 찜 목록(최근 찜 순). 카드 정보 + 평점 요약 + 총 찜 수 포함. */
+    @Transactional(readOnly = true)
+    public List<WishlistItemResponse> listMine(Long userId) {
+        return likeMapper.findLikedByUser(userId);
     }
 
     private void requireAttraction(Integer attractionNo) {

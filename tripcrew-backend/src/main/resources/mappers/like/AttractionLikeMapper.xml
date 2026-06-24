@@ -32,4 +32,29 @@
         SELECT EXISTS (SELECT 1 FROM attractions WHERE no = #{attractionNo})
     </select>
 
+    <!-- 내 찜 목록: 관광지 카드 정보 + 평점 요약(review_stats) + 총 찜 수 + 찜한 시각.
+         이름(시도/구군/콘텐츠타입)은 검색과 동일한 조인으로 해석한다. 최근 찜 순. -->
+    <select id="findLikedByUser" resultType="WishlistItemResponse">
+        SELECT
+            a.no,
+            a.title,
+            a.first_image1 AS image_url,
+            s.sido_name AS sido,
+            g.gugun_name AS gugun,
+            ct.content_type_name AS content_type,
+            CONCAT_WS(' ', a.addr1, a.addr2) AS address,
+            COALESCE(rs.avg_rating, 0)   AS avg_rating,
+            COALESCE(rs.review_count, 0) AS review_count,
+            (SELECT COUNT(*) FROM attraction_likes al2 WHERE al2.attraction_no = a.no) AS like_count,
+            al.created_at AS liked_at
+          FROM attraction_likes al
+          JOIN attractions a   ON a.no = al.attraction_no
+          LEFT JOIN sidos s    ON a.area_code = s.sido_code
+          LEFT JOIN guguns g   ON a.area_code = g.sido_code AND a.si_gun_gu_code = g.gugun_code
+          LEFT JOIN contenttypes ct ON a.content_type_id = ct.content_type_id
+          LEFT JOIN review_stats rs ON rs.target_type = 'ATTRACTION' AND rs.target_id = a.no
+         WHERE al.user_id = #{userId}
+         ORDER BY al.created_at DESC, al.id DESC
+    </select>
+
 </mapper>

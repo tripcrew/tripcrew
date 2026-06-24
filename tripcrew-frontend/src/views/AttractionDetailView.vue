@@ -46,9 +46,9 @@
                   class="like-action"
                   :class="{ liked }"
                   type="button"
-                  :aria-label="liked ? '좋아요 취소' : '좋아요'"
+                  :aria-label="liked ? '찜 해제' : '찜하기'"
                   :aria-pressed="liked"
-                  :title="liked ? '좋아요 취소' : '좋아요'"
+                  :title="liked ? '찜 해제' : '가보고 싶어요(찜)'"
                   :disabled="likeBusy"
                   @click="toggleLike"
                 >

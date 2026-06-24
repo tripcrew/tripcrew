@@ -1,7 +1,11 @@
 package com.tripcrew.like.model.mapper;
 
+import java.util.List;
+
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+
+import com.tripcrew.like.dto.WishlistItemResponse;
 
 @Mapper
 public interface AttractionLikeMapper {
@@ -20,4 +24,7 @@ public interface AttractionLikeMapper {
 
     /** 대상 관광지 존재 여부(앱레벨 검증 — 없으면 404). */
     boolean existsAttraction(@Param("attractionNo") Integer attractionNo);
+
+    /** 내가 찜한 관광지 목록(카드 정보 + 평점 요약 + 총 찜 수 + 찜한 시각). 최근 찜 순. */
+    List<WishlistItemResponse> findLikedByUser(@Param("userId") Long userId);
 }
