@@ -35,6 +35,18 @@ const routes = [
     meta: { title: '공공데이터 출처' }
   },
   {
+    path: '/faq',
+    name: 'faq',
+    component: () => import('@/views/FaqView.vue'),
+    meta: { title: '자주 묻는 질문' }
+  },
+  {
+    path: '/support',
+    name: 'support',
+    component: () => import('@/views/SupportView.vue'),
+    meta: { title: '1:1 문의' }
+  },
+  {
     path: '/home',
     name: 'dashboard',
     component: () => import('@/views/DashboardView.vue'),
