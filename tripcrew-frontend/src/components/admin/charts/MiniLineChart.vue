@@ -109,8 +109,9 @@ const ticks = computed(() => {
   if (!n) return []
   const data = props.series[0].data
   const plotW = plotR.value - plotL
-  const maxLabels = Math.max(6, Math.floor(plotW / 34))
-  const tickEvery = Math.ceil(n / maxLabels)
+  // 라벨 간 최소 간격(px)만 확보되면 14일 전부 표시 — 아주 좁을 때만 솎인다.
+  const MIN_LABEL_GAP = 26
+  const tickEvery = Math.max(1, Math.ceil((n * MIN_LABEL_GAP) / plotW))
   const out = []
   for (let i = 0; i < n; i++) {
     if (i % tickEvery === 0 || i === n - 1) out.push({ x: xAt(i, n), text: shortDay(data[i].label) })
