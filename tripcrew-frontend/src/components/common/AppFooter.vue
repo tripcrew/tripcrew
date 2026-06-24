@@ -9,15 +9,16 @@
       <div class="app-footer__links">
         <div class="link-group">
           <h4>서비스</h4>
-          <a href="#">기능 소개</a>
-          <a href="#">요금제</a>
-          <a href="#">변경 사항</a>
+          <router-link to="/attractions">관광지</router-link>
+          <router-link to="/plans">여행 계획</router-link>
+          <router-link to="/chat">AI 챗봇</router-link>
+          <router-link to="/wishlist">찜 목록</router-link>
         </div>
         <div class="link-group">
-          <h4>지원</h4>
-          <a href="#">고객지원</a>
-          <a href="#">FAQ</a>
-          <a href="#">문의하기</a>
+          <h4>고객지원</h4>
+          <router-link to="/notices">공지사항</router-link>
+          <router-link to="/faq">자주 묻는 질문</router-link>
+          <router-link to="/support">1:1 문의</router-link>
         </div>
         <div class="link-group">
           <h4>법적 고지</h4>
@@ -105,5 +106,27 @@
   align-items: center;
   font-size: 12px;
   color: rgba(255, 255, 255, 0.4);
+}
+
+@media (max-width: 760px) {
+  .app-footer {
+    padding-top: 48px;
+  }
+
+  .app-footer__inner {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+
+  .app-footer__links {
+    gap: 20px;
+  }
+
+  .app-footer__bottom {
+    margin-top: 40px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
 }
 </style>
