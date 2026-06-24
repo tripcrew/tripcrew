@@ -3,7 +3,7 @@
     <AppHeader />
 
     <main class="container dashboard">
-      <section class="dashboard-hero">
+      <section v-reveal class="dashboard-hero">
         <div class="dashboard-hero__copy">
           <p class="dashboard-hero__eyebrow">YOUR TRAVEL DESK</p>
           <h1>안녕하세요, {{ displayName }} 님.<br /><span>다음 여행을 시작해 볼까요?</span></h1>
@@ -27,7 +27,7 @@
         </div>
       </section>
 
-      <section class="trip-starter">
+      <section v-reveal class="trip-starter">
         <div class="trip-starter__head">
           <div>
             <p class="section-kicker">QUICK START</p>
@@ -59,7 +59,7 @@
         </div>
       </section>
 
-      <section class="block plans-block">
+      <section v-reveal class="block plans-block">
         <div class="block__head">
           <div>
             <p class="section-kicker">MY PLANS</p>
@@ -112,7 +112,7 @@
       </section>
 
       <div class="two-col">
-        <section class="block explore-block">
+        <section v-reveal class="block explore-block">
           <p class="section-kicker">EXPLORE</p>
           <h2 class="t-h2">여행 준비, 이렇게 이어가 보세요</h2>
           <div class="explore-steps">
@@ -129,7 +129,7 @@
         </section>
 
         <aside class="side-col">
-          <section class="block block--soft">
+          <section v-reveal class="block block--soft">
             <div class="block__head">
               <h2 class="t-h2">실시간 랭킹</h2>
               <span class="live-pill">
@@ -160,7 +160,7 @@
             </ol>
           </section>
 
-          <section class="block block--soft">
+          <section v-reveal class="block block--soft">
             <div class="block__head">
               <h2 class="t-h2">최근 활동</h2>
             </div>
@@ -192,6 +192,7 @@ import { useRouter } from 'vue-router'
 import AppFooter from '@/components/common/AppFooter.vue'
 import AppHeader from '@/components/common/AppHeader.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
+import { vReveal } from '@/composables/useReveal'
 import { activityApi } from '@/api/activities'
 import { rankingApi } from '@/api/rankings'
 import { tripPlanApi } from '@/api/tripPlans'
@@ -447,6 +448,16 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+/* 스크롤 진입 시 섹션이 차례로 fade-up (v-reveal 디렉티브). reduced-motion이면 비활성 → 즉시 노출 */
+@media (prefers-reduced-motion: no-preference) {
+  .reveal-init { opacity: 0; transform: translateY(16px); }
+  .reveal-in {
+    opacity: 1;
+    transform: none;
+    transition: opacity 0.5s ease, transform 0.6s cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+}
+
 .page-soft {
   background: linear-gradient(120deg, #e8f3ef 0%, #f5f7f5 46%, #faeee8 100%);
 }
