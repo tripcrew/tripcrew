@@ -16,6 +16,12 @@
         <button class="left-notice__close" aria-label="닫기" @click="leftNotice = ''">✕</button>
       </div>
 
+      <!-- 계획 생성 실패(신고 누적 제재 등) — 목록은 가리지 않고 배너로 안내 -->
+      <div v-if="createError" class="create-error">
+        <span>{{ createError }}</span>
+        <button class="create-error__close" aria-label="닫기" @click="createError = ''">✕</button>
+      </div>
+
       <!-- 받은 초대(수락 대기) -->
       <section v-if="invites.length > 0" class="section-block invite-block">
         <h2 class="t-h2 section-title">받은 초대 <span class="muted">{{ invites.length }}개</span></h2>
@@ -124,6 +130,7 @@ const plans = ref([])
 const invites = ref([])
 const loading = ref(true)
 const error = ref('')
+const createError = ref('')
 const creating = ref(false)
 const today = startOfDay(new Date())
 
@@ -196,11 +203,14 @@ async function rejectInvite(invite) {
 async function createPlan() {
   if (creating.value) return
   creating.value = true
+  createError.value = ''
   try {
     const created = await tripPlanApi.create({ title: '새 여행 계획' })
     router.push(`/plans/${created.id}/edit`)
   } catch (e) {
-    error.value = '계획을 만들지 못했습니다.'
+    // 신고 누적 제재(403) 등 서버가 내려준 사유를 그대로 노출(없으면 일반 문구).
+    // 목록을 가리는 error 가 아니라 별도 배너(createError)로 띄운다.
+    createError.value = e.response?.data?.message || '계획을 만들지 못했습니다.'
   } finally {
     creating.value = false
   }
@@ -320,6 +330,31 @@ onMounted(() => {
 }
 
 .left-notice__close:hover { opacity: 1; }
+
+/* 계획 생성 실패 배너(제재 안내 등) — 목록 유지 */
+.create-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  border-radius: var(--r-md, 12px);
+  border: 1px solid #fbeae2;
+  background: #fff5f5;
+  color: #b12c3a;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.create-error__close {
+  flex-shrink: 0;
+  color: inherit;
+  opacity: 0.7;
+  font-size: 13px;
+}
+
+.create-error__close:hover { opacity: 1; }
 
 /* 받은 초대 */
 .invite-block {

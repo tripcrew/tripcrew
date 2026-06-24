@@ -6,10 +6,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.tripcrew.admin.service.AdminUserService;
 import com.tripcrew.common.exception.BusinessException;
 import com.tripcrew.notification.model.NotificationType;
 import com.tripcrew.notification.service.NotificationService;
+import com.tripcrew.restriction.service.SanctionService;
 import com.tripcrew.report.model.ReportReason;
 import com.tripcrew.report.model.ReportStatus;
 import com.tripcrew.report.model.ReportTargetType;
@@ -33,13 +33,10 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AdminReportService {
 
-    /** 신고 처리완료 누적이 이 횟수 이상이면 자동 제재한다. */
-    private static final int SANCTION_THRESHOLD = 3;
-
     private final ReportMapper reportMapper;
     private final UserMapper userMapper;
     private final ReviewService reviewService;
-    private final AdminUserService adminUserService;
+    private final SanctionService sanctionService;
     private final NotificationService notificationService;
 
     /** 신고 목록. status 가 null 이면 전체, 아니면 해당 상태만(보통 OPEN). */
@@ -83,12 +80,11 @@ public class AdminReportService {
         }
         userMapper.incrementReportCount(reportedUserId);
 
+        // 누적 횟수에 따라 단계 제재 적용(3/5/10회 자동, 15회는 관리자 검토 알림만 — SanctionService 참고).
         User reported = userMapper.findById(reportedUserId).orElse(null);
-        if (reported != null && reported.getReportCount() != null
-                && reported.getReportCount() >= SANCTION_THRESHOLD) {
-            return adminUserService.sanctionIfEligible(reportedUserId);
-        }
-        return false;
+        int count = (reported != null && reported.getReportCount() != null)
+                ? reported.getReportCount() : 0;
+        return sanctionService.applyForReportCount(reportedUserId, count);
     }
 
     /**

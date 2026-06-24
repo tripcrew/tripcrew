@@ -10,6 +10,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.tripcrew.activity.service.UserActivityService;
 import com.tripcrew.common.exception.BusinessException;
+import com.tripcrew.restriction.model.RestrictionType;
+import com.tripcrew.restriction.service.RestrictionService;
 import com.tripcrew.tripplan.exception.OptimisticLockConflictException;
 import com.tripcrew.tripplan.exception.TripPlanNotFoundException;
 import com.tripcrew.tripplan.model.TripMemberRole;
@@ -31,10 +33,13 @@ public class TripPlanService {
     private final TripMemberMapper tripMemberMapper;
     private final TripPlanAccessService accessService;
     private final UserActivityService userActivityService;
+    private final RestrictionService restrictionService;
 
     /** 여행계획 생성. 소유자는 인증 주체. DB DEFAULT 가 채운 값까지 반영해 재조회 반환. */
     @Transactional
     public TripPlanResponse create(Long ownerId, TripPlanCreateRequest request) {
+        // 신고 누적 단계 제재(계획 작성 금지) 중이면 403.
+        restrictionService.requireAllowed(ownerId, RestrictionType.PLAN_CREATE);
         validateDateRange(request.startDate(), request.endDate());
 
         TripPlan plan = TripPlan.builder()

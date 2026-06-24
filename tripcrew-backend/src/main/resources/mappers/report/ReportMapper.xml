@@ -57,6 +57,8 @@
         SELECT
             rp.id,
             rp.created_at,
+            rp.status,
+            rp.updated_at AS processed_at,
             rp.target_type,
             rp.reason,
             rp.detail,

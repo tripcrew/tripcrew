@@ -243,6 +243,8 @@ function chipFor(n) {
   if (n.type === 'REPORT_RESOLVED') return { label: '처리완료', cls: 'notif__chip--resolved' }
   if (n.type === 'REPORT_DISMISSED') return { label: '기각', cls: 'notif__chip--dismissed' }
   if (n.type === 'INQUIRY_ANSWERED') return { label: '답변완료', cls: 'notif__chip--resolved' }
+  if (n.type === 'SANCTION_APPLIED') return { label: '제재 안내', cls: 'notif__chip--dismissed' }
+  if (n.type === 'SANCTION_REVIEW_REQUIRED') return { label: '검토 요청', cls: 'notif__chip--dismissed' }
   return null
 }
 

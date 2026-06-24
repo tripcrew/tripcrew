@@ -68,24 +68,28 @@
           <table class="admin-table">
             <thead>
               <tr>
+                <th>#</th>
                 <th>ID</th>
                 <th>이메일</th>
                 <th>닉네임</th>
                 <th>role</th>
                 <th>상태</th>
+                <th>신고누적</th>
                 <th>가입일</th>
                 <th>권한 변경</th>
+                <th>제재</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="loading">
-                <td colspan="7" class="table-empty">불러오는 중…</td>
+                <td colspan="10" class="table-empty">불러오는 중…</td>
               </tr>
               <tr v-else-if="filteredUsers.length === 0">
-                <td colspan="7" class="table-empty">표시할 회원이 없습니다.</td>
+                <td colspan="10" class="table-empty">표시할 회원이 없습니다.</td>
               </tr>
-              <tr v-for="u in filteredUsers" :key="u.id">
-                <td class="t-mono">{{ u.id }}</td>
+              <tr v-for="(u, idx) in pagedUsers" :key="u.id">
+                <td class="t-mono row-no">{{ (page - 1) * PAGE_SIZE + idx + 1 }}</td>
+                <td class="t-mono id-cell">{{ u.id }}</td>
                 <td>{{ u.email }}</td>
                 <td><strong>{{ u.nickname }}</strong></td>
                 <td>
@@ -93,8 +97,22 @@
                 </td>
                 <td>
                   <span :class="['status-chip', u.status === 'BANNED' ? 'status--locked' : 'status--active']">
-                    {{ u.status === 'BANNED' ? '정지' : '정상' }}
+                    {{ u.status === 'BANNED' ? '영구정지' : '정상' }}
                   </span>
+                  <div v-if="u.activeRestrictions && u.activeRestrictions.length" class="restriction-chips">
+                    <span
+                      v-for="r in u.activeRestrictions"
+                      :key="r.type"
+                      class="restriction-chip"
+                      :title="restrictionTitle(r)"
+                    >{{ restrictionLabel(r) }}</span>
+                  </div>
+                </td>
+                <td>
+                  <span :class="['report-count', sanctionFlag(u) ? 'report-count--flag' : '']">
+                    {{ u.reportCount || 0 }}
+                  </span>
+                  <span v-if="sanctionFlag(u)" class="flag-badge" title="신고 누적 15회 이상 — 영구정지 검토 필요">검토</span>
                 </td>
                 <td class="t-mono">{{ formatDate(u.createdAt) }}</td>
                 <td>
@@ -126,10 +144,49 @@
                     {{ savingId === u.id ? '변경 중…' : (u.role === 'ADMIN' ? '→ USER 강등' : '→ ADMIN 승격') }}
                   </button>
                 </td>
+                <td class="sanction-cell">
+                  <!-- 영구정지/해제: 누적 자동 단계제재와 별개로 관리자가 즉시 영구정지(BANNED) 가능 -->
+                  <button
+                    v-if="u.status === 'BANNED'"
+                    class="action-btn action-btn--promote"
+                    :disabled="banningId === u.id"
+                    @click="unban(u)"
+                  >{{ banningId === u.id ? '해제 중…' : '정지 해제' }}</button>
+                  <button
+                    v-else-if="!canSanction(u)"
+                    class="action-btn"
+                    disabled
+                    :title="sanctionDisabledReason(u)"
+                  >—</button>
+                  <template v-else-if="confirmBanId === u.id">
+                    <button
+                      class="action-btn action-btn--danger"
+                      :disabled="banningId === u.id"
+                      @click="ban(u)"
+                    >{{ banningId === u.id ? '정지 중…' : '영구정지 확정' }}</button>
+                    <button class="action-btn" @click="confirmBanId = null">취소</button>
+                  </template>
+                  <button
+                    v-else
+                    class="action-btn action-btn--danger"
+                    @click="confirmBanId = u.id"
+                  >영구정지</button>
+
+                  <!-- 단계 제재 해제: 활성 제재가 있으면(밴 여부와 무관) 즉시 전부 해제 -->
+                  <button
+                    v-if="u.activeRestrictions && u.activeRestrictions.length"
+                    class="action-btn action-btn--lift"
+                    :disabled="clearingId === u.id"
+                    title="후기/계획 금지·임시정지 등 단계 제재를 즉시 모두 해제합니다"
+                    @click="clearRestrictions(u)"
+                  >{{ clearingId === u.id ? '해제 중…' : '제재 해제' }}</button>
+                </td>
               </tr>
             </tbody>
           </table>
         </section>
+
+        <BasePagination v-if="!forbidden && !error" v-model="page" :total="filteredUsers.length" :page-size="PAGE_SIZE" />
 
         <p v-if="notice" :class="['toast', notice.type === 'error' ? 'toast--error' : 'toast--ok']">
           {{ notice.text }}
@@ -139,11 +196,12 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
 import { adminApi } from '@/api/admin'
 import AdminLayout from '@/components/admin/AdminLayout.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
+import BasePagination from '@/components/common/BasePagination.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
@@ -153,14 +211,59 @@ const loading = ref(false)
 const error = ref('')
 const forbidden = ref(false)
 const savingId = ref(null)
+const banningId = ref(null)
+const confirmBanId = ref(null)
+const clearingId = ref(null)
 const notice = ref(null)
 
 const query = ref('')
 const roleFilter = ref('')
+const page = ref(1)
+const PAGE_SIZE = 15
 
 const currentUserId = computed(() => auth.user && auth.user.id)
 // role 변경은 SUPER_ADMIN 만(서버 인가와 짝). ADMIN 은 목록만 보고 토글은 '읽기 전용'.
 const canManageRoles = computed(() => !!(auth.user && auth.user.role === 'SUPER_ADMIN'))
+const isSuperAdmin = computed(() => !!(auth.user && auth.user.role === 'SUPER_ADMIN'))
+
+const RESTRICTION_LABELS = {
+  REVIEW_WRITE: '후기금지',
+  PLAN_CREATE: '계획금지',
+  ACCOUNT_SUSPEND: '계정정지',
+}
+function restrictionLabel(r) {
+  const base = RESTRICTION_LABELS[r.type] || r.type
+  const d = daysLeft(r.until)
+  return d == null ? base : `${base} D-${d}`
+}
+function restrictionTitle(r) {
+  if (!r.until) return `${RESTRICTION_LABELS[r.type] || r.type} · 영구`
+  return `${RESTRICTION_LABELS[r.type] || r.type} · 해제 ${String(r.until).slice(0, 16).replace('T', ' ')}`
+}
+function daysLeft(until) {
+  if (!until) return null
+  const ms = new Date(until).getTime() - Date.now()
+  return ms <= 0 ? 0 : Math.ceil(ms / 86400000)
+}
+
+// 신고 누적 15회 이상이면 영구정지 검토 플래그(서버 SanctionService 임계와 동일).
+function sanctionFlag(u) {
+  return u.status !== 'BANNED' && (u.reportCount || 0) >= 15
+}
+
+// 수동 영구정지 가능 여부: 본인·SUPER_ADMIN 불가, ADMIN 대상은 SUPER_ADMIN 만(서버 가드와 짝).
+function canSanction(u) {
+  if (u.id === currentUserId.value) return false
+  if (u.role === 'SUPER_ADMIN') return false
+  if (u.role === 'ADMIN') return isSuperAdmin.value
+  return true
+}
+function sanctionDisabledReason(u) {
+  if (u.id === currentUserId.value) return '본인 계정은 제재할 수 없습니다'
+  if (u.role === 'SUPER_ADMIN') return '최고관리자는 제재할 수 없습니다'
+  if (u.role === 'ADMIN') return 'ADMIN 계정은 최고관리자만 제재할 수 있습니다'
+  return ''
+}
 
 const adminCount = computed(() => users.value.filter((u) => u.role === 'ADMIN').length)
 const userCount = computed(() => users.value.filter((u) => u.role === 'USER').length)
@@ -183,6 +286,13 @@ const filteredUsers = computed(() => {
       const rb = ROLE_RANK[b.role] ?? 99
       return ra !== rb ? ra - rb : a.id - b.id
     })
+})
+
+const pagedUsers = computed(() => filteredUsers.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE))
+// 검색·필터로 결과가 줄어 현재 페이지가 범위를 벗어나면 1페이지로
+watch(filteredUsers, (list) => {
+  const maxPage = Math.max(1, Math.ceil(list.length / PAGE_SIZE))
+  if (page.value > maxPage) page.value = 1
 })
 
 function formatDate(value) {
@@ -228,6 +338,55 @@ async function toggleRole(user) {
     else flash('error', msg || `변경 실패 (${status || e.message})`)
   } finally {
     savingId.value = null
+  }
+}
+
+async function ban(user) {
+  banningId.value = user.id
+  notice.value = null
+  try {
+    await adminApi.ban(user.id)
+    user.status = 'BANNED' // 204 → 로컬 반영
+    confirmBanId.value = null
+    flash('ok', `${user.nickname}님을 영구정지했습니다.`)
+  } catch (e) {
+    const status = e.response?.status
+    const msg = e.response?.data?.message
+    flash('error', msg || `정지 실패 (${status || e.message})`)
+  } finally {
+    banningId.value = null
+  }
+}
+
+async function unban(user) {
+  banningId.value = user.id
+  notice.value = null
+  try {
+    await adminApi.unban(user.id)
+    user.status = 'ACTIVE'
+    flash('ok', `${user.nickname}님의 정지를 해제했습니다. (단계 제재는 만료 시각까지 유지)`)
+  } catch (e) {
+    const status = e.response?.status
+    const msg = e.response?.data?.message
+    flash('error', msg || `해제 실패 (${status || e.message})`)
+  } finally {
+    banningId.value = null
+  }
+}
+
+async function clearRestrictions(user) {
+  clearingId.value = user.id
+  notice.value = null
+  try {
+    await adminApi.clearRestrictions(user.id)
+    user.activeRestrictions = [] // 204 → 로컬 반영(칩 제거)
+    flash('ok', `${user.nickname}님의 단계 제재를 모두 해제했습니다.`)
+  } catch (e) {
+    const status = e.response?.status
+    const msg = e.response?.data?.message
+    flash('error', msg || `해제 실패 (${status || e.message})`)
+  } finally {
+    clearingId.value = null
   }
 }
 
@@ -393,6 +552,11 @@ onMounted(load)
 
 .muted { color: var(--muted); }
 
+/* 표시용 순번(정렬을 따라 1..N) — 실제 PK(ID)와 별개, 이게 시각 기준 */
+.row-no { font-weight: 700; color: var(--ink-2); }
+/* 실제 ID(PK)는 안 바뀌는 대리키라 들쭉날쭉 정상 — 보조로 약하게 */
+.id-cell { color: var(--muted); }
+
 .role-chip {
   display: inline-block;
   padding: 3px 8px;
@@ -417,6 +581,53 @@ onMounted(load)
 .status--active { background: #E1F5EA; color: #1A7A4A; }
 .status--locked { background: #FFE5E8; color: #B12C3A; }
 .status--dormant { background: var(--bg-2); color: var(--ink-soft); }
+
+/* 활성 단계 제재 칩 (상태 셀 하단) */
+.restriction-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.restriction-chip {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  background: #FFF1E0;
+  color: #B5651D;
+}
+
+/* 신고 누적 카운트 + 검토 플래그 */
+.report-count { font-family: var(--font-mono); font-weight: 700; }
+.report-count--flag { color: var(--coral); }
+
+.flag-badge {
+  margin-left: 6px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  background: #FFE5E8;
+  color: #B12C3A;
+}
+
+.sanction-cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 단계 제재 해제(완화 액션) — 위험(빨강)과 구분되는 차분한 톤 */
+.action-btn--lift {
+  background: var(--bg-2);
+  color: var(--ink-2);
+  border: 1px solid var(--line);
+}
+.action-btn--lift:hover:not([disabled]) { background: var(--bg-soft); }
 
 .action-btn {
   padding: 4px 10px;

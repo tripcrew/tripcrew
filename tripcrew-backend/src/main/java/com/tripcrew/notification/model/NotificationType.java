@@ -16,5 +16,9 @@ public enum NotificationType {
     /** 여행계획 공동편집 초대(ref_id = 여행계획 id) */
     INVITE,
     /** 내 1:1 문의에 관리자 답변이 등록됨(ref_id = 문의 id) */
-    INQUIRY_ANSWERED
+    INQUIRY_ANSWERED,
+    /** 신고 누적으로 내 계정에 단계 제재가 적용됨(후기/계획 작성 금지·계정 임시정지). ref_id 없음 */
+    SANCTION_APPLIED,
+    /** (관리자 수신) 신고 누적이 최고 임계에 도달 — 영구정지 검토 필요(ref_id = 대상 사용자 id) */
+    SANCTION_REVIEW_REQUIRED
 }
