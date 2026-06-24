@@ -241,8 +241,8 @@ onMounted(load)
   font-weight: 600;
 }
 
-.toast--ok { background: #E1F5EA; color: #1A7A4A; }
-.toast--error { background: #FFE5E8; color: #B12C3A; }
+.toast--ok { background: var(--teal-soft); color: var(--teal-ink); }
+.toast--error { background: var(--coral-soft); color: var(--coral-ink); }
 
 .api-note {
   margin-top: 20px;

@@ -340,9 +340,9 @@ onMounted(() => {
   margin-bottom: 20px;
   padding: 12px 16px;
   border-radius: var(--r-md, 12px);
-  border: 1px solid #fbeae2;
-  background: #fff5f5;
-  color: #b12c3a;
+  border: 1px solid var(--coral-soft);
+  background: var(--coral-tint);
+  color: var(--coral-ink);
   font-size: 14px;
   font-weight: 600;
 }
@@ -547,7 +547,7 @@ onMounted(() => {
 
 .status--active { background: var(--teal); color: white; }
 .status--ready { background: var(--coral-tint); color: var(--coral-ink); }
-.status--done { background: #E1F5EA; color: #1A7A4A; }
+.status--done { background: var(--teal-soft); color: var(--teal-ink); }
 .status--shared { background: var(--coral-tint, #fff1ec); color: var(--coral, #e06a4f); }
 
 .chip-group {

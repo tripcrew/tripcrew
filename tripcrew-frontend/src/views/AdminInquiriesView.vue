@@ -361,8 +361,8 @@ onMounted(load)
   font-size: 13px;
   font-weight: 600;
 }
-.toast--ok { background: #E1F5EA; color: #1A7A4A; }
-.toast--error { background: #FFE5E8; color: #B12C3A; }
+.toast--ok { background: var(--teal-soft); color: var(--teal-ink); }
+.toast--error { background: var(--coral-soft); color: var(--coral-ink); }
 
 @media (max-width: 640px) {
   .iq-card__top { flex-direction: column; gap: 8px; }

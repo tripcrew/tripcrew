@@ -60,7 +60,7 @@ function go(p) {
   padding: 0 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: white;
+  background: var(--surface);
   color: var(--ink-3);
   font-weight: 700;
   font-size: 13px;
