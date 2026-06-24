@@ -3,6 +3,7 @@ package com.tripcrew.tripplan.model.dto;
 import java.time.LocalDateTime;
 
 import com.tripcrew.tripplan.model.TripMemberRole;
+import com.tripcrew.tripplan.model.TripMemberStatus;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -21,5 +22,6 @@ public class TripMemberRow {
     private String email;
     private String nickname;
     private TripMemberRole role;
+    private TripMemberStatus status;
     private LocalDateTime createdAt;
 }

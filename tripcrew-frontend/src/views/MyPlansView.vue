@@ -10,6 +10,33 @@
         </BaseButton>
       </header>
 
+      <!-- 받은 초대(수락 대기) -->
+      <section v-if="invites.length > 0" class="section-block invite-block">
+        <h2 class="t-h2 section-title">받은 초대 <span class="muted">{{ invites.length }}개</span></h2>
+        <div class="invite-list">
+          <article v-for="invite in invites" :key="invite.planId" class="invite-card">
+            <div class="invite-info">
+              <h3>{{ invite.planTitle }}</h3>
+              <p class="invite-meta">
+                <strong>{{ invite.inviterNickname }}</strong>님이 초대 · {{ roleText(invite.role) }}
+              </p>
+            </div>
+            <div class="invite-actions">
+              <button
+                class="mini-btn"
+                :disabled="invite.busy"
+                @click="rejectInvite(invite)"
+              >거절</button>
+              <button
+                class="mini-btn mini-btn--primary"
+                :disabled="invite.busy"
+                @click="acceptInvite(invite)"
+              >수락</button>
+            </div>
+          </article>
+        </div>
+      </section>
+
       <!-- 로딩 -->
       <p v-if="loading" class="state-msg">불러오는 중…</p>
 
@@ -65,6 +92,7 @@ import { tripPlanApi } from '@/api/tripPlans'
 const router = useRouter()
 
 const plans = ref([])
+const invites = ref([])
 const loading = ref(true)
 const error = ref('')
 const creating = ref(false)
@@ -73,11 +101,42 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    plans.value = await tripPlanApi.list()
+    // 받은 초대와 내 계획을 함께 불러온다(초대는 비핵심이라 실패해도 목록은 보여줌)
+    const [planList, inviteList] = await Promise.all([
+      tripPlanApi.list(),
+      tripPlanApi.listInvites().catch(() => []),
+    ])
+    plans.value = planList
+    invites.value = inviteList.map((i) => ({ ...i, busy: false }))
   } catch (e) {
     error.value = '목록을 불러오지 못했습니다.'
   } finally {
     loading.value = false
+  }
+}
+
+async function acceptInvite(invite) {
+  if (invite.busy) return
+  invite.busy = true
+  try {
+    await tripPlanApi.acceptInvite(invite.planId)
+    invites.value = invites.value.filter((i) => i.planId !== invite.planId)
+    await load() // 수락한 계획을 '내 계획'에 반영
+  } catch (e) {
+    invite.busy = false
+    error.value = '초대를 수락하지 못했습니다.'
+  }
+}
+
+async function rejectInvite(invite) {
+  if (invite.busy) return
+  invite.busy = true
+  try {
+    await tripPlanApi.rejectInvite(invite.planId)
+    invites.value = invites.value.filter((i) => i.planId !== invite.planId)
+  } catch (e) {
+    invite.busy = false
+    error.value = '초대를 거절하지 못했습니다.'
   }
 }
 
@@ -153,6 +212,74 @@ onMounted(load)
 .section-block {
   margin-bottom: 40px;
 }
+
+/* 받은 초대 */
+.invite-block {
+  background: var(--teal-soft, #e6f6f4);
+  border-radius: var(--r-lg);
+  padding: 20px;
+}
+
+.invite-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.invite-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md, 12px);
+  padding: 14px 16px;
+}
+
+.invite-info { min-width: 0; }
+
+.invite-info h3 {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  margin-bottom: 2px;
+}
+
+.invite-meta {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.invite-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.mini-btn {
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--line);
+  background: white;
+  color: var(--ink-3);
+  transition: all 0.15s;
+}
+
+.mini-btn:hover:not(:disabled) { background: var(--bg-2); }
+
+.mini-btn--primary {
+  background: var(--teal, #2bb5a6);
+  border-color: var(--teal, #2bb5a6);
+  color: white;
+}
+
+.mini-btn--primary:hover:not(:disabled) { background: var(--teal-2, #239b8e); }
+
+.mini-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .section-title {
   margin-bottom: 16px;

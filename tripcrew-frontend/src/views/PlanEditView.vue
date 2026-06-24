@@ -299,6 +299,7 @@
               <strong>{{ member.email }}</strong>
               <span v-if="member.userId === myUserId" class="member-me">나</span>
               <span class="member-role">{{ roleText(member.role) }}</span>
+              <span v-if="member.status === 'PENDING'" class="member-pending">대기중</span>
             </div>
             <div class="member-actions">
               <select
@@ -2147,6 +2148,17 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
   font-size: 12px;
   color: var(--muted, #7b8a91);
+}
+
+/* 수락 대기 중인 초대(아직 미참여) */
+.member-pending {
+  flex-shrink: 0;
+  padding: 1px 7px;
+  border-radius: 8px;
+  background: var(--bg-2, #f1f4f5);
+  color: var(--ink-3, #7b8a91);
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .member-actions {

@@ -8,8 +8,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.tripcrew.common.exception.BusinessException;
+import com.tripcrew.notification.model.NotificationType;
+import com.tripcrew.notification.service.NotificationService;
 import com.tripcrew.tripplan.exception.TripMemberNotFoundException;
 import com.tripcrew.tripplan.model.TripMemberRole;
+import com.tripcrew.tripplan.model.TripMemberStatus;
+import com.tripcrew.tripplan.model.dto.InviteResponse;
 import com.tripcrew.tripplan.model.dto.TripMember;
 import com.tripcrew.tripplan.model.dto.TripMemberResponse;
 import com.tripcrew.tripplan.model.dto.TripMemberRow;
@@ -34,6 +38,7 @@ public class TripMemberService {
     private final TripPlanAccessService accessService;
     private final TripMemberMapper tripMemberMapper;
     private final UserMapper userMapper;
+    private final NotificationService notificationService;
 
     /** 멤버 목록(소유자 + 협업자). 모든 멤버가 조회 가능. */
     @Transactional(readOnly = true)
@@ -65,15 +70,47 @@ public class TripMemberService {
             throw new BusinessException(HttpStatus.CONFLICT, "이미 참여 중인 멤버입니다.");
         }
 
+        // 초대는 즉시 멤버가 아니라 수락 대기(PENDING) 상태로 추가한다.
         TripMember member = TripMember.builder()
                 .tripPlanId(planId)
                 .userId(invitee.getId())
                 .role(role)
+                .status(TripMemberStatus.PENDING)
                 .build();
         tripMemberMapper.insert(member);
 
+        // 피초대자에게 INVITE 알림(같은 트랜잭션). 초대자 닉네임 + 계획 제목으로 맥락 제공.
+        User inviter = userMapper.findById(plan.getOwnerId()).orElse(null);
+        String inviterName = inviter != null ? inviter.getNickname() : "누군가";
+        notificationService.notify(invitee.getId(), NotificationType.INVITE, planId,
+                String.format("%s님이 '%s' 여행 계획에 초대했어요.", inviterName, plan.getTitle()));
+
         return new TripMemberResponse(invitee.getId(), invitee.getEmail(), invitee.getNickname(),
-                role, null);
+                role, TripMemberStatus.PENDING, null);
+    }
+
+    /** 내가 받은(수락 대기) 초대 목록(최근 초대순). 받은 초대 섹션·수락/거절 UI 용. */
+    @Transactional(readOnly = true)
+    public List<InviteResponse> listMyInvites(Long userId) {
+        return tripMemberMapper.findPendingInvitesByUser(userId);
+    }
+
+    /** 초대 수락(피초대자 본인). PENDING → ACCEPTED. 받은 초대가 없으면 404. */
+    @Transactional
+    public void acceptInvite(Long planId, Long userId) {
+        int affected = tripMemberMapper.acceptInvite(planId, userId);
+        if (affected == 0) {
+            throw new BusinessException(HttpStatus.NOT_FOUND, "수락할 초대를 찾을 수 없습니다.");
+        }
+    }
+
+    /** 초대 거절(피초대자 본인). PENDING 행 삭제. 받은 초대가 없으면 404. */
+    @Transactional
+    public void rejectInvite(Long planId, Long userId) {
+        int affected = tripMemberMapper.deletePending(planId, userId);
+        if (affected == 0) {
+            throw new BusinessException(HttpStatus.NOT_FOUND, "거절할 초대를 찾을 수 없습니다.");
+        }
     }
 
     /** 협업자 역할 변경(소유자만). EDITOR ↔ VIEWER. */
@@ -119,6 +156,6 @@ public class TripMemberService {
         User owner = userMapper.findById(plan.getOwnerId())
                 .orElseThrow(() -> new BusinessException(HttpStatus.INTERNAL_SERVER_ERROR, "소유자 정보를 찾을 수 없습니다."));
         return new TripMemberResponse(owner.getId(), owner.getEmail(), owner.getNickname(),
-                TripMemberRole.OWNER, plan.getCreatedAt());
+                TripMemberRole.OWNER, TripMemberStatus.ACCEPTED, plan.getCreatedAt());
     }
 }
