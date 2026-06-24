@@ -119,7 +119,11 @@
                   :title="likeState(a).liked ? '찜 해제' : '가보고 싶어요(찜)'"
                   @click.stop="toggleCardLike(a)"
                 >
-                  <span class="card-like__heart">{{ likeState(a).liked ? '♥' : '♡' }}</span>
+                  <span
+                    class="card-like__heart"
+                    :class="{ 'card-like__heart--pop': likeBounceNo === a.no }"
+                    @animationend="likeBounceNo = null"
+                  >{{ likeState(a).liked ? '♥' : '♡' }}</span>
                   <span class="card-like__count">{{ formatLikeCount(likeState(a).likeCount) }}</span>
                 </button>
               </div>
@@ -428,6 +432,7 @@ function setMinRating(rating) {
 // 카드 찜(좋아요) — 배치 조회로 채우고, 하트 클릭 시 토글
 const likeMap = ref({})
 const likeBusyNo = ref(null)
+const likeBounceNo = ref(null) // 방금 토글한 카드 — 하트 바운스용(animationend에 초기화)
 
 function likeState(a) {
   return likeMap.value[a.no] || { likeCount: 0, liked: false }
@@ -462,6 +467,7 @@ async function toggleCardLike(a) {
   try {
     const res = cur.liked ? await attractionLikeApi.unlike(a.no) : await attractionLikeApi.like(a.no)
     likeMap.value = { ...likeMap.value, [a.no]: { likeCount: res.likeCount, liked: res.liked } }
+    likeBounceNo.value = a.no
   } catch {
     // 실패 시 현재 상태 유지
   } finally {
@@ -803,6 +809,17 @@ onBeforeUnmount(() => {
   font-size: 14px;
   color: var(--ink-soft);
   transition: color 0.15s;
+}
+
+/* 찜 토글 시 하트가 통통 튀는 피드백 (reduced-motion이면 비활성) */
+@keyframes like-pop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.32); }
+  62% { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .card-like__heart--pop { animation: like-pop 0.4s ease-out; }
 }
 
 .card-like.liked {
