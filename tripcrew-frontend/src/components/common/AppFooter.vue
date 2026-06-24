@@ -41,7 +41,6 @@
 
     <div class="app-footer__bottom">
       <span class="t-mono">© 2026 TripCrew</span>
-      <span class="t-mono">v0.1.0 · Vue 3 + Spring Boot</span>
     </div>
   </footer>
 </template>
