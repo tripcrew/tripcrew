@@ -47,7 +47,14 @@
                   <span v-if="!n.read" class="notif__dot" aria-hidden="true"></span>
                   <span class="notif__body">
                     <span class="notif__msg">{{ n.message }}</span>
-                    <span class="notif__time">{{ formatRelative(n.createdAt) }}</span>
+                    <span class="notif__meta">
+                      <span
+                        v-if="chipFor(n)"
+                        class="notif__chip"
+                        :class="chipFor(n).cls"
+                      >{{ chipFor(n).label }}</span>
+                      <span class="notif__time">{{ formatRelative(n.createdAt) }}</span>
+                    </span>
                   </span>
                 </button>
               </div>
@@ -155,6 +162,13 @@ async function handleNotifClick(n) {
   const to = notificationRoute(n)
   notifOpen.value = false
   if (to) router.push(to)
+}
+
+/** 신고 결과 알림에 붙는 상태 칩(처리완료/기각). 그 외 type 은 칩 없음(null). */
+function chipFor(n) {
+  if (n.type === 'REPORT_RESOLVED') return { label: '처리완료', cls: 'notif__chip--resolved' }
+  if (n.type === 'REPORT_DISMISSED') return { label: '기각', cls: 'notif__chip--dismissed' }
+  return null
 }
 
 /** 상대 시각(방금/n분 전/n시간 전/n일 전), 그 이상은 날짜. */
@@ -422,6 +436,33 @@ const avatarText = computed(() => displayName.value.trim().slice(0, 1).toUpperCa
   font-size: 13px;
   line-height: 1.4;
   color: var(--ink);
+}
+
+.notif__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.notif__chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.notif__chip--resolved {
+  background: var(--teal-3);
+  color: white;
+}
+
+.notif__chip--dismissed {
+  background: white;
+  color: var(--ink-3);
+  border: 1px solid var(--line);
 }
 
 .notif__time {

@@ -10,6 +10,7 @@ import com.tripcrew.admin.service.AdminUserService;
 import com.tripcrew.common.exception.BusinessException;
 import com.tripcrew.notification.model.NotificationType;
 import com.tripcrew.notification.service.NotificationService;
+import com.tripcrew.report.model.ReportReason;
 import com.tripcrew.report.model.ReportStatus;
 import com.tripcrew.report.model.ReportTargetType;
 import com.tripcrew.report.model.dto.AdminReportResponse;
@@ -65,8 +66,9 @@ public class AdminReportService {
         reportMapper.updateStatus(reportId, ReportStatus.RESOLVED);
 
         // 신고자에게 처리완료 알림(같은 트랜잭션 — 신고 처리와 알림 생성이 원자적).
+        // 어떤 신고였는지(대상·사유) 맥락을 담는다. 피신고자 신원은 노출하지 않는다(괴롭힘 방지).
         notificationService.notify(report.getReporterId(), NotificationType.REPORT_RESOLVED,
-                reportId, "신고하신 내용이 처리되었습니다.");
+                reportId, resolvedMessage(report));
 
         // 후기 신고를 처리완료하면 해당 후기를 숨김(soft-delete)으로 전환하고 평점 집계에서 제외.
         // 같은 트랜잭션이라 신고 처리·후기 숨김·집계 차감이 원자적으로 묶인다.
@@ -89,12 +91,45 @@ public class AdminReportService {
         return false;
     }
 
-    /** 신고 기각(DISMISSED). 신고 사유가 부적절한 경우. 누적 카운트는 늘리지 않는다. 대상 없으면 404. */
+    /**
+     * 신고 기각(DISMISSED). 신고 사유가 부적절한 경우. 누적 카운트는 늘리지 않는다.
+     * 신고자에게 결과(기각) 알림을 보내 닫힌 루프를 만든다. 대상 없으면 404, 이미 처리됐으면 멱등.
+     */
     @Transactional
     public void dismiss(Long reportId) {
-        int affected = reportMapper.updateStatus(reportId, ReportStatus.DISMISSED);
-        if (affected == 0) {
-            throw new BusinessException(HttpStatus.NOT_FOUND, "신고를 찾을 수 없습니다.");
+        Report report = reportMapper.findById(reportId)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "신고를 찾을 수 없습니다."));
+        if (report.getStatus() != ReportStatus.OPEN) {
+            return; // 이미 처리된 신고 — 중복 알림 방지(멱등)
         }
+        reportMapper.updateStatus(reportId, ReportStatus.DISMISSED);
+        notificationService.notify(report.getReporterId(), NotificationType.REPORT_DISMISSED,
+                reportId, dismissedMessage(report));
+    }
+
+    /** 처리완료 알림 문구. 어떤 신고(대상·사유)였는지 맥락을 담되 피신고자 신원은 노출하지 않는다. */
+    private String resolvedMessage(Report report) {
+        return String.format("신고하신 %s에 대한 검토가 완료되어 조치했습니다. (사유: %s) 신고해 주셔서 감사합니다.",
+                targetLabel(report.getTargetType()), reasonLabel(report.getReason()));
+    }
+
+    /** 기각 알림 문구. */
+    private String dismissedMessage(Report report) {
+        return String.format("신고하신 %s에 대한 건은 검토 결과 별도 조치 없이 종료되었습니다. (사유: %s) 신고해 주셔서 감사합니다.",
+                targetLabel(report.getTargetType()), reasonLabel(report.getReason()));
+    }
+
+    private String targetLabel(ReportTargetType targetType) {
+        return targetType == ReportTargetType.REVIEW ? "후기" : "회원";
+    }
+
+    private String reasonLabel(ReportReason reason) {
+        return switch (reason) {
+            case SPAM -> "스팸/도배";
+            case ABUSE -> "욕설/비방";
+            case ADVERTISING -> "광고/홍보";
+            case INAPPROPRIATE -> "부적절한 내용";
+            case OTHER -> "기타";
+        };
     }
 }
