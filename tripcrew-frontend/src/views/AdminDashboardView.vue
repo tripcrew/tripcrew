@@ -438,8 +438,8 @@ onMounted(() => {
 }
 
 .stat-card--alert {
-  background: linear-gradient(135deg, #FFF5F5 0%, white 100%);
-  border-color: #FBEAE2;
+  background: linear-gradient(135deg, var(--coral-tint) 0%, var(--surface) 100%);
+  border-color: var(--coral-soft);
 }
 
 .stat-card--alert:hover { border-color: var(--coral); }
@@ -476,7 +476,7 @@ onMounted(() => {
 }
 
 .stat-ico--teal { background: var(--teal-soft); color: var(--teal-ink); }
-.stat-ico--coral { background: #FBEAE2; color: var(--coral); }
+.stat-ico--coral { background: var(--coral-soft); color: var(--coral); }
 .stat-ico--mute { background: var(--bg-2); color: var(--muted); }
 
 .stat-value {

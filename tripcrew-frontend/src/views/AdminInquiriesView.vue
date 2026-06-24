@@ -281,7 +281,7 @@ onMounted(load)
   font-weight: 700;
   flex-shrink: 0;
 }
-.status-chip--open { background: #FFF1E8; color: var(--coral); }
+.status-chip--open { background: var(--coral-soft); color: var(--coral-ink); }
 .status-chip--answered { background: var(--teal-soft); color: var(--teal-ink); }
 
 /* 기존 답변 표시 */
@@ -338,7 +338,7 @@ onMounted(load)
   gap: 10px;
   align-items: flex-start;
 }
-.state-panel--error { border-color: #FBEAE2; background: linear-gradient(135deg, #FFF5F5 0%, white 100%); }
+.state-panel--error { border-color: var(--coral-soft); background: linear-gradient(135deg, var(--coral-tint) 0%, var(--surface) 100%); }
 .state-panel strong { font-size: 16px; color: var(--ink); }
 .state-panel p { font-size: 13px; color: var(--ink-soft); }
 

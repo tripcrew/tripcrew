@@ -589,7 +589,7 @@ function getRedirectTarget() {
 
 .field input.error-input {
   border-color: var(--danger);
-  background: #FFF5F5;
+  background: rgba(220, 53, 69, 0.12);
 }
 
 .field-help {
@@ -610,7 +610,7 @@ function getRedirectTarget() {
   margin: -4px 0 14px;
   border: 1px solid rgba(224, 70, 85, 0.25);
   border-radius: 8px;
-  background: #FFF5F5;
+  background: rgba(220, 53, 69, 0.12);
   color: var(--danger);
   font-size: 13px;
   font-weight: 600;

@@ -274,8 +274,8 @@ onMounted(load)
 }
 
 .stat-card--alert {
-  background: linear-gradient(135deg, #FFF5F5 0%, white 100%);
-  border-color: #FBEAE2;
+  background: linear-gradient(135deg, var(--coral-tint) 0%, var(--surface) 100%);
+  border-color: var(--coral-soft);
 }
 
 .stat-label {
@@ -466,8 +466,8 @@ onMounted(load)
 }
 
 .state-panel--error {
-  border-color: #FBEAE2;
-  background: linear-gradient(135deg, #FFF5F5 0%, white 100%);
+  border-color: var(--coral-soft);
+  background: linear-gradient(135deg, var(--coral-tint) 0%, var(--surface) 100%);
 }
 
 .state-panel strong { font-size: 16px; color: var(--ink); }
