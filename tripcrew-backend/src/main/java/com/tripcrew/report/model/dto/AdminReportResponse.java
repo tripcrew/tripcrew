@@ -10,6 +10,8 @@ import java.time.LocalDateTime;
 public record AdminReportResponse(
         Long id,
         LocalDateTime createdAt,
+        String status,
+        LocalDateTime processedAt,
         String targetType,
         String reason,
         String detail,
@@ -21,6 +23,8 @@ public record AdminReportResponse(
         return new AdminReportResponse(
                 row.getId(),
                 row.getCreatedAt(),
+                row.getStatus() == null ? null : row.getStatus().name(),
+                row.getProcessedAt(),
                 row.getTargetType() == null ? null : row.getTargetType().name(),
                 row.getReason() == null ? null : row.getReason().name(),
                 row.getDetail(),

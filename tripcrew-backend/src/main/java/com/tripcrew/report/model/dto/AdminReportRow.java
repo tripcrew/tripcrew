@@ -3,6 +3,7 @@ package com.tripcrew.report.model.dto;
 import java.time.LocalDateTime;
 
 import com.tripcrew.report.model.ReportReason;
+import com.tripcrew.report.model.ReportStatus;
 import com.tripcrew.report.model.ReportTargetType;
 
 import lombok.Getter;
@@ -21,6 +22,8 @@ public class AdminReportRow {
 
     private Long id;
     private LocalDateTime createdAt;
+    private ReportStatus status;           // OPEN | RESOLVED | DISMISSED (처리 이력 필터/표시용)
+    private LocalDateTime processedAt;      // 처리(완료/기각) 시각 = reports.updated_at. 미처리면 created_at 과 동일
     private ReportTargetType targetType;   // REVIEW | USER (무엇이 신고됐는지)
     private ReportReason reason;
     private String detail;
