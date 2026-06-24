@@ -31,6 +31,15 @@
          ORDER BY id ASC
     </select>
 
+    <!-- 관리자 대시보드 집계: 전체/상태별 사용자 수 -->
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*) FROM users
+    </select>
+
+    <select id="countByStatus" resultType="long">
+        SELECT COUNT(*) FROM users WHERE status = #{status}
+    </select>
+
     <!-- 관리자용 role 변경. affected rows 0 이면 대상 사용자 없음. -->
     <update id="updateRole">
         UPDATE users

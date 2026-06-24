@@ -79,6 +79,11 @@
          ORDER BY rp.created_at DESC, rp.id DESC
     </select>
 
+    <!-- 관리자 대시보드 집계: 상태별 신고 수(보통 OPEN 미처리 건수) -->
+    <select id="countByStatus" resultType="long">
+        SELECT COUNT(*) FROM reports WHERE status = #{status}
+    </select>
+
     <update id="updateStatus">
         UPDATE reports
            SET status = #{status}

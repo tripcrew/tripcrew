@@ -20,6 +20,9 @@ public interface NoticeMapper {
     /** 전체 목록(고정 우선, 최신순). 작성 관리자 닉네임 포함. */
     List<Notice> findAll();
 
+    /** 전체 공지 수 (관리자 대시보드 집계용). */
+    long countAll();
+
     /** 제목/내용/고정 여부 수정. 영향 행 수 반환(없는 id 면 0). */
     int update(Notice notice);
 
