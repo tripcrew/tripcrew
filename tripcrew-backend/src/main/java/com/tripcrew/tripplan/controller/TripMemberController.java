@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.tripcrew.coedit.dto.PlaceChangeAction;
+import com.tripcrew.coedit.edit.PlaceChangeBroadcaster;
 import com.tripcrew.tripplan.model.dto.MemberInviteRequest;
 import com.tripcrew.tripplan.model.dto.MemberRoleUpdateRequest;
 import com.tripcrew.tripplan.model.dto.TripMemberResponse;
@@ -32,6 +34,7 @@ import lombok.RequiredArgsConstructor;
 public class TripMemberController {
 
     private final TripMemberService tripMemberService;
+    private final PlaceChangeBroadcaster placeChangeBroadcaster;
 
     @GetMapping
     public List<TripMemberResponse> list(@AuthenticationPrincipal Long userId,
@@ -62,5 +65,9 @@ public class TripMemberController {
                        @PathVariable Long planId,
                        @PathVariable Long targetUserId) {
         tripMemberService.remove(planId, userId, targetUserId);
+        // 소유자가 타인을 내보낸 경우(본인 탈퇴 제외) 대상에게 실시간으로 알려 편집 화면에서 내보낸다.
+        if (!userId.equals(targetUserId)) {
+            placeChangeBroadcaster.broadcast(planId, userId, PlaceChangeAction.MEMBER_REMOVED, targetUserId);
+        }
     }
 }

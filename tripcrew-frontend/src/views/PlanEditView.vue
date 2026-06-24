@@ -549,6 +549,13 @@ watch(localBusy, (busy) => {
 // 다른 접속자의 변경 알림 → 내용을 다시 불러오고 누가 바꿨는지 토스트로 안내.
 async function handlePlaceChange(event) {
   if (!event || event.actorId === myUserId.value) return // 내 변경은 이미 반영됨
+  // 내가 내보내진 경우: 접근 권한을 잃었으니 안내와 함께 내 계획 목록으로 이동. 대상이 아니면 무시.
+  if (event.action === 'MEMBER_REMOVED') {
+    if (event.targetUserId === myUserId.value) {
+      router.push({ path: '/plans', query: { left: 'removed' } })
+    }
+    return
+  }
   const text = PLACE_ACTION_TEXT[event.action] || '계획을 수정했어요'
   showToast(`${event.actorNickname}님이 ${text}`)
   if (event.action === 'SAVED') pendingPlanRefetch = true

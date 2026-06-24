@@ -10,6 +10,12 @@
         </BaseButton>
       </header>
 
+      <!-- 크루에서 내보내져 돌아온 경우 안내 -->
+      <div v-if="leftNotice" class="left-notice">
+        <span>{{ leftNotice }}</span>
+        <button class="left-notice__close" aria-label="닫기" @click="leftNotice = ''">✕</button>
+      </div>
+
       <!-- 받은 초대(수락 대기) -->
       <section v-if="invites.length > 0" class="section-block invite-block">
         <h2 class="t-h2 section-title">받은 초대 <span class="muted">{{ invites.length }}개</span></h2>
@@ -84,12 +90,16 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import AppHeader from '@/components/common/AppHeader.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
 import { tripPlanApi } from '@/api/tripPlans'
 
 const router = useRouter()
+const route = useRoute()
+
+// 공동 계획에서 내보내져 이 화면으로 돌아온 경우 안내(쿼리는 즉시 정리해 새로고침 시 사라지게)
+const leftNotice = ref('')
 
 const plans = ref([])
 const invites = ref([])
@@ -176,7 +186,13 @@ function formatRelative(iso) {
   return `${Math.round(diffHr / 24)}일 전`
 }
 
-onMounted(load)
+onMounted(() => {
+  if (route.query.left === 'removed') {
+    leftNotice.value = '여행 크루에서 내보내져 해당 계획에 더 이상 접근할 수 없어요.'
+    router.replace({ query: {} }) // 안내만 한 번 보여주고 쿼리 정리
+  }
+  load()
+})
 </script>
 
 <style scoped>
@@ -212,6 +228,30 @@ onMounted(load)
 .section-block {
   margin-bottom: 40px;
 }
+
+/* 크루 내보내짐 안내 배너 */
+.left-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  border-radius: var(--r-md, 12px);
+  background: var(--coral-tint, #fff1ec);
+  color: var(--coral, #e06a4f);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.left-notice__close {
+  flex-shrink: 0;
+  color: inherit;
+  opacity: 0.7;
+  font-size: 13px;
+}
+
+.left-notice__close:hover { opacity: 1; }
 
 /* 받은 초대 */
 .invite-block {
