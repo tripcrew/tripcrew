@@ -281,11 +281,32 @@
               >
                 전체 보기
               </button>
+              <div v-if="drivingRouteSegments.length > 0" class="map-traffic-legend" aria-label="교통 상황 범례">
+                <span><i class="traffic-dot traffic-dot--clear"></i>원활</span>
+                <span><i class="traffic-dot traffic-dot--slow"></i>서행</span>
+                <span><i class="traffic-dot traffic-dot--busy"></i>혼잡</span>
+              </div>
             </div>
             <div class="map-info">
               <h4>{{ selectedMapPlaceName || `장소 ${visiblePlaces.length}개` }}</h4>
               <p class="t-mono">{{ selectedDay === null ? 'Storage' : `Day ${selectedDay}` }}</p>
             </div>
+            <section v-if="drivingRouteSummary" class="route-cost-card" aria-label="예상 차량 이동 비용">
+              <div class="route-cost-card__head">
+                <span>예상 차량 이동 비용</span>
+                <small>실시간 교통 반영</small>
+              </div>
+              <div class="route-cost-card__metrics">
+                <span>{{ formatDistance(drivingRouteSummary.distanceMeter) }}</span>
+                <span>{{ formatDrivingDuration(drivingRouteSummary.durationMillis) }}</span>
+                <span>통행료 {{ formatWon(drivingRouteSummary.tollFare) }}</span>
+              </div>
+              <div class="route-cost-card__total">
+                <span>예상 유류비 포함</span>
+                <strong>{{ formatWon(routeCostTotal) }}</strong>
+              </div>
+              <p>일반 승용차 기준 API 예상값이며 실제 비용과 다를 수 있습니다.</p>
+            </section>
           </aside>
         </div>
       </template>
@@ -454,9 +475,11 @@ const mapElement = ref(null)
 const mapState = ref('idle')
 const mapInstance = ref(null)
 const mapMarkers = ref([])
-const routeLine = ref(null)
+const routeLines = ref([])
 const routeBounds = ref(null)
 const drivingRoutePath = ref([])
+const drivingRouteSegments = ref([])
+const drivingRouteSummary = ref(null)
 const selectedMapPlaceName = ref('')
 let activeInfoWindow = null
 
@@ -490,6 +513,10 @@ let drivingRouteRequest = 0
 const myUserId = computed(() => (auth.user ? auth.user.id : null))
 const isOwner = computed(() => myRole.value === 'OWNER')
 const canEdit = computed(() => myRole.value === 'OWNER' || myRole.value === 'EDITOR')
+const routeCostTotal = computed(() => {
+  if (!drivingRouteSummary.value) return 0
+  return Number(drivingRouteSummary.value.tollFare || 0) + Number(drivingRouteSummary.value.fuelPrice || 0)
+})
 
 // F06 P2a — 실시간 협업: 접속자 프레즌스 + 장소 변경 동기화(broadcast-refetch)
 const PRESENCE_PALETTE = ['var(--teal)', 'var(--coral)', 'var(--violet)', 'var(--info)', 'var(--warning)']
@@ -977,10 +1004,6 @@ function renderMapPlaces() {
       map,
       position,
       title: cleanDisplayName(place.name),
-      icon: {
-        content: `<div class="naver-plan-marker${place.attractionId ? ' naver-plan-marker--link' : ''}">${index + 1}</div>`,
-        anchor: new maps.Point(14, 14),
-      },
     })
 
     maps.Event.addListener(marker, 'click', () => {
@@ -1008,15 +1031,45 @@ function renderMapPlaces() {
     : path
 
   routePath.forEach((position) => bounds.extend(position))
-  if (routePath.length > 1) {
-    routeLine.value = new maps.Polyline({
+  const trafficSegments = drivingRouteSegments.value
+    .map((segment) => ({
+      congestion: Number(segment.congestion) || 0,
+      path: Array.isArray(segment.path)
+        ? segment.path.map((point) => new maps.LatLng(point.latitude, point.longitude))
+        : [],
+    }))
+    .filter((segment) => segment.path.length > 1)
+
+  if (trafficSegments.length > 0) {
+    // Directions의 교통 section은 주요 도로 구간만 포함할 수 있다.
+    // 전체 경로를 바탕선으로 먼저 그려 section 사이도 끊기지 않게 연결한다.
+    routeLines.value.push(new maps.Polyline({
+      map,
+      path: routePath,
+      strokeColor: '#60706B',
+      strokeWeight: 4,
+      strokeOpacity: 0.92,
+      strokeStyle: 'solid',
+    }))
+    trafficSegments.forEach((segment) => {
+      routeLines.value.push(new maps.Polyline({
+        map,
+        path: segment.path,
+        strokeColor: trafficColor(segment.congestion),
+        strokeWeight: 5,
+        strokeOpacity: 0.9,
+        strokeStyle: 'solid',
+      }))
+    })
+  } else if (routePath.length > 1) {
+    routeLines.value.push(new maps.Polyline({
       map,
       path: routePath,
       strokeColor: '#109A8E',
       strokeWeight: 4,
       strokeOpacity: 0.82,
       strokeStyle: 'solid',
-    })
+    }))
   }
 
   if (mapPlaces.value.length === 1) {
@@ -1031,6 +1084,8 @@ function renderMapPlaces() {
 async function loadDrivingRoute() {
   const request = ++drivingRouteRequest
   drivingRoutePath.value = []
+  drivingRouteSegments.value = []
+  drivingRouteSummary.value = null
   renderMapPlaces()
   if (selectedDay.value === null || mapPlaces.value.length < 2) return
 
@@ -1038,14 +1093,42 @@ async function loadDrivingRoute() {
     const route = await tripPlanApi.getDrivingRoute(id, selectedDay.value)
     if (request !== drivingRouteRequest) return
     drivingRoutePath.value = Array.isArray(route.path) ? route.path : []
+    drivingRouteSegments.value = Array.isArray(route.segments) ? route.segments : []
+    drivingRouteSummary.value = route.summary || null
     renderMapPlaces()
   } catch {
     // Directions를 사용할 수 없는 개발 환경에서는 기존 좌표 연결선으로 표시한다.
     if (request === drivingRouteRequest) {
       drivingRoutePath.value = []
+      drivingRouteSegments.value = []
+      drivingRouteSummary.value = null
       renderMapPlaces()
     }
   }
+}
+
+function trafficColor(congestion) {
+  if (congestion === 1) return '#22A66F'
+  if (congestion === 2) return '#E89A3C'
+  if (congestion === 3) return '#DC3545'
+  return '#109A8E'
+}
+
+function formatWon(value) {
+  return `${new Intl.NumberFormat('ko-KR').format(Math.max(0, Number(value) || 0))}원`
+}
+
+function formatDistance(value) {
+  const meter = Math.max(0, Number(value) || 0)
+  return meter >= 1000 ? `${(meter / 1000).toFixed(1)}km` : `${meter}m`
+}
+
+function formatDrivingDuration(value) {
+  const minutes = Math.max(0, Math.round((Number(value) || 0) / 60000))
+  const hours = Math.floor(minutes / 60)
+  const remainingMinutes = minutes % 60
+  if (hours === 0) return `${remainingMinutes}분`
+  return remainingMinutes > 0 ? `${hours}시간 ${remainingMinutes}분` : `${hours}시간`
 }
 
 function fitMapToPlaces() {
@@ -1097,10 +1180,8 @@ function clearMapOverlays() {
   closeMarkerInfoWindow()
   mapMarkers.value.forEach((marker) => marker.setMap(null))
   mapMarkers.value = []
-  if (routeLine.value) {
-    routeLine.value.setMap(null)
-    routeLine.value = null
-  }
+  routeLines.value.forEach((line) => line.setMap(null))
+  routeLines.value = []
   routeBounds.value = null
   selectedMapPlaceName.value = ''
 }
@@ -2110,29 +2191,45 @@ onBeforeUnmount(() => {
   color: var(--teal-3);
 }
 
-:global(.naver-plan-marker) {
-  width: 28px;
-  height: 28px;
-  display: grid;
-  place-items: center;
-  border: 2px solid white;
+.map-traffic-legend {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  z-index: 2;
+  display: flex;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--sh-1);
+  color: var(--ink-3);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.map-traffic-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.traffic-dot {
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: var(--teal);
-  color: white;
-  box-shadow: 0 4px 12px rgba(20, 38, 46, 0.22);
-  font-size: 12px;
-  font-weight: 800;
 }
 
-:global(.naver-plan-marker--link) {
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
-}
+.traffic-dot--clear { background: #22A66F; }
+.traffic-dot--slow { background: #E89A3C; }
+.traffic-dot--busy { background: #DC3545; }
 
-:global(.naver-plan-marker--link:hover) {
-  transform: scale(1.16);
-  background: var(--teal-3);
-  box-shadow: 0 6px 16px rgba(20, 38, 46, 0.34);
+@media (max-width: 480px) {
+  .map-traffic-legend {
+    gap: 7px;
+    padding: 7px 8px;
+    font-size: 10px;
+  }
 }
 
 :global(.naver-plan-info) {
@@ -2171,6 +2268,71 @@ onBeforeUnmount(() => {
 
 .map-info p {
   flex-shrink: 0;
+}
+
+.route-cost-card {
+  padding: 14px 18px 12px;
+  border-top: 1px solid var(--line);
+  background: linear-gradient(135deg, var(--teal-tint), #fff);
+}
+
+.route-cost-card__head,
+.route-cost-card__total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.route-cost-card__head > span {
+  color: var(--teal-3);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.route-cost-card__head small {
+  color: var(--ink-soft);
+  font-size: 11px;
+}
+
+.route-cost-card__metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.route-cost-card__metrics span {
+  padding: 4px 7px;
+  border: 1px solid rgba(15, 110, 86, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.route-cost-card__total {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(15, 110, 86, 0.2);
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.route-cost-card__total strong {
+  color: var(--teal-3);
+  font-family: var(--font-mono);
+  font-size: 16px;
+}
+
+.route-cost-card > p {
+  margin-top: 7px;
+  color: var(--ink-soft);
+  font-size: 10px;
+  line-height: 1.4;
 }
 
 /* F06 공동편집 — 읽기 전용 배너 + 공유/멤버 다이얼로그 */
