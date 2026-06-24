@@ -5,7 +5,8 @@ import { http } from './http'
  *   GET   /api/admin/users             사용자 목록 (password 미포함) — ROLE_ADMIN 전용
  *   PATCH /api/admin/users/{id}/role   권한 변경 (USER ↔ ADMIN) → 204 — ROLE_SUPER_ADMIN 전용
  *   PATCH /api/admin/users/{id}/ban    영구정지(BANNED) → 204 — ROLE_ADMIN 전용(ADMIN 대상은 SUPER_ADMIN만)
- *   PATCH /api/admin/users/{id}/unban  정지 해제 → 204 — ROLE_ADMIN 전용
+ *   PATCH  /api/admin/users/{id}/unban         정지 해제 → 204 — ROLE_ADMIN 전용
+ *   DELETE /api/admin/users/{id}/restrictions  단계 제재(후기/계획 금지·임시정지) 전부 해제 → 204 — ROLE_ADMIN 전용
  *   GET   /api/admin/reports?status=        신고 목록(이메일+후기내용, OPEN/RESOLVED/DISMISSED) — ROLE_ADMIN 전용
  *   PATCH /api/admin/reports/{id}/resolve   처리완료(누적+1, 단계 자동제재 3·5·10회·15회 검토) → 204 — ROLE_ADMIN 전용
  *   PATCH /api/admin/reports/{id}/dismiss   기각(카운트 없음) → 204 — ROLE_ADMIN 전용
@@ -26,6 +27,7 @@ export const adminApi = {
   updateRole: (id, role) => http.patch(`/admin/users/${id}/role`, { role }),
   ban: (id) => http.patch(`/admin/users/${id}/ban`),
   unban: (id) => http.patch(`/admin/users/${id}/unban`),
+  clearRestrictions: (id) => http.delete(`/admin/users/${id}/restrictions`),
   listReports: (status) =>
     http.get('/admin/reports', { params: status ? { status } : {} }).then((r) => r.data),
   resolveReport: (id) => http.patch(`/admin/reports/${id}/resolve`),

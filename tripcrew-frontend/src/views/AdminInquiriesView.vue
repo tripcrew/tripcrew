@@ -127,7 +127,7 @@ const notice = ref(null)
 const drafts = ref({})
 const editingIds = ref(new Set())
 const page = ref(1)
-const PAGE_SIZE = 15
+const PAGE_SIZE = 10  // 문의 카드는 신고 표보다 커서 한 페이지에 10개
 
 const pagedInquiries = computed(() => inquiries.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE))
 watch(() => inquiries.value.length, (len) => {

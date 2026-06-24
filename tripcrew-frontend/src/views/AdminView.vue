@@ -86,7 +86,7 @@
               <tr v-else-if="filteredUsers.length === 0">
                 <td colspan="9" class="table-empty">표시할 회원이 없습니다.</td>
               </tr>
-              <tr v-for="u in filteredUsers" :key="u.id">
+              <tr v-for="u in pagedUsers" :key="u.id">
                 <td class="t-mono">{{ u.id }}</td>
                 <td>{{ u.email }}</td>
                 <td><strong>{{ u.nickname }}</strong></td>
@@ -169,11 +169,22 @@
                     class="action-btn action-btn--danger"
                     @click="confirmBanId = u.id"
                   >영구정지</button>
+
+                  <!-- 단계 제재 해제: 활성 제재가 있으면(밴 여부와 무관) 즉시 전부 해제 -->
+                  <button
+                    v-if="u.activeRestrictions && u.activeRestrictions.length"
+                    class="action-btn action-btn--lift"
+                    :disabled="clearingId === u.id"
+                    title="후기/계획 금지·임시정지 등 단계 제재를 즉시 모두 해제합니다"
+                    @click="clearRestrictions(u)"
+                  >{{ clearingId === u.id ? '해제 중…' : '제재 해제' }}</button>
                 </td>
               </tr>
             </tbody>
           </table>
         </section>
+
+        <BasePagination v-if="!forbidden && !error" v-model="page" :total="filteredUsers.length" :page-size="PAGE_SIZE" />
 
         <p v-if="notice" :class="['toast', notice.type === 'error' ? 'toast--error' : 'toast--ok']">
           {{ notice.text }}
@@ -183,11 +194,12 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
 import { adminApi } from '@/api/admin'
 import AdminLayout from '@/components/admin/AdminLayout.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
+import BasePagination from '@/components/common/BasePagination.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
@@ -199,10 +211,13 @@ const forbidden = ref(false)
 const savingId = ref(null)
 const banningId = ref(null)
 const confirmBanId = ref(null)
+const clearingId = ref(null)
 const notice = ref(null)
 
 const query = ref('')
 const roleFilter = ref('')
+const page = ref(1)
+const PAGE_SIZE = 15
 
 const currentUserId = computed(() => auth.user && auth.user.id)
 // role 변경은 SUPER_ADMIN 만(서버 인가와 짝). ADMIN 은 목록만 보고 토글은 '읽기 전용'.
@@ -269,6 +284,13 @@ const filteredUsers = computed(() => {
       const rb = ROLE_RANK[b.role] ?? 99
       return ra !== rb ? ra - rb : a.id - b.id
     })
+})
+
+const pagedUsers = computed(() => filteredUsers.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE))
+// 검색·필터로 결과가 줄어 현재 페이지가 범위를 벗어나면 1페이지로
+watch(filteredUsers, (list) => {
+  const maxPage = Math.max(1, Math.ceil(list.length / PAGE_SIZE))
+  if (page.value > maxPage) page.value = 1
 })
 
 function formatDate(value) {
@@ -347,6 +369,22 @@ async function unban(user) {
     flash('error', msg || `해제 실패 (${status || e.message})`)
   } finally {
     banningId.value = null
+  }
+}
+
+async function clearRestrictions(user) {
+  clearingId.value = user.id
+  notice.value = null
+  try {
+    await adminApi.clearRestrictions(user.id)
+    user.activeRestrictions = [] // 204 → 로컬 반영(칩 제거)
+    flash('ok', `${user.nickname}님의 단계 제재를 모두 해제했습니다.`)
+  } catch (e) {
+    const status = e.response?.status
+    const msg = e.response?.data?.message
+    flash('error', msg || `해제 실패 (${status || e.message})`)
+  } finally {
+    clearingId.value = null
   }
 }
 
@@ -569,7 +607,20 @@ onMounted(load)
   color: #B12C3A;
 }
 
-.sanction-cell { white-space: nowrap; }
+.sanction-cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 단계 제재 해제(완화 액션) — 위험(빨강)과 구분되는 차분한 톤 */
+.action-btn--lift {
+  background: var(--bg-2);
+  color: var(--ink-2);
+  border: 1px solid var(--line);
+}
+.action-btn--lift:hover:not([disabled]) { background: var(--bg-soft); }
 
 .action-btn {
   padding: 4px 10px;
