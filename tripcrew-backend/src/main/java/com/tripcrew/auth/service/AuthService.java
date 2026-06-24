@@ -116,6 +116,20 @@ public class AuthService {
         return UserResponse.from(user);
     }
 
+    /** 현재 비밀번호를 확인한 뒤 새 비밀번호로 변경한다. */
+    @Transactional
+    public void updatePassword(Long userId, String currentPassword, String newPassword) {
+        User user = findUser(userId);
+        ensureActive(user);
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new InvalidCredentialsException();
+        }
+        if (passwordEncoder.matches(newPassword, user.getPassword())) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "새 비밀번호가 기존 비밀번호와 동일합니다.");
+        }
+        userMapper.updatePassword(userId, passwordEncoder.encode(newPassword));
+    }
+
     /** 비밀번호 재확인 후 계정을 비활성화하고 모든 세션을 끊는다. */
     @Transactional
     public void withdraw(Long userId, String currentPassword) {

@@ -68,6 +68,10 @@ export const useAuthStore = defineStore('auth', () => {
     await authApi.verifyPassword(currentPassword)
   }
 
+  async function updatePassword(currentPassword, newPassword) {
+    await authApi.updatePassword(currentPassword, newPassword)
+  }
+
   async function withdraw(currentPassword) {
     await authApi.withdraw(currentPassword)
     tokenStorage.clear()
@@ -76,5 +80,5 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
   }
 
-  return { accessToken, user, isAuthenticated, signup, login, logout, verifyPassword, updateNickname, withdraw }
+  return { accessToken, user, isAuthenticated, signup, login, logout, verifyPassword, updateNickname, updatePassword, withdraw }
 })
