@@ -47,8 +47,10 @@ public class AdminDashboardService {
         long bannedUserCount = userMapper.countByStatus(Status.BANNED);
         long openReportCount = reportMapper.countByStatus(ReportStatus.OPEN);
         long noticeCount = noticeMapper.countAll();
-        // 챗봇 사용현황(트랙 B)·Q&A(1:1 문의 ②) 는 출처가 생기면 연동 — 그전까지 null("준비 중").
-        return new AdminDashboardResponse(userCount, bannedUserCount, openReportCount, noticeCount, null, null);
+        // 챗봇 사용현황 = chat_messages 의 누적 사용자 턴(role='USER'). F05 가 이미 적재하므로 읽기만 한다.
+        // Q&A(1:1 문의 ②) 는 출처가 생기면 연동 — 그전까지 null("준비 중").
+        long chatbotUsageCount = adminStatsMapper.countChatbotRequests();
+        return new AdminDashboardResponse(userCount, bannedUserCount, openReportCount, noticeCount, chatbotUsageCount, null);
     }
 
     /** 차트용 통계: 최근 14일 후기/신고 활동 추이(0 채움) + 역할/상태 분포. */
@@ -60,6 +62,7 @@ public class AdminDashboardService {
         return new AdminDashboardStatsResponse(
                 fillDays(adminStatsMapper.reviewsByDay(since), startDate, TREND_DAYS),
                 fillDays(adminStatsMapper.reportsByDay(since), startDate, TREND_DAYS),
+                fillDays(adminStatsMapper.chatbotByDay(since), startDate, TREND_DAYS),
                 adminStatsMapper.roleDistribution(),
                 adminStatsMapper.statusDistribution());
     }

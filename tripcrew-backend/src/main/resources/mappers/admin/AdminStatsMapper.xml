@@ -29,6 +29,22 @@
          ORDER BY day
     </select>
 
+    <!-- 챗봇 사용현황: chat_messages 의 사용자 턴(role='USER')만 센다(응답 행 제외). -->
+    <select id="countChatbotRequests" resultType="long">
+        SELECT COUNT(*)
+          FROM chat_messages
+         WHERE role = 'USER'
+    </select>
+
+    <select id="chatbotByDay" resultType="DailyCount">
+        SELECT DATE(created_at) AS day, COUNT(*) AS count
+          FROM chat_messages
+         WHERE role = 'USER'
+           AND created_at &gt;= #{since}
+         GROUP BY DATE(created_at)
+         ORDER BY day
+    </select>
+
     <!-- 분포: 역할/상태별 건수(도넛 차트). -->
     <select id="roleDistribution" resultType="LabelCount">
         SELECT role AS label, COUNT(*) AS count

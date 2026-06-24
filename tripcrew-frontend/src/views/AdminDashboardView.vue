@@ -27,8 +27,8 @@
     </section>
 
     <template v-else>
-      <!-- TODAY: 메인 집계 카드(클릭 시 해당 관리 페이지로) -->
-      <h2 class="section-label">TODAY</h2>
+      <!-- 현황: 핵심 집계 카드(누적/스냅샷, 클릭 시 해당 관리 페이지로) -->
+      <h2 class="section-label">현황</h2>
       <div class="card-grid">
         <RouterLink class="stat-card stat-card--link" to="/admin/users">
           <div class="stat-top">
@@ -52,15 +52,15 @@
           <span class="stat-delta" :class="{ 'delta--alert': hasOpenReports }">미처리 신고 · 신고 관리 →</span>
         </RouterLink>
 
-        <article class="stat-card stat-card--soon">
+        <article class="stat-card">
           <div class="stat-top">
             <span class="stat-label">챗봇 사용 현황</span>
-            <span class="stat-ico stat-ico--mute" aria-hidden="true">
+            <span class="stat-ico stat-ico--teal" aria-hidden="true">
               <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             </span>
           </div>
-          <strong class="stat-value stat-value--soon">준비 중</strong>
-          <span class="stat-delta">집계 출처 연동 예정</span>
+          <strong class="stat-value">{{ display(summary.chatbotUsageCount) }}</strong>
+          <span class="stat-delta">누적 챗봇 대화 요청</span>
         </article>
 
         <RouterLink class="stat-card stat-card--link" to="/admin/notices">
@@ -184,7 +184,7 @@ const hasOpenReports = computed(() => (summary.value.openReportCount || 0) > 0)
 const hasBanned = computed(() => (summary.value.bannedUserCount || 0) > 0)
 
 // 차트 데이터(최근 14일 활동 추이 + 역할/상태 분포)
-const stats = ref({ reviews: [], reports: [], roleDistribution: [], statusDistribution: [] })
+const stats = ref({ reviews: [], reports: [], chat: [], roleDistribution: [], statusDistribution: [] })
 
 function toSeries(rows) {
   return (rows || []).map((r) => ({ label: r.day, value: r.count }))
@@ -206,6 +206,7 @@ const signupSeries = computed(() => toSeries(signupDays.value))
 const activitySeries = computed(() => [
   { name: '후기', color: 'var(--teal)', data: toSeries(stats.value.reviews) },
   { name: '신고', color: 'var(--coral)', data: toSeries(stats.value.reports) },
+  { name: '챗봇', color: 'var(--ink-3)', data: toSeries(stats.value.chat) },
 ])
 
 // enum name → 한글 라벨 + 색. 미정의 라벨은 원문 + 회색으로 폴백.
@@ -420,8 +421,6 @@ onMounted(() => {
 
 .stat-card--alert:hover { border-color: var(--coral); }
 
-.stat-card--soon { background: var(--bg-soft); }
-
 .stat-top {
   display: flex;
   align-items: center;
@@ -466,7 +465,6 @@ onMounted(() => {
 }
 
 .stat-value--alert { color: var(--coral); }
-.stat-value--soon { font-size: 20px; color: var(--muted); letter-spacing: 0; }
 
 .stat-delta {
   font-size: 13px;
