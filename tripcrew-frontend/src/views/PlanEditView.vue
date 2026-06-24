@@ -48,24 +48,33 @@
 
         <!-- F03 편집 폼 -->
         <section class="edit-card">
+          <!-- F06 P2b — 다른 사용자가 메타를 저장했는데 내가 편집 중이면, 덮어쓰지 않고 선택권을 준다 -->
+          <div v-if="metaConflict.open" class="meta-conflict">
+            <span class="meta-conflict__msg">{{ metaConflict.by }}님이 계획 정보를 수정했어요. 내 변경을 유지할까요?</span>
+            <div class="meta-conflict__actions">
+              <button type="button" class="mini-btn" @click="loadServerMeta">최신 내용 불러오기</button>
+              <button type="button" class="mini-btn mini-btn--primary" @click="keepMyMeta">내 변경 유지</button>
+            </div>
+          </div>
+
           <div class="field">
             <label>제목</label>
-            <input v-model="form.title" type="text" maxlength="150" placeholder="여행 제목" :disabled="!canEdit" />
+            <input v-model="form.title" type="text" maxlength="150" placeholder="여행 제목" :disabled="!canEdit" @input="metaDirty = true" />
           </div>
 
           <div class="field">
             <label>설명</label>
-            <textarea v-model="form.description" rows="4" placeholder="이번 여행에 대한 메모" :disabled="!canEdit"></textarea>
+            <textarea v-model="form.description" rows="4" placeholder="이번 여행에 대한 메모" :disabled="!canEdit" @input="metaDirty = true"></textarea>
           </div>
 
           <div class="field-row">
             <div class="field">
               <label>시작일</label>
-              <input v-model="form.startDate" type="date" min="0001-01-01" max="9999-12-31" :disabled="!canEdit" />
+              <input v-model="form.startDate" type="date" min="0001-01-01" max="9999-12-31" :disabled="!canEdit" @change="metaDirty = true" />
             </div>
             <div class="field">
               <label>종료일</label>
-              <input v-model="form.endDate" type="date" min="0001-01-01" max="9999-12-31" :disabled="!canEdit" />
+              <input v-model="form.endDate" type="date" min="0001-01-01" max="9999-12-31" :disabled="!canEdit" @change="metaDirty = true" />
             </div>
           </div>
 
@@ -496,6 +505,12 @@ const toastMsg = ref('')
 const toastVisible = ref(false)
 let toastTimer = null
 
+// F06 P2b — 메타(제목/설명/날짜) 미저장 변경 보호.
+// metaDirty: 내가 메타를 편집했는데 아직 저장 안 함.
+// metaConflict: 그 와중에 상대가 저장 → 덮어쓰지 않고 선택 배너를 띄운다(plan=서버 최신본).
+const metaDirty = ref(false)
+const metaConflict = ref({ open: false, by: '', plan: null })
+
 const presenceNames = computed(() =>
   roster.value
     .map((u) => (u.userId === myUserId.value ? `${u.nickname} (나)` : u.nickname))
@@ -526,6 +541,7 @@ const localBusy = computed(
 )
 let pendingRefetch = false
 let pendingPlanRefetch = false // SAVED: 장소뿐 아니라 계획 메타(제목/날짜)도 다시 불러와야 함
+let savedByNickname = '' // SAVED 알림을 보낸 사람(충돌 배너 문구용)
 
 async function applyRemoteRefetch() {
   const reloadPlan = pendingPlanRefetch
@@ -534,7 +550,12 @@ async function applyRemoteRefetch() {
   try {
     if (reloadPlan) {
       const plan = await tripPlanApi.get(id)
-      fill(plan) // 상대가 저장한 제목/설명/날짜·version 을 반영
+      if (metaDirty.value) {
+        // 내 미저장 메타 변경이 있으면 덮어쓰지 않고 선택권을 준다(P2b)
+        metaConflict.value = { open: true, by: savedByNickname, plan }
+      } else {
+        fill(plan) // 상대가 저장한 제목/설명/날짜·version 을 반영
+      }
     }
     await loadPlaces()
   } catch {
@@ -556,9 +577,14 @@ async function handlePlaceChange(event) {
     }
     return
   }
-  const text = PLACE_ACTION_TEXT[event.action] || '계획을 수정했어요'
-  showToast(`${event.actorNickname}님이 ${text}`)
-  if (event.action === 'SAVED') pendingPlanRefetch = true
+  if (event.action === 'SAVED') {
+    savedByNickname = event.actorNickname
+    pendingPlanRefetch = true
+    // 내가 메타 편집 중이면 토스트 대신 선택 배너(applyRemoteRefetch)에서 안내
+    if (!metaDirty.value) showToast(`${event.actorNickname}님이 ${PLACE_ACTION_TEXT.SAVED}`)
+  } else {
+    showToast(`${event.actorNickname}님이 ${PLACE_ACTION_TEXT[event.action] || '계획을 수정했어요'}`)
+  }
   if (localBusy.value) {
     pendingRefetch = true // 내 조작이 끝나면 watch 에서 한 번에 반영
     return
@@ -693,6 +719,7 @@ function fill(plan) {
     version: plan.version,
   }
   if (plan.myRole !== undefined) myRole.value = plan.myRole
+  metaDirty.value = false // 서버값으로 동기화됨 → 미저장 변경 없음
 }
 
 // F06 공동편집 — 멤버(협업자) 관리
@@ -1110,9 +1137,13 @@ async function save() {
   } catch (e) {
     const status = e.response?.status
     if (status === 409) {
-      // 낙관적 락 충돌: 다른 사용자가 먼저 수정 → 최신본으로 재동기화
-      formError.value = '다른 사용자가 먼저 수정했습니다. 최신 내용을 다시 불러왔어요.'
-      await load()
+      // 낙관적 락 충돌: 덮어쓰지 않고 최신본을 받아 선택 배너로 안내(내 입력 보존)
+      try {
+        const latest = await tripPlanApi.get(id)
+        metaConflict.value = { open: true, by: '다른 사용자', plan: latest }
+      } catch {
+        formError.value = '다른 사용자가 먼저 수정했습니다. 새로고침 후 다시 시도해 주세요.'
+      }
     } else if (status === 400) {
       formError.value = e.response?.data?.message || '입력값을 확인해 주세요.'
     } else {
@@ -1121,6 +1152,18 @@ async function save() {
   } finally {
     saving.value = false
   }
+}
+
+// 충돌 배너 — 최신 내용 불러오기(서버본 적용, 내 변경 버림)
+function loadServerMeta() {
+  if (metaConflict.value.plan) fill(metaConflict.value.plan)
+  metaConflict.value = { open: false, by: '', plan: null }
+}
+
+// 충돌 배너 — 내 변경 유지(최신 version 을 채택 → 다음 저장이 상대 변경을 덮어쓴다)
+function keepMyMeta() {
+  if (metaConflict.value.plan) form.value.version = metaConflict.value.plan.version
+  metaConflict.value = { open: false, by: '', plan: null }
 }
 
 async function removePlan() {
@@ -1953,6 +1996,38 @@ onBeforeUnmount(() => {
 }
 
 .mini-btn--danger { color: var(--coral); }
+
+.mini-btn--primary {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: white;
+}
+
+/* F06 P2b — 메타 충돌(상대 저장 vs 내 미저장 변경) 선택 배너 */
+.meta-conflict {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--teal);
+  background: var(--teal-soft);
+  border-radius: 10px;
+}
+
+.meta-conflict__msg {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--teal-3);
+}
+
+.meta-conflict__actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
 
 .plan-map {
   position: sticky;
