@@ -18,6 +18,9 @@ import org.springframework.web.util.UriComponentsBuilder;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.tripcrew.common.exception.BusinessException;
 import com.tripcrew.tripplan.model.dto.DrivingRouteResponse.RoutePoint;
+import com.tripcrew.tripplan.model.dto.DrivingRouteResponse;
+import com.tripcrew.tripplan.model.dto.DrivingRouteResponse.RouteSegment;
+import com.tripcrew.tripplan.model.dto.DrivingRouteResponse.RouteSummary;
 
 @Service
 public class NaverDirectionsService {
@@ -63,6 +66,13 @@ public class NaverDirectionsService {
                                         BigDecimal startLongitude,
                                         BigDecimal goalLatitude,
                                         BigDecimal goalLongitude) {
+        return drivingRoute(startLatitude, startLongitude, goalLatitude, goalLongitude).path();
+    }
+
+    public DrivingRouteResponse drivingRoute(BigDecimal startLatitude,
+                                              BigDecimal startLongitude,
+                                              BigDecimal goalLatitude,
+                                              BigDecimal goalLongitude) {
         JsonNode body = requestDirections(startLatitude, startLongitude, goalLatitude, goalLongitude);
         JsonNode path = body == null
                 ? null
@@ -78,7 +88,46 @@ public class NaverDirectionsService {
         if (points.size() < 2) {
             throw new BusinessException(HttpStatus.BAD_GATEWAY, "네이버 Directions 응답에서 경로 좌표를 확인하지 못했습니다.");
         }
-        return points;
+        return new DrivingRouteResponse(points, trafficSegments(body, points), routeSummary(body));
+    }
+
+    private RouteSummary routeSummary(JsonNode body) {
+        JsonNode summary = body == null
+                ? null
+                : body.path("route").path("trafast").path(0).path("summary");
+        if (summary == null || summary.isMissingNode()) {
+            return new RouteSummary(0, 0, 0, 0);
+        }
+        return new RouteSummary(
+                summary.path("distance").asLong(0),
+                summary.path("duration").asLong(0),
+                summary.path("tollFare").asLong(0),
+                summary.path("fuelPrice").asLong(0)
+        );
+    }
+
+    private List<RouteSegment> trafficSegments(JsonNode body, List<RoutePoint> points) {
+        JsonNode sections = body == null
+                ? null
+                : body.path("route").path("trafast").path(0).path("section");
+        List<RouteSegment> segments = new ArrayList<>();
+        if (sections == null || !sections.isArray()) {
+            return segments;
+        }
+
+        for (JsonNode section : sections) {
+            int startIndex = section.path("pointIndex").asInt(-1);
+            int pointCount = section.path("pointCount").asInt(0);
+            int endIndex = Math.min(points.size(), startIndex + pointCount);
+            if (startIndex < 0 || endIndex - startIndex < 2) {
+                continue;
+            }
+            segments.add(new RouteSegment(
+                    new ArrayList<>(points.subList(startIndex, endIndex)),
+                    section.path("congestion").asInt(0)
+            ));
+        }
+        return segments;
     }
 
     private JsonNode requestDirections(BigDecimal startLatitude,

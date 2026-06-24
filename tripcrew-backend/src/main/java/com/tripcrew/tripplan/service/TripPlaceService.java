@@ -22,6 +22,8 @@ import com.tripcrew.tripplan.model.dto.TripPlace;
 import com.tripcrew.tripplan.model.dto.TripPlaceCreateRequest;
 import com.tripcrew.tripplan.model.dto.DrivingRouteResponse;
 import com.tripcrew.tripplan.model.dto.DrivingRouteResponse.RoutePoint;
+import com.tripcrew.tripplan.model.dto.DrivingRouteResponse.RouteSegment;
+import com.tripcrew.tripplan.model.dto.DrivingRouteResponse.RouteSummary;
 import com.tripcrew.tripplan.model.dto.TripPlaceOptimizeRequest;
 import com.tripcrew.tripplan.model.dto.TripPlaceReorderRequest;
 import com.tripcrew.tripplan.model.dto.TripPlaceResponse;
@@ -142,7 +144,7 @@ public class TripPlaceService {
         validateVisitDay(plan, visitDay);
         List<TripPlace> places = tripPlaceMapper.findByPlanIdAndVisitDay(planId, visitDay);
         if (places.size() < 2) {
-            return new DrivingRouteResponse(List.of());
+            return new DrivingRouteResponse(List.of(), List.of(), new RouteSummary(0, 0, 0, 0));
         }
         if (places.stream().anyMatch(place -> place.getLatitude() == null || place.getLongitude() == null)) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "좌표가 없는 장소는 도로 경로를 표시할 수 없습니다.");
@@ -153,14 +155,30 @@ public class TripPlaceService {
 
         List<TripPlace> ordered = orderedPlaces(places);
         List<RoutePoint> path = new ArrayList<>();
+        List<RouteSegment> segments = new ArrayList<>();
+        long distanceMeter = 0;
+        long durationMillis = 0;
+        long tollFare = 0;
+        long fuelPrice = 0;
         for (int index = 0; index < ordered.size() - 1; index++) {
             TripPlace from = ordered.get(index);
             TripPlace to = ordered.get(index + 1);
-            List<RoutePoint> segment = naverDirectionsService.drivingPath(
+            DrivingRouteResponse segmentRoute = naverDirectionsService.drivingRoute(
                     from.getLatitude(), from.getLongitude(), to.getLatitude(), to.getLongitude());
-            path.addAll(index == 0 ? segment : segment.subList(1, segment.size()));
+            List<RoutePoint> segmentPath = segmentRoute.path();
+            path.addAll(index == 0 ? segmentPath : segmentPath.subList(1, segmentPath.size()));
+            segments.addAll(segmentRoute.segments());
+            RouteSummary summary = segmentRoute.summary();
+            distanceMeter += summary.distanceMeter();
+            durationMillis += summary.durationMillis();
+            tollFare += summary.tollFare();
+            fuelPrice += summary.fuelPrice();
         }
-        return new DrivingRouteResponse(path);
+        return new DrivingRouteResponse(
+                path,
+                segments,
+                new RouteSummary(distanceMeter, durationMillis, tollFare, fuelPrice)
+        );
     }
 
     @Transactional
