@@ -4,16 +4,17 @@
       <g :transform="`rotate(-90 ${C} ${C})`">
         <circle :cx="C" :cy="C" :r="R" class="track" :stroke-width="STROKE" fill="none" />
         <circle
-          v-for="seg in segments"
+          v-for="(seg, si) in segments"
           :key="seg.label"
           :cx="C"
           :cy="C"
           :r="R"
           fill="none"
+          class="donut-seg"
           :stroke-width="STROKE"
           :stroke-dasharray="`${seg.dash} ${circumference - seg.dash}`"
           :stroke-dashoffset="-seg.offset"
-          :style="{ stroke: seg.color }"
+          :style="{ stroke: seg.color, animationDelay: si * 90 + 'ms' }"
         >
           <title>{{ seg.label }} · {{ seg.value }} ({{ seg.percent }}%)</title>
         </circle>
@@ -78,6 +79,17 @@ const segments = computed(() => {
 }
 .donut-svg { width: 172px; height: 172px; flex: 0 0 auto; }
 .track { stroke: var(--bg-2); }
+
+/* 각 조각이 자기 시작점에서 제 길이(인라인 dasharray)까지 자라난다.
+   from 만 정의 → 100% 는 인라인 stroke-dasharray(underlying value)가 적용됨. */
+.donut-seg { animation: donut-seg 0.85s ease-out both; }
+@keyframes donut-seg {
+  from { stroke-dasharray: 0 282.743; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .donut-seg { animation: none; }
+}
 .donut-total {
   font-family: var(--font-mono);
   font-size: 24px;

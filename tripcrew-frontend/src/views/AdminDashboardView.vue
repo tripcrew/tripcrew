@@ -37,7 +37,7 @@
               <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             </span>
           </div>
-          <strong class="stat-value">{{ display(summary.userCount) }}</strong>
+          <strong class="stat-value"><AnimatedNumber :value="summary.userCount" /></strong>
           <span class="stat-delta">전체 등록 계정 · 회원 관리 →</span>
         </RouterLink>
 
@@ -48,7 +48,7 @@
               <svg viewBox="0 0 24 24"><path d="M5 22V4"/><path d="M5 5c5-4 8 4 14 0v10c-6 4-9-4-14 0"/></svg>
             </span>
           </div>
-          <strong class="stat-value" :class="{ 'stat-value--alert': hasOpenReports }">{{ display(summary.openReportCount) }}</strong>
+          <strong class="stat-value" :class="{ 'stat-value--alert': hasOpenReports }"><AnimatedNumber :value="summary.openReportCount" /></strong>
           <span class="stat-delta" :class="{ 'delta--alert': hasOpenReports }">미처리 신고 · 신고 관리 →</span>
         </RouterLink>
 
@@ -59,7 +59,7 @@
               <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             </span>
           </div>
-          <strong class="stat-value">{{ display(summary.chatbotUsageCount) }}</strong>
+          <strong class="stat-value"><AnimatedNumber :value="summary.chatbotUsageCount" /></strong>
           <span class="stat-delta">누적 챗봇 대화 요청</span>
         </article>
 
@@ -70,7 +70,7 @@
               <svg viewBox="0 0 24 24"><path d="m3 11 17-5v12L3 13v-2Z"/><path d="M11 15v4a2 2 0 0 1-4 0v-5"/><path d="M22 9v6"/></svg>
             </span>
           </div>
-          <strong class="stat-value">{{ display(summary.noticeCount) }}</strong>
+          <strong class="stat-value"><AnimatedNumber :value="summary.noticeCount" /></strong>
           <span class="stat-delta">게시된 공지 · 공지 관리 →</span>
         </RouterLink>
 
@@ -81,7 +81,7 @@
               <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             </span>
           </div>
-          <strong class="stat-value" :class="{ 'stat-value--alert': hasOpenInquiries }">{{ display(summary.qnaCount) }}</strong>
+          <strong class="stat-value" :class="{ 'stat-value--alert': hasOpenInquiries }"><AnimatedNumber :value="summary.qnaCount" /></strong>
           <span class="stat-delta" :class="{ 'delta--alert': hasOpenInquiries }">미답변 문의 · 문의 관리 →</span>
         </RouterLink>
       </div>
@@ -133,7 +133,7 @@
                 <strong>정지된 계정</strong>
                 <em>제재된 계정 확인 · 해제</em>
               </span>
-              <span class="quick-count" :class="{ 'quick-count--alert': hasBanned }">{{ display(summary.bannedUserCount) }}</span>
+              <span class="quick-count" :class="{ 'quick-count--alert': hasBanned }"><AnimatedNumber :value="summary.bannedUserCount" /></span>
             </RouterLink>
             <RouterLink class="quick-row" to="/admin/reports">
               <span class="quick-ico" aria-hidden="true">
@@ -143,7 +143,7 @@
                 <strong>신고 처리</strong>
                 <em>미처리 신고 검토 · 제재</em>
               </span>
-              <span class="quick-count" :class="{ 'quick-count--alert': hasOpenReports }">{{ display(summary.openReportCount) }}</span>
+              <span class="quick-count" :class="{ 'quick-count--alert': hasOpenReports }"><AnimatedNumber :value="summary.openReportCount" /></span>
             </RouterLink>
             <RouterLink class="quick-row" to="/admin/inquiries">
               <span class="quick-ico" aria-hidden="true">
@@ -153,7 +153,7 @@
                 <strong>1:1 문의</strong>
                 <em>미답변 문의 확인 · 답변</em>
               </span>
-              <span class="quick-count" :class="{ 'quick-count--alert': hasOpenInquiries }">{{ display(summary.qnaCount) }}</span>
+              <span class="quick-count" :class="{ 'quick-count--alert': hasOpenInquiries }"><AnimatedNumber :value="summary.qnaCount" /></span>
             </RouterLink>
           </div>
         </section>
@@ -188,6 +188,7 @@ import BaseButton from '@/components/common/BaseButton.vue'
 import MiniBarChart from '@/components/admin/charts/MiniBarChart.vue'
 import MiniLineChart from '@/components/admin/charts/MiniLineChart.vue'
 import MiniDonutChart from '@/components/admin/charts/MiniDonutChart.vue'
+import AnimatedNumber from '@/components/common/AnimatedNumber.vue'
 
 const summary = ref({
   userCount: null,
@@ -252,11 +253,6 @@ function toSegments(rows, metaMap) {
 
 const roleSegments = computed(() => toSegments(stats.value.roleDistribution, ROLE_META))
 const statusSegments = computed(() => toSegments(stats.value.statusDistribution, STATUS_META))
-
-// 숫자가 아직 안 왔으면(로딩/null) 대시 표시
-function display(value) {
-  return value === null || value === undefined ? '—' : value
-}
 
 // 가입 추이만 별도 로드(연/월 변경 시 재호출). 차트만 갱신하고 전체 에러 상태는 건드리지 않음.
 async function loadSignups() {
@@ -592,10 +588,28 @@ onMounted(() => {
   color: var(--ink-3);
 }
 
-.hd { width: 8px; height: 8px; border-radius: 50%; }
+.hd { position: relative; display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
 .hd--ok { background: var(--success); }
 .hd--warn { background: var(--warning); }
 .hd--down { background: var(--danger); }
+
+/* 살아있는 상태(정상/확인 중)는 심박 링으로 표시 — 헤더 톱바 점(.sd)과 동일 톤 */
+.hd--ok::after,
+.hd--warn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: inherit;
+  animation: hd-pulse 2s ease-out infinite;
+}
+@keyframes hd-pulse {
+  0% { transform: scale(1); opacity: 0.55; }
+  70%, 100% { transform: scale(2.6); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hd::after { display: none; }
+}
 
 .health-note {
   margin-top: 12px;

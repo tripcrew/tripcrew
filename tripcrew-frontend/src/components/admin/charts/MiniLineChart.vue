@@ -7,15 +7,21 @@
       <!-- hover 세로 가이드 -->
       <line v-if="guideX !== null" :x1="guideX" :y1="plotTop" :x2="guideX" :y2="plotBottom" class="guide" />
 
-      <g v-for="line in lines" :key="line.name">
-        <polyline :points="line.points" class="series-line" :style="{ stroke: line.color }" />
+      <g v-for="(line, li) in lines" :key="line.name">
+        <polyline
+          :points="line.points"
+          class="series-line"
+          pathLength="1"
+          :style="{ stroke: line.color, animationDelay: li * 130 + 'ms' }"
+        />
         <circle
           v-for="(pt, i) in line.dots"
           :key="i"
           :cx="pt.x"
           :cy="pt.y"
           :r="hoverIndex === i ? 4 : 2.4"
-          :style="{ fill: line.color }"
+          class="series-dot"
+          :style="{ fill: line.color, animationDelay: 380 + li * 130 + 'ms' }"
         />
       </g>
 
@@ -167,7 +173,28 @@ function fullDate(label) {
 <style scoped>
 .chart-wrap { width: 100%; min-width: 0; position: relative; }
 .chart-svg { display: block; max-width: 100%; }
-.series-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.series-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  animation: line-draw 0.9s ease-out both;
+}
+.series-dot { animation: dot-in 0.3s ease-out both; }
+
+@keyframes line-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes dot-in {
+  from { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .series-line, .series-dot { animation: none; }
+  .series-line { stroke-dasharray: none; }
+}
 .grid { stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 3; }
 .axis { stroke: var(--line); stroke-width: 1; }
 .guide { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 2 2; }

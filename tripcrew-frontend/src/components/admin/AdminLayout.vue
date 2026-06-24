@@ -261,17 +261,32 @@ onMounted(() => {
 }
 
 .sd {
+  position: relative;
+  display: inline-block;
   width: 6px; height: 6px;
   border-radius: 50%;
 }
 
-.sd--ok { background: var(--success); animation: blink 2s infinite; }
-.sd--warn { background: var(--warning); animation: blink 1.4s infinite; }
+.sd--ok { background: var(--success); }
+.sd--warn { background: var(--warning); }
 .sd--down { background: var(--danger); }
 
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+/* 심박 링(대시보드 '시스템 상태' 점과 동일). 정상/확인 중만, 끊김은 정적. */
+.sd--ok::after,
+.sd--warn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: inherit;
+  animation: sd-pulse 2s ease-out infinite;
+}
+@keyframes sd-pulse {
+  0% { transform: scale(1); opacity: 0.5; }
+  70%, 100% { transform: scale(2.8); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sd::after { display: none; }
 }
 
 .admin-user .avatar {
