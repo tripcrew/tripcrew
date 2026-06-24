@@ -50,56 +50,59 @@
     </section>
 
     <!-- Ranking -->
-    <section class="section">
+    <section class="section section--ranking">
       <div class="container">
-        <div class="section__head">
-          <div>
-            <h2 class="t-h1">지금 인기 있는 여행지</h2>
-            <p class="t-caption">실시간 랭킹 · 최근 1시간 기준 · Redis Sorted Set</p>
+        <div class="ranking-panel">
+          <div class="section__head">
+            <div>
+              <p class="section__eyebrow">TRENDING NOW</p>
+              <h2 class="t-h1">지금 인기 있는 여행지</h2>
+              <p class="t-caption">최근 한 시간 동안 가장 많이 둘러본 여행지예요.</p>
+            </div>
+            <div class="ranking-head-actions">
+              <div class="live-pill">
+                <span class="live-dot"></span>
+                실시간 집계
+              </div>
+              <button type="button" class="ranking-more" @click="$router.push('/attractions')">전체 여행지 보기 →</button>
+            </div>
           </div>
-          <div class="live-pill">
-            <span class="live-dot"></span>
-            LIVE
+
+          <p v-if="rankingLoading" class="t-caption">실시간 랭킹을 불러오는 중입니다.</p>
+          <p v-else-if="rankingError" class="t-caption">{{ rankingError }}</p>
+          <p v-else-if="popular.length === 0" class="t-caption">아직 최근 1시간 내 랭킹 데이터가 없습니다.</p>
+
+          <div v-else class="ranking-grid">
+            <button
+              v-for="item in popular"
+              :key="item.id"
+              type="button"
+              class="ranking-card"
+              @click="goToAttraction(item.id)"
+            >
+              <span class="ranking-card__rank">{{ String(item.rank).padStart(2, '0') }}</span>
+              <span class="ranking-card__thumb">
+                <img v-if="item.imageUrl" :src="item.imageUrl" :alt="item.title" />
+                <span v-else class="thumb-placeholder">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <circle cx="9" cy="9" r="2"/>
+                    <path d="m21 15-5-5L5 21"/>
+                  </svg>
+                </span>
+              </span>
+              <span class="ranking-card__body">
+                <span class="ranking-card__title" role="heading" aria-level="3">{{ item.title }}</span>
+                <span class="ranking-card__meta">{{ item.region }}</span>
+              </span>
+              <span :class="['ranking-card__trend', `trend--${item.trend}`]">
+                <span v-if="item.trend === 'up'">▲ {{ item.delta }}</span>
+                <span v-else-if="item.trend === 'down'">▼ {{ item.delta }}</span>
+                <span v-else-if="item.trend === 'new'">NEW</span>
+                <span v-else>─</span>
+              </span>
+            </button>
           </div>
-        </div>
-
-        <p v-if="rankingLoading" class="t-caption">실시간 랭킹을 불러오는 중입니다.</p>
-        <p v-else-if="rankingError" class="t-caption">{{ rankingError }}</p>
-        <p v-else-if="popular.length === 0" class="t-caption">아직 최근 1시간 내 랭킹 데이터가 없습니다.</p>
-
-        <div v-else class="ranking-grid">
-          <button
-            v-for="item in popular"
-            :key="item.id"
-            type="button"
-            class="ranking-card"
-            @click="goToAttraction(item.id)"
-          >
-            <span class="ranking-card__rank">{{ String(item.rank).padStart(2, '0') }}</span>
-            <span class="ranking-card__thumb">
-              <img v-if="item.imageUrl" :src="item.imageUrl" :alt="item.title" />
-              <span v-else class="thumb-placeholder">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <rect x="3" y="3" width="18" height="18" rx="2"/>
-                  <circle cx="9" cy="9" r="2"/>
-                  <path d="m21 15-5-5L5 21"/>
-                </svg>
-              </span>
-            </span>
-            <span class="ranking-card__body">
-              <span class="ranking-card__title" role="heading" aria-level="3">{{ item.title }}</span>
-              <span class="ranking-card__meta">{{ item.region }}</span>
-              <span class="tag-row">
-                <span class="chip chip--teal">최근 1시간 {{ item.score }}점</span>
-              </span>
-            </span>
-            <span :class="['ranking-card__trend', `trend--${item.trend}`]">
-              <span v-if="item.trend === 'up'">▲ {{ item.delta }}</span>
-              <span v-else-if="item.trend === 'down'">▼ {{ item.delta }}</span>
-              <span v-else-if="item.trend === 'new'">NEW</span>
-              <span v-else>─</span>
-            </span>
-          </button>
         </div>
       </div>
     </section>
@@ -345,12 +348,50 @@ onBeforeUnmount(() => {
   background: linear-gradient(135deg, var(--coral-tint) 0%, var(--teal-tint) 100%);
 }
 
+.section--ranking {
+  padding-top: 52px;
+  padding-bottom: 56px;
+  background: linear-gradient(180deg, var(--bg) 0%, #f6fbf8 100%);
+}
+
+.ranking-panel {
+  padding: 30px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: var(--sh-1);
+}
+
 .section__head {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
   margin-bottom: 32px;
 }
+
+.section__eyebrow {
+  margin-bottom: 8px;
+  color: var(--coral);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.1px;
+}
+
+.ranking-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ranking-more {
+  padding: 7px 12px;
+  color: var(--teal-3);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ranking-more:hover { color: var(--teal); }
 
 .live-pill {
   display: inline-flex;
@@ -381,8 +422,8 @@ onBeforeUnmount(() => {
 /* Ranking */
 .ranking-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
 }
 
 .ranking-card {
@@ -391,8 +432,8 @@ onBeforeUnmount(() => {
   font: inherit;
   background: white;
   border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  padding: 20px;
+  border-radius: 16px;
+  padding: 14px;
   position: relative;
   transition: all 0.2s;
   cursor: pointer;
@@ -405,24 +446,27 @@ onBeforeUnmount(() => {
 }
 
 .ranking-card__rank {
+  display: block;
   font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 700;
   color: var(--muted);
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .ranking-card__thumb {
+  display: block;
   width: 100%;
-  aspect-ratio: 16/10;
+  aspect-ratio: 4/3;
   background: var(--bg-2);
-  border-radius: 8px;
-  margin-bottom: 14px;
+  border-radius: 10px;
+  margin-bottom: 12px;
   overflow: hidden;
   position: relative;
 }
 
 .ranking-card__thumb img {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -439,7 +483,7 @@ onBeforeUnmount(() => {
 
 .ranking-card__title {
   display: block;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--ink);
   margin-bottom: 4px;
@@ -449,7 +493,7 @@ onBeforeUnmount(() => {
   display: block;
   font-size: 13px;
   color: var(--ink-soft);
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .tag-row {
@@ -460,8 +504,8 @@ onBeforeUnmount(() => {
 
 .ranking-card__trend {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: 12px;
+  right: 12px;
   font-size: 12px;
   font-weight: 700;
   padding: 4px 8px;
@@ -472,6 +516,20 @@ onBeforeUnmount(() => {
 .trend--down { background: #FBEAE2; color: #B12C3A; }
 .trend--same { background: var(--bg-2); color: var(--ink-soft); }
 .trend--new { background: var(--teal-soft); color: var(--teal-3); }
+
+@media (max-width: 1080px) {
+  .ranking-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 680px) {
+  .section--ranking { padding: 40px 0 44px; }
+  .ranking-panel { padding: 20px 16px; border-radius: var(--r-lg); }
+  .section__head { align-items: flex-start; flex-direction: column; gap: 14px; margin-bottom: 22px; }
+  .ranking-head-actions { width: 100%; justify-content: space-between; }
+  .ranking-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .ranking-card { padding: 10px; }
+  .ranking-card__trend { top: 8px; right: 8px; }
+}
 
 /* Co-edit */
 .co-edit-banner {
