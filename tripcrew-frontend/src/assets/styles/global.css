@@ -102,6 +102,18 @@ body * {
   background: var(--bg-soft);
 }
 
+/* Subtle, theme-aware ambient background for content pages.
+   A single soft brand glow anchored top-right over --bg-soft — gentler than
+   the dashboard's dual glow so /home stays the boldest. --page-glow flips per
+   theme (a touch stronger in dark so it still reads). Applied to exactly the
+   pages we want unified (/attractions·/chat·/plans·/wishlist·/notices) via the
+   .page-ambient class — declared after .page-soft so it wins when both apply. */
+.page-ambient {
+  background:
+    radial-gradient(72% 56% at 88% -8%, var(--page-glow), transparent 60%),
+    var(--bg-soft);
+}
+
 /* ============================================
  * Generic chip / badge
  * ============================================ */

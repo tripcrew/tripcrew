@@ -36,6 +36,8 @@
   --surface-2: #FFFFFF;
   /* Always-dark chrome (admin top bar, dark tooltips, super-admin chip) — stays dark in BOTH themes (white text on it) */
   --surface-inverse: #1B2027;
+  /* Ambient page glow (single subtle brand wash for content pages — see .page-ambient) */
+  --page-glow: rgba(216, 90, 48, 0.06);
   --glass: rgba(255, 255, 255, 0.82);   /* frosted card over a page bg */
   --header-bg: rgba(255, 255, 255, 0.92);
 
@@ -114,6 +116,7 @@
   --surface: #161C24;
   --surface-2: #1E2630;
   --surface-inverse: #232B35;
+  --page-glow: rgba(216, 90, 48, 0.11);
   --glass: rgba(22, 28, 36, 0.72);
   --header-bg: rgba(16, 20, 26, 0.86);
 

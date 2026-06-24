@@ -1,5 +1,5 @@
 <template>
-  <div class="page page-soft">
+  <div class="page page-soft page-ambient">
     <AppHeader />
 
     <main class="container search-layout">

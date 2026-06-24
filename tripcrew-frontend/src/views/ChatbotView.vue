@@ -1,5 +1,5 @@
 <template>
-  <div class="page chatbot-page">
+  <div class="page chatbot-page page-ambient">
     <AppHeader />
 
     <main class="container chat-layout">
@@ -237,7 +237,7 @@ async function scrollToBottom() {
 <style scoped>
 .chatbot-page {
   height: 100vh;
-  background: var(--bg-soft);
+  /* 배경은 전역 .page-ambient 가 담당(브랜드 글로우 + --bg-soft). 여기선 레이아웃만. */
   display: flex;
   flex-direction: column;
 }
