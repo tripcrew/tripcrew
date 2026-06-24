@@ -39,7 +39,7 @@
           </div>
 
           <form v-if="!isPasswordVerified" class="password-check" @submit.prevent="handlePasswordVerification">
-            <label class="form-label" for="current-password">정보 수정 비밀번호</label>
+            <label class="form-label" for="current-password">비밀번호</label>
             <div class="password-check__row">
               <input id="current-password" v-model="currentPassword" type="password" maxlength="64" autocomplete="current-password" required />
               <BaseButton variant="primary" type="submit" :disabled="isVerifyingPassword">
@@ -93,7 +93,7 @@
         </section>
 
         <div class="profile-actions">
-          <BaseButton variant="secondary" @click="goHome">홈으로</BaseButton>
+          <BaseButton variant="secondary" @click="goHome">{{ isAdmin ? '대시보드로' : '홈으로' }}</BaseButton>
           <BaseButton class="profile-edit-button" variant="secondary" @click="openEditMode">정보 수정</BaseButton>
         </div>
       </section>
@@ -158,7 +158,7 @@ onMounted(() => {
 })
 
 function goHome() {
-  router.push('/home')
+  router.push(isAdmin.value ? '/admin' : '/home')
 }
 
 function openEditMode() {
