@@ -8,6 +8,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.tripcrew.admin.service.AdminUserService;
 import com.tripcrew.common.exception.BusinessException;
+import com.tripcrew.notification.model.NotificationType;
+import com.tripcrew.notification.service.NotificationService;
 import com.tripcrew.report.model.ReportStatus;
 import com.tripcrew.report.model.ReportTargetType;
 import com.tripcrew.report.model.dto.AdminReportResponse;
@@ -37,6 +39,7 @@ public class AdminReportService {
     private final UserMapper userMapper;
     private final ReviewService reviewService;
     private final AdminUserService adminUserService;
+    private final NotificationService notificationService;
 
     /** 신고 목록. status 가 null 이면 전체, 아니면 해당 상태만(보통 OPEN). */
     @Transactional(readOnly = true)
@@ -60,6 +63,10 @@ public class AdminReportService {
             return false; // 이미 처리된 신고 — 중복 카운트 방지(멱등)
         }
         reportMapper.updateStatus(reportId, ReportStatus.RESOLVED);
+
+        // 신고자에게 처리완료 알림(같은 트랜잭션 — 신고 처리와 알림 생성이 원자적).
+        notificationService.notify(report.getReporterId(), NotificationType.REPORT_RESOLVED,
+                reportId, "신고하신 내용이 처리되었습니다.");
 
         // 후기 신고를 처리완료하면 해당 후기를 숨김(soft-delete)으로 전환하고 평점 집계에서 제외.
         // 같은 트랜잭션이라 신고 처리·후기 숨김·집계 차감이 원자적으로 묶인다.
