@@ -42,8 +42,8 @@ const props = defineProps({
 
 const SIZE = 120
 const C = 60
-const R = 44
-const STROKE = 16
+const R = 45
+const STROKE = 18
 const circumference = 2 * Math.PI * R
 
 const total = computed(() => props.data.reduce((s, d) => s + (d.value || 0), 0))
@@ -73,14 +73,14 @@ const segments = computed(() => {
 .donut-wrap {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 24px;
   flex-wrap: wrap;
 }
-.donut-svg { width: 132px; height: 132px; flex: 0 0 auto; }
+.donut-svg { width: 172px; height: 172px; flex: 0 0 auto; }
 .track { stroke: var(--bg-2); }
 .donut-total {
   font-family: var(--font-mono);
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 800;
   fill: var(--ink);
 }
@@ -88,17 +88,17 @@ const segments = computed(() => {
 .donut-legend {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  flex: 1 1 120px;
-  min-width: 120px;
+  gap: 10px;
+  flex: 1 1 140px;
+  min-width: 140px;
 }
 .legend-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 12px;
+  gap: 9px;
+  font-size: 13px;
 }
-.legend-dot { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
+.legend-dot { width: 11px; height: 11px; border-radius: 3px; flex: 0 0 auto; }
 .legend-label { font-weight: 700; color: var(--ink-2); }
 .legend-val { margin-left: auto; color: var(--ink-soft); font-family: var(--font-mono); }
 </style>

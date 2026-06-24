@@ -1,5 +1,6 @@
 <template>
   <AdminLayout active="dashboard">
+   <div class="dash">
     <nav class="admin-breadcrumb">
       관리자 › <strong>대시보드</strong>
     </nav>
@@ -139,6 +140,7 @@
         </section>
       </div>
     </template>
+   </div>
   </AdminLayout>
 </template>
 
@@ -252,6 +254,11 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* 와이드 모니터에서 패널·차트가 과도하게 커지지 않도록 콘텐츠 폭 상한 */
+.dash {
+  max-width: 1200px;
+}
+
 .admin-breadcrumb {
   font-size: 13px;
   color: var(--ink-soft);
@@ -269,7 +276,7 @@ onMounted(() => {
 
 .page-sub {
   margin-top: 6px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ink-soft);
 }
 
@@ -277,7 +284,7 @@ onMounted(() => {
 
 .section-label {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 1.4px;
   color: var(--muted);
@@ -301,10 +308,10 @@ onMounted(() => {
 }
 
 .chart-grid .panel-title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--ink-2);
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 /* 메인 카드 그리드 */
@@ -354,7 +361,7 @@ onMounted(() => {
 }
 
 .stat-label {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ink-soft);
 }
@@ -393,7 +400,7 @@ onMounted(() => {
 .stat-value--soon { font-size: 20px; color: var(--muted); letter-spacing: 0; }
 
 .stat-delta {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ink-soft);
 }
@@ -456,8 +463,8 @@ onMounted(() => {
 }
 
 .quick-text { display: flex; flex-direction: column; gap: 2px; }
-.quick-text strong { font-size: 13px; color: var(--ink); }
-.quick-text em { font-size: 12px; color: var(--ink-soft); font-style: normal; }
+.quick-text strong { font-size: 14px; color: var(--ink); }
+.quick-text em { font-size: 13px; color: var(--ink-soft); font-style: normal; }
 
 .quick-count {
   margin-left: auto;
@@ -481,7 +488,7 @@ onMounted(() => {
   border-radius: 10px;
 }
 
-.health-name { font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.health-name { font-size: 14px; font-weight: 600; color: var(--ink-2); }
 
 .health-state {
   display: inline-flex;

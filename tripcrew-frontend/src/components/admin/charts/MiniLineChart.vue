@@ -9,7 +9,7 @@
           <title>{{ line.name }} · {{ pt.label }} · {{ pt.value }}</title>
         </circle>
       </g>
-      <text v-for="tk in ticks" :key="tk.x" :x="tk.x" :y="H - 4" class="tick" text-anchor="middle">{{ tk.text }}</text>
+      <text v-for="tk in ticks" :key="tk.x" :x="tk.x" :y="H - 6" class="tick" text-anchor="middle">{{ tk.text }}</text>
     </svg>
     <div class="legend">
       <span v-for="s in series" :key="s.name" class="legend-item">
@@ -28,12 +28,12 @@ const props = defineProps({
   ariaLabel: { type: String, default: '추이 차트' },
 })
 
-const W = 320
-const H = 150
-const padL = 8
-const padR = 8
-const topY = 12
-const baseY = 124
+const W = 360
+const H = 132
+const padL = 10
+const padR = 10
+const topY = 10
+const baseY = 106
 
 const pointCount = computed(() => {
   const first = props.series[0]
@@ -78,12 +78,9 @@ const ticks = computed(() => {
   const n = pointCount.value
   if (!n) return []
   const data = props.series[0].data
-  const tickEvery = Math.ceil(n / 7)
   const out = []
   for (let i = 0; i < n; i++) {
-    if (i % tickEvery === 0 || i === n - 1) {
-      out.push({ x: xAt(i, n), text: String(data[i].label).slice(-2) })
-    }
+    out.push({ x: xAt(i, n), text: String(data[i].label).slice(-2) })
   }
   return out
 })
@@ -95,18 +92,18 @@ const ticks = computed(() => {
 .series-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
 .grid { stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 3; }
 .axis { stroke: var(--line); stroke-width: 1; }
-.tick { fill: var(--muted); font-size: 8px; font-family: var(--font-mono); }
+.tick { fill: var(--muted); font-size: 9px; font-family: var(--font-mono); }
 .legend {
   display: flex;
-  gap: 16px;
+  gap: 18px;
   justify-content: center;
-  margin-top: 8px;
+  margin-top: 10px;
 }
 .legend-item {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ink-soft);
   font-weight: 600;
 }

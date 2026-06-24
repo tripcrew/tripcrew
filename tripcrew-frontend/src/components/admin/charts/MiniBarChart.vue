@@ -8,7 +8,7 @@
         <rect :x="bar.x" :y="bar.y" :width="bar.w" :height="bar.h" rx="2" class="bar">
           <title>{{ bar.label }} · {{ bar.value }}</title>
         </rect>
-        <text v-if="bar.showTick" :x="bar.cx" :y="H - 4" class="tick" text-anchor="middle">{{ bar.tick }}</text>
+        <text v-if="bar.showTick" :x="bar.cx" :y="H - 6" class="tick" text-anchor="middle">{{ bar.tick }}</text>
       </g>
     </svg>
   </div>
@@ -23,13 +23,14 @@ const props = defineProps({
   ariaLabel: { type: String, default: '막대 차트' },
 })
 
-// viewBox 좌표계(반응형: width:100% 로 스케일)
-const W = 320
-const H = 150
-const padL = 8
-const padR = 8
-const topY = 12
-const baseY = 124
+// viewBox 좌표계(반응형: width:100% 로 스케일). 가로로 넓고 낮은 비율이라
+// 와이드 화면에서도 세로가 과하게 커지지 않는다.
+const W = 360
+const H = 132
+const padL = 10
+const padR = 10
+const topY = 10
+const baseY = 106
 
 const maxValue = computed(() => {
   const max = props.data.reduce((m, d) => (d.value > m ? d.value : m), 0)
@@ -42,8 +43,6 @@ const bars = computed(() => {
   const step = plotW / n
   const barW = Math.max(2, step * 0.6)
   const plotH = baseY - topY
-  // 라벨이 겹치지 않도록 약 7개만 눈금 표시
-  const tickEvery = Math.ceil(n / 7)
   return props.data.map((d, i) => {
     const h = (d.value / maxValue.value) * plotH
     const x = padL + i * step + (step - barW) / 2
@@ -57,7 +56,7 @@ const bars = computed(() => {
       y: baseY - h,
       cx: padL + i * step + step / 2,
       tick: String(d.label).slice(-2), // YYYY-MM-DD → DD
-      showTick: i % tickEvery === 0 || i === n - 1,
+      showTick: true, // 14일 전부 표시
     }
   })
 })
@@ -70,5 +69,5 @@ const bars = computed(() => {
 .bar:hover { fill: var(--teal-3); }
 .grid { stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 3; }
 .axis { stroke: var(--line); stroke-width: 1; }
-.tick { fill: var(--muted); font-size: 8px; font-family: var(--font-mono); }
+.tick { fill: var(--muted); font-size: 9px; font-family: var(--font-mono); }
 </style>
