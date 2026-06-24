@@ -332,7 +332,8 @@ onMounted(() => {
 
 .wish-card__thumb {
   position: relative;
-  aspect-ratio: 16 / 10;
+  height: 180px;
+  overflow: hidden;
   background: var(--bg-2);
   cursor: pointer;
 }
@@ -341,6 +342,7 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
   display: block;
 }
 
