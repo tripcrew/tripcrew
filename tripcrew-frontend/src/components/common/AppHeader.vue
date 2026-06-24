@@ -44,7 +44,6 @@
                   :key="n.id"
                   class="notif__item"
                   :class="{ 'notif__item--unread': !n.read }"
-                  @contextmenu.prevent="handleDelete(n)"
                 >
                   <button class="notif__main" @click="handleNotifClick(n)">
                     <span v-if="!n.read" class="notif__dot" aria-hidden="true"></span>
@@ -458,7 +457,7 @@ const avatarText = computed(() => displayName.value.trim().slice(0, 1).toUpperCa
   text-align: left;
 }
 
-/* 삭제(x). 평소 흐릿, hover/포커스 시 또렷. 우클릭으로도 삭제 가능 */
+/* 삭제(x). 평소 흐릿, hover 시 또렷. */
 .notif__del {
   flex-shrink: 0;
   display: grid;
