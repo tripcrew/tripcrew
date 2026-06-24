@@ -21,9 +21,9 @@
         </div>
         <div class="link-group">
           <h4>법적 고지</h4>
-          <a href="#">이용약관</a>
-          <a href="#">개인정보처리방침</a>
-          <a href="#">공공데이터 출처</a>
+          <router-link to="/terms">이용약관</router-link>
+          <router-link to="/privacy">개인정보처리방침</router-link>
+          <router-link to="/data-sources">공공데이터 출처</router-link>
         </div>
       </div>
     </div>
