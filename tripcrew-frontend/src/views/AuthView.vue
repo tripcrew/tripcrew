@@ -21,8 +21,8 @@
           <li>
             <div class="feature-icon">✓</div>
             <div>
-              <strong>한국관광공사 데이터 기반</strong>
-              <span>검증된 추천</span>
+              <strong>실제 이동 시간 기반</strong>
+              <span>네이버 Directions 동선 최적화</span>
             </div>
           </li>
           <li>
@@ -153,10 +153,6 @@
           </form>
         </div>
 
-        <div class="api-note">
-          <code class="t-mono">POST /api/auth/signup · /api/auth/login</code>
-          <code class="t-mono">POST /api/auth/refresh → 401 → re-login</code>
-        </div>
       </section>
     </div>
   </div>

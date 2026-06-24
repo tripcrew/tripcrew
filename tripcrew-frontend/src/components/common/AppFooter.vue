@@ -1,9 +1,9 @@
 <template>
   <footer class="app-footer">
     <div class="app-footer__inner">
-      <div v-if="!compact" class="app-footer__brand">
+      <div class="app-footer__brand">
         <div class="logo">TripCrew<span class="dot">.</span></div>
-        <p class="t-caption">공공데이터 · AI · 동선 최적화로 만드는 여행 계획 플랫폼</p>
+        <p class="t-caption">AI 추천 · 실제 이동 시간 기반 동선 최적화 · 공동 편집</p>
       </div>
 
       <div class="app-footer__links">
@@ -34,7 +34,7 @@
           <h4>법적 고지</h4>
           <router-link to="/terms">이용약관</router-link>
           <router-link to="/privacy">개인정보처리방침</router-link>
-          <router-link to="/data-sources">공공데이터 출처</router-link>
+          <router-link to="/data-sources">관광지 데이터 안내</router-link>
         </div>
       </div>
     </div>

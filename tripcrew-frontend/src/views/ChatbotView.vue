@@ -85,7 +85,6 @@
               {{ loading ? '응답 중' : '전송' }}
             </button>
           </form>
-          <p class="api-note t-mono">POST /api/chat/messages (application/json)</p>
         </footer>
       </section>
     </main>
