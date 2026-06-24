@@ -7,12 +7,22 @@
     <header class="admin-page-head">
       <div>
         <h1 class="t-h1">신고 관리</h1>
-        <p class="head-sub t-caption">미처리 신고 {{ reports.length }}건 · 처리완료/기각하면 목록에서 사라집니다</p>
+        <p class="head-sub t-caption">{{ headSub }}</p>
       </div>
       <div class="head-actions">
         <BaseButton variant="secondary" :disabled="loading" @click="load">새로고침</BaseButton>
       </div>
     </header>
+
+    <!-- 미처리 / 처리완료 / 기각 이력 탭 -->
+    <nav class="status-tabs">
+      <button
+        v-for="tab in TABS"
+        :key="tab.value"
+        :class="['status-tab', { 'is-active': statusFilter === tab.value }]"
+        @click="selectTab(tab.value)"
+      >{{ tab.label }}</button>
+    </nav>
 
     <!-- 403: 권한 거부 -->
     <section v-if="forbidden" class="state-panel state-panel--error">
@@ -36,7 +46,7 @@
             <th>신고 사유 / 신고자 메모</th>
             <th>신고된 내용 (원문)</th>
             <th>피신고 유저</th>
-            <th>조치</th>
+            <th>{{ isOpenTab ? '조치' : '처리 결과' }}</th>
           </tr>
         </thead>
         <tbody>
@@ -44,7 +54,7 @@
             <td colspan="7" class="table-empty">불러오는 중…</td>
           </tr>
           <tr v-else-if="reports.length === 0">
-            <td colspan="7" class="table-empty">미처리 신고가 없습니다. 👍</td>
+            <td colspan="7" class="table-empty">{{ emptyText }}</td>
           </tr>
           <tr v-for="rp in reports" :key="rp.id">
             <td class="t-mono">{{ formatDate(rp.createdAt) }}</td>
@@ -64,16 +74,24 @@
               <span v-else class="muted">—</span>
             </td>
             <td class="action-cell">
-              <button
-                class="action-btn action-btn--promote"
-                :disabled="busyId === rp.id"
-                @click="resolve(rp)"
-              >{{ busyId === rp.id ? '처리 중…' : '처리완료' }}</button>
-              <button
-                class="action-btn"
-                :disabled="busyId === rp.id"
-                @click="dismiss(rp)"
-              >기각</button>
+              <template v-if="isOpenTab">
+                <button
+                  class="action-btn action-btn--promote"
+                  :disabled="busyId === rp.id"
+                  @click="resolve(rp)"
+                >{{ busyId === rp.id ? '처리 중…' : '처리완료' }}</button>
+                <button
+                  class="action-btn"
+                  :disabled="busyId === rp.id"
+                  @click="dismiss(rp)"
+                >기각</button>
+              </template>
+              <template v-else>
+                <span :class="['result-chip', rp.status === 'RESOLVED' ? 'result--resolved' : 'result--dismissed']">
+                  {{ rp.status === 'RESOLVED' ? '처리완료' : '기각' }}
+                </span>
+                <p class="processed-at t-mono">{{ formatDate(rp.processedAt) }}</p>
+              </template>
             </td>
           </tr>
         </tbody>
@@ -88,7 +106,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
 import { adminApi } from '@/api/admin'
 import AdminLayout from '@/components/admin/AdminLayout.vue'
@@ -97,12 +115,29 @@ import { useAdminMetaStore } from '@/stores/adminMeta'
 
 const adminMeta = useAdminMetaStore()
 
+const TABS = [
+  { value: 'OPEN', label: '미처리' },
+  { value: 'RESOLVED', label: '처리완료' },
+  { value: 'DISMISSED', label: '기각' },
+]
+
 const reports = ref([])
 const loading = ref(false)
 const error = ref('')
 const forbidden = ref(false)
 const busyId = ref(null)
 const notice = ref(null)
+const statusFilter = ref('OPEN')
+
+const isOpenTab = computed(() => statusFilter.value === 'OPEN')
+const headSub = computed(() => {
+  if (isOpenTab.value) return `미처리 신고 ${reports.value.length}건 · 처리완료/기각하면 미처리 목록에서 사라집니다`
+  return `처리 이력 ${reports.value.length}건 · ${statusFilter.value === 'RESOLVED' ? '조치 완료' : '기각'}된 신고`
+})
+const emptyText = computed(() => {
+  if (isOpenTab.value) return '미처리 신고가 없습니다. 👍'
+  return statusFilter.value === 'RESOLVED' ? '처리완료된 신고가 없습니다.' : '기각된 신고가 없습니다.'
+})
 
 const REASON_LABELS = {
   SPAM: '스팸/도배',
@@ -130,13 +165,20 @@ async function load() {
   error.value = ''
   forbidden.value = false
   try {
-    reports.value = await adminApi.listReports('OPEN')
+    reports.value = await adminApi.listReports(statusFilter.value)
   } catch (e) {
     if (e.response?.status === 403) forbidden.value = true
     else error.value = e.response?.data?.message || e.message || '알 수 없는 오류'
   } finally {
     loading.value = false
   }
+}
+
+function selectTab(value) {
+  if (statusFilter.value === value) return
+  statusFilter.value = value
+  notice.value = null
+  load()
 }
 
 // 처리/기각 후 목록에서 제거 + 사이드바 배지 갱신
@@ -152,7 +194,7 @@ async function resolve(report) {
     await adminApi.resolveReport(report.id)
     removeRow(report.id)
     const who = report.reportedUserEmail || '대상 유저'
-    flash('ok', `신고 #${report.id} 처리완료. (${who} 누적 +1 · 3회 이상이면 자동 제재)`)
+    flash('ok', `신고 #${report.id} 처리완료. (${who} 누적 +1 · 단계별 자동 제재: 3·5·10회, 15회 영구정지 검토)`)
   } catch (e) {
     flash('error', e.response?.data?.message || `처리 실패 (${e.response?.status || e.message})`)
   } finally {
@@ -195,6 +237,45 @@ onMounted(load)
 
 .head-sub { margin-top: 6px; color: var(--ink-soft); }
 .head-actions { display: flex; gap: 8px; }
+
+/* 상태 탭 (미처리 / 처리완료 / 기각) */
+.status-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.status-tab {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.status-tab:hover { color: var(--ink); }
+
+.status-tab.is-active {
+  color: var(--teal-3);
+  border-bottom-color: var(--teal);
+}
+
+/* 이력 탭의 처리 결과 칩 */
+.result-chip {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.result--resolved { background: var(--teal-soft); color: var(--teal-3); }
+.result--dismissed { background: var(--bg-2); color: var(--ink-soft); }
+
+.processed-at { margin-top: 4px; font-size: 11px; color: var(--muted); }
 
 .table-card {
   background: white;

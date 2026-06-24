@@ -34,6 +34,12 @@ export function notificationRoute(notification) {
     case 'INQUIRY_ANSWERED':
       // 1:1 문의 답변 등록 → 내 문의 화면(/support)에서 답변 확인
       return '/support'
+    case 'SANCTION_REVIEW_REQUIRED':
+      // (관리자 수신) 신고 누적 최고 임계 도달 → 회원 관리에서 대상 확인·수동 영구정지
+      return '/admin/users'
+    case 'SANCTION_APPLIED':
+      // 내 계정에 단계 제재가 적용됨 → 전용 도착 화면 없이 읽음 처리만(문구로 안내)
+      return null
     case 'REPORT_RESOLVED':
     default:
       // 신고 처리완료는 전용 도착 화면이 없어 읽음 처리만 한다.

@@ -4,10 +4,10 @@ import { http } from './http'
  * 관리자(F09) - 사용자 관리 API. 백엔드 엔드포인트와 1:1 대응.
  *   GET   /api/admin/users             사용자 목록 (password 미포함) — ROLE_ADMIN 전용
  *   PATCH /api/admin/users/{id}/role   권한 변경 (USER ↔ ADMIN) → 204 — ROLE_SUPER_ADMIN 전용
- *   PATCH /api/admin/users/{id}/ban    계정 제재 → 204 — ROLE_ADMIN 전용
- *   PATCH /api/admin/users/{id}/unban  제재 해제 → 204 — ROLE_ADMIN 전용
- *   GET   /api/admin/reports                신고 목록(이메일+후기내용, 보통 OPEN만) — ROLE_ADMIN 전용
- *   PATCH /api/admin/reports/{id}/resolve   처리완료(누적+1, 3회시 자동제재) → 204 — ROLE_ADMIN 전용
+ *   PATCH /api/admin/users/{id}/ban    영구정지(BANNED) → 204 — ROLE_ADMIN 전용(ADMIN 대상은 SUPER_ADMIN만)
+ *   PATCH /api/admin/users/{id}/unban  정지 해제 → 204 — ROLE_ADMIN 전용
+ *   GET   /api/admin/reports?status=        신고 목록(이메일+후기내용, OPEN/RESOLVED/DISMISSED) — ROLE_ADMIN 전용
+ *   PATCH /api/admin/reports/{id}/resolve   처리완료(누적+1, 단계 자동제재 3·5·10회·15회 검토) → 204 — ROLE_ADMIN 전용
  *   PATCH /api/admin/reports/{id}/dismiss   기각(카운트 없음) → 204 — ROLE_ADMIN 전용
  *   GET   /api/admin/inquiries?status=        1:1 문의 목록(작성자 이메일 포함, 보통 OPEN) — ROLE_ADMIN 전용
  *   PATCH /api/admin/inquiries/{id}/answer    답변 등록/수정(최초 답변 시 작성자 알림) → 204 — ROLE_ADMIN 전용
