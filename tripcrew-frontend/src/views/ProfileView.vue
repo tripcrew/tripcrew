@@ -94,7 +94,7 @@
 
         <div class="profile-actions">
           <BaseButton variant="secondary" @click="goHome">{{ isAdmin ? '대시보드로' : '홈으로' }}</BaseButton>
-          <BaseButton class="profile-edit-button" variant="secondary" @click="openEditMode">정보 수정</BaseButton>
+          <BaseButton v-if="!isEditMode" class="profile-edit-button" variant="secondary" @click="openEditMode">정보 수정</BaseButton>
         </div>
       </section>
     </main>
