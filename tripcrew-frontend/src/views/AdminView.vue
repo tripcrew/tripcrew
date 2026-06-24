@@ -264,7 +264,7 @@ onMounted(load)
 }
 
 .stat-card {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   padding: 20px;
@@ -274,8 +274,8 @@ onMounted(load)
 }
 
 .stat-card--alert {
-  background: linear-gradient(135deg, #FFF5F5 0%, white 100%);
-  border-color: #FBEAE2;
+  background: linear-gradient(135deg, var(--coral-tint) 0%, var(--surface) 100%);
+  border-color: var(--coral-soft);
 }
 
 .stat-label {
@@ -302,7 +302,7 @@ onMounted(load)
 
 /* Table */
 .table-card {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   overflow: hidden;
@@ -322,7 +322,7 @@ onMounted(load)
   display: flex;
   align-items: center;
   gap: 8px;
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 0 14px;
@@ -344,7 +344,7 @@ onMounted(load)
 }
 
 .table-filters select {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 8px 12px;
@@ -404,7 +404,7 @@ onMounted(load)
 
 .role--user { background: var(--bg-2); color: var(--ink-3); }
 .role--admin { background: var(--coral); color: white; }
-.role--super_admin { background: var(--ink); color: white; }
+.role--super_admin { background: var(--surface-inverse); color: white; }
 
 .status-chip {
   display: inline-block;
@@ -455,7 +455,7 @@ onMounted(load)
 
 /* 상태 패널 (403 / 에러) */
 .state-panel {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   padding: 32px;
@@ -466,8 +466,8 @@ onMounted(load)
 }
 
 .state-panel--error {
-  border-color: #FBEAE2;
-  background: linear-gradient(135deg, #FFF5F5 0%, white 100%);
+  border-color: var(--coral-soft);
+  background: linear-gradient(135deg, var(--coral-tint) 0%, var(--surface) 100%);
 }
 
 .state-panel strong { font-size: 16px; color: var(--ink); }
@@ -511,7 +511,7 @@ onMounted(load)
   color: var(--ink-3);
 }
 
-.pagination button:hover { background: white; }
+.pagination button:hover { background: var(--surface); }
 
 .pagination .active {
   background: var(--teal);

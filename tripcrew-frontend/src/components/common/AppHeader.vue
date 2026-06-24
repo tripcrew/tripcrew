@@ -15,6 +15,22 @@
       </nav>
 
       <div class="app-header__actions">
+        <button
+          class="icon-btn theme-toggle"
+          type="button"
+          :aria-label="isDark ? '라이트 모드로 전환' : '다크 모드로 전환'"
+          :title="isDark ? '라이트 모드' : '다크 모드'"
+          @click="toggleTheme"
+        >
+          <svg v-if="isDark" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4.2"/>
+            <path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/>
+          </svg>
+          <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12.5A8.5 8.5 0 1 1 11.5 3a6.5 6.5 0 0 0 9.5 9.5z"/>
+          </svg>
+        </button>
+
         <template v-if="isLoggedIn">
           <!-- 내부 클릭은 바깥-클릭 핸들러로 전파시키지 않는다. 닫기는 모두 명시적으로 처리
                (더보기/삭제 시 클릭한 엘리먼트가 DOM 에서 사라져 contains 판정이 빗나가는 버그 방지). -->
@@ -107,7 +123,10 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { notificationApi, notificationRoute } from '@/api/notifications'
+import { useTheme } from '@/composables/useTheme'
 import { useAuthStore } from '@/stores/auth'
+
+const { isDark, toggle: toggleTheme } = useTheme()
 
 const props = defineProps({
   loggedIn: { type: Boolean, default: null },
@@ -293,7 +312,7 @@ const avatarText = computed(() => displayName.value.trim().slice(0, 1).toUpperCa
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--header-bg);
   backdrop-filter: saturate(180%) blur(12px);
   border-bottom: 1px solid var(--line);
   height: var(--header-height);
@@ -313,7 +332,7 @@ const avatarText = computed(() => displayName.value.trim().slice(0, 1).toUpperCa
   font-size: 22px;
   font-weight: 800;
   letter-spacing: -0.6px;
-  color: var(--teal-3);
+  color: var(--teal-ink);
 }
 
 .app-header__logo .dot {
@@ -343,7 +362,7 @@ const avatarText = computed(() => displayName.value.trim().slice(0, 1).toUpperCa
 
 .nav-link.router-link-active {
   background: var(--teal-soft);
-  color: var(--teal-3);
+  color: var(--teal-ink);
 }
 
 .app-header__actions {
@@ -391,7 +410,7 @@ const avatarText = computed(() => displayName.value.trim().slice(0, 1).toUpperCa
   font-weight: 700;
   line-height: 16px;
   text-align: center;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.92);
+  box-shadow: 0 0 0 2px var(--header-bg);
 }
 
 .notif__panel {
@@ -402,7 +421,7 @@ const avatarText = computed(() => displayName.value.trim().slice(0, 1).toUpperCa
   max-height: 420px;
   display: flex;
   flex-direction: column;
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 12px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
@@ -433,7 +452,7 @@ const avatarText = computed(() => displayName.value.trim().slice(0, 1).toUpperCa
 .notif__readall {
   font-size: 12px;
   font-weight: 600;
-  color: var(--teal-3);
+  color: var(--teal-ink);
 }
 
 .notif__deleteall {
@@ -526,7 +545,7 @@ const avatarText = computed(() => displayName.value.trim().slice(0, 1).toUpperCa
   padding: 10px;
   font-size: 13px;
   font-weight: 600;
-  color: var(--teal-3);
+  color: var(--teal-ink);
   border-top: 1px solid var(--line);
   transition: background 0.15s;
 }
@@ -579,7 +598,7 @@ const avatarText = computed(() => displayName.value.trim().slice(0, 1).toUpperCa
 }
 
 .notif__chip--dismissed {
-  background: white;
+  background: var(--surface);
   color: var(--ink-3);
   border: 1px solid var(--line);
 }

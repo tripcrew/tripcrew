@@ -1,5 +1,5 @@
 <template>
-  <div class="page chatbot-page">
+  <div class="page chatbot-page page-ambient">
     <AppHeader />
 
     <main class="container chat-layout">
@@ -237,7 +237,7 @@ async function scrollToBottom() {
 <style scoped>
 .chatbot-page {
   height: 100vh;
-  background: var(--bg-soft);
+  /* 배경은 전역 .page-ambient 가 담당(브랜드 글로우 + --bg-soft). 여기선 레이아웃만. */
   display: flex;
   flex-direction: column;
 }
@@ -256,7 +256,7 @@ async function scrollToBottom() {
 
 /* Sidebar */
 .chat-sidebar {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
   padding: 20px;
@@ -304,7 +304,7 @@ async function scrollToBottom() {
 .recent-list li:hover { background: var(--bg-soft); }
 .recent-list li.active {
   background: var(--teal-soft);
-  color: var(--teal-3);
+  color: var(--teal-ink);
   font-weight: 600;
 }
 
@@ -334,8 +334,8 @@ async function scrollToBottom() {
   display: block;
   padding: 9px 10px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.66);
-  color: var(--teal-3);
+  background: var(--glass);
+  color: var(--teal-ink);
   font-size: 12px;
   line-height: 1.45;
 }
@@ -366,7 +366,7 @@ async function scrollToBottom() {
 
 /* Main */
 .chat-main {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
   display: flex;
@@ -539,7 +539,7 @@ async function scrollToBottom() {
 .input-wrap {
   display: flex;
   gap: 8px;
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 4px 4px 4px 18px;

@@ -212,7 +212,7 @@ async function handleWithdraw() {
 .profile-panel {
   max-width: 720px;
   margin: 0 auto;
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
   padding: 32px;
@@ -326,7 +326,7 @@ async function handleWithdraw() {
   padding: 10px 12px;
   border: 1px solid var(--line-2);
   border-radius: 9px;
-  background: white;
+  background: var(--surface);
   font: inherit;
 }
 
@@ -399,7 +399,7 @@ async function handleWithdraw() {
   width: min(100%, 400px);
   padding: 28px;
   border-radius: var(--r-xl);
-  background: white;
+  background: var(--surface);
   box-shadow: var(--sh-2);
 }
 

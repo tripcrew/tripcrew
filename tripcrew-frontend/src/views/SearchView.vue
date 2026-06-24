@@ -1,5 +1,5 @@
 <template>
-  <div class="page page-soft">
+  <div class="page page-soft page-ambient">
     <AppHeader />
 
     <main class="container search-layout">
@@ -531,7 +531,7 @@ onBeforeUnmount(() => {
 }
 
 .filter-panel {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
   padding: 24px;
@@ -577,7 +577,7 @@ onBeforeUnmount(() => {
   border: 1px solid var(--line-2);
   border-radius: 8px;
   font-size: 14px;
-  background: white;
+  background: var(--surface);
 }
 
 .check-list {
@@ -631,7 +631,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 0 16px;
@@ -670,7 +670,7 @@ onBeforeUnmount(() => {
 }
 
 .att-card {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   overflow: hidden;
@@ -846,7 +846,7 @@ onBeforeUnmount(() => {
   display: grid;
   place-items: center;
   min-height: 260px;
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   color: var(--ink-soft);
@@ -866,7 +866,7 @@ onBeforeUnmount(() => {
   padding: 0 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: white;
+  background: var(--surface);
   color: var(--ink-3);
   font-weight: 700;
 }

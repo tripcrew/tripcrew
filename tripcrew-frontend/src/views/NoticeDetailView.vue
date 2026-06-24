@@ -81,11 +81,11 @@ onMounted(load)
   margin-bottom: 16px;
 }
 .breadcrumb strong { color: var(--ink); }
-.crumb-link { color: var(--teal-3); text-decoration: none; }
+.crumb-link { color: var(--teal-ink); text-decoration: none; }
 .crumb-link:hover { text-decoration: underline; }
 
 .notice-article {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   padding: 32px;
@@ -97,7 +97,7 @@ onMounted(load)
   margin-bottom: 8px;
   font-size: 12px;
   font-weight: 700;
-  color: var(--teal-3);
+  color: var(--teal-ink);
 }
 .article-meta { margin-top: 12px; font-size: 12px; color: var(--muted); }
 
@@ -115,7 +115,7 @@ onMounted(load)
 .list-empty { padding: 48px 20px; text-align: center; color: var(--muted); }
 
 .state-panel {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   padding: 32px;

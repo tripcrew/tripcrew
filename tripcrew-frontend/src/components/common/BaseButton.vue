@@ -62,7 +62,7 @@ defineProps({
 }
 
 .base-btn--secondary {
-  background: white;
+  background: var(--surface);
   color: var(--ink);
   border: 1px solid var(--line-2);
 }

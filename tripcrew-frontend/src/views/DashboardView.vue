@@ -479,7 +479,7 @@ onBeforeUnmount(() => {
 }
 
 .block {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
   padding: 28px;
@@ -528,7 +528,7 @@ onBeforeUnmount(() => {
   display: grid;
   place-items: center;
   border-radius: 14px;
-  background: white;
+  background: var(--surface);
   color: var(--teal);
   border: 1px solid var(--line);
   font-size: 28px;
@@ -583,7 +583,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   scroll-snap-align: start;
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   padding: 22px;
@@ -719,7 +719,7 @@ onBeforeUnmount(() => {
 }
 
 .rec-card:hover {
-  background: white;
+  background: var(--surface);
   box-shadow: var(--sh-1);
 }
 
@@ -762,7 +762,7 @@ onBeforeUnmount(() => {
   padding: 10px;
   border: 0;
   border-radius: 10px;
-  background: white;
+  background: var(--surface);
   color: inherit;
   font: inherit;
   text-align: left;
@@ -804,7 +804,7 @@ onBeforeUnmount(() => {
 .trend--up { background: #E1F5EA; color: #1A7A4A; }
 .trend--down { background: #FBEAE2; color: #B12C3A; }
 .trend--same { background: var(--bg-2); color: var(--muted); }
-.trend--new { background: var(--teal-soft); color: var(--teal-3); }
+.trend--new { background: var(--teal-soft); color: var(--teal-ink); }
 
 /* Live pill */
 .live-pill {
@@ -812,7 +812,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 999px;
   font-size: 11px;
@@ -844,7 +844,7 @@ onBeforeUnmount(() => {
   display: flex;
   gap: 12px;
   padding: 10px;
-  background: white;
+  background: var(--surface);
   border-radius: 10px;
 }
 
@@ -986,7 +986,7 @@ onBeforeUnmount(() => {
   padding: 26px;
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
-  background: white;
+  background: var(--surface);
   box-shadow: var(--sh-1);
 }
 
@@ -995,10 +995,10 @@ onBeforeUnmount(() => {
   font-size: 13px;
   font-weight: 700;
 }
-.stat-card > strong { margin-top: auto; color: var(--teal-3); font-size: 46px; line-height: 1; letter-spacing: -2px; }
+.stat-card > strong { margin-top: auto; color: var(--teal-ink); font-size: 46px; line-height: 1; letter-spacing: -2px; }
 .stat-card > small { margin-top: 8px; color: var(--ink-soft); font-size: 12px; line-height: 1.4; }
 .stat-card--guide { background: var(--coral-tint); border-color: var(--coral-soft); }
-.stat-card--guide > strong { margin-top: 18px; color: var(--coral-2); font-size: 20px; line-height: 1.35; letter-spacing: -0.4px; }
+.stat-card--guide > strong { margin-top: 18px; color: var(--coral-ink); font-size: 20px; line-height: 1.35; letter-spacing: -0.4px; }
 .stat-card--guide > small { margin-top: auto; }
 .stat-card__spark { color: var(--coral); font-size: 25px; }
 
@@ -1006,7 +1006,7 @@ onBeforeUnmount(() => {
   margin-bottom: 24px;
   padding: 30px;
   border-radius: var(--r-xl);
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   box-shadow: var(--sh-1);
 }
@@ -1019,7 +1019,7 @@ onBeforeUnmount(() => {
   margin-bottom: 22px;
 }
 .trip-starter__head h2 { font-size: 24px; letter-spacing: -0.6px; }
-.trip-starter__head > p { max-width: 290px; color: var(--ink-soft); font-size: 14px; line-height: 1.5; }
+.trip-starter__head > p { color: var(--ink-soft); font-size: 14px; line-height: 1.5; white-space: nowrap; }
 
 .theme-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 .theme-card {
@@ -1042,7 +1042,7 @@ onBeforeUnmount(() => {
 .theme-card__body strong, .theme-card__body small { display: block; }
 .theme-card__body strong { color: var(--ink); font-size: 15px; }
 .theme-card__body small { margin-top: 4px; color: var(--ink-soft); font-size: 12px; line-height: 1.35; }
-.theme-card__check { position: absolute; top: 14px; right: 14px; color: var(--teal-3); font-weight: 800; }
+.theme-card__check { position: absolute; top: 14px; right: 14px; color: var(--teal-ink); font-weight: 800; }
 
 .trip-starter__bottom {
   display: flex;
@@ -1059,7 +1059,7 @@ onBeforeUnmount(() => {
 
 .plans-block .block__head { margin-bottom: 22px; }
 .plans-block .section-kicker, .explore-block .section-kicker { margin-bottom: 5px; }
-.view-all { color: var(--teal-3); font-size: 14px; font-weight: 700; }
+.view-all { color: var(--teal-ink); font-size: 14px; font-weight: 700; }
 .view-all:hover { color: var(--teal); }
 
 .explore-block { padding: 30px; }

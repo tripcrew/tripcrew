@@ -214,7 +214,7 @@ onMounted(load)
 
 /* 작성/수정 폼 */
 .form-card {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   padding: 24px;
@@ -238,7 +238,7 @@ onMounted(load)
 .form-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
 .table-card {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   overflow: hidden;
@@ -263,7 +263,7 @@ onMounted(load)
 .table-empty { text-align: center; padding: 40px 16px; color: var(--muted); }
 
 .state-panel {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   padding: 32px;
@@ -272,7 +272,7 @@ onMounted(load)
   gap: 10px;
   align-items: flex-start;
 }
-.state-panel--error { border-color: #FBEAE2; background: linear-gradient(135deg, #FFF5F5 0%, white 100%); }
+.state-panel--error { border-color: var(--coral-soft); background: linear-gradient(135deg, var(--coral-tint) 0%, var(--surface) 100%); }
 .state-panel strong { font-size: 16px; color: var(--ink); }
 .state-panel p { font-size: 13px; color: var(--ink-soft); }
 

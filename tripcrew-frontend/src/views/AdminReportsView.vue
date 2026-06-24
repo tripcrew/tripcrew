@@ -197,7 +197,7 @@ onMounted(load)
 .head-actions { display: flex; gap: 8px; }
 
 .table-card {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   overflow: hidden;
@@ -261,7 +261,7 @@ onMounted(load)
   font-weight: 700;
 }
 
-.type--review { background: var(--teal-soft); color: var(--teal-3); }
+.type--review { background: var(--teal-soft); color: var(--teal-ink); }
 .type--user { background: #FFE5E8; color: #B12C3A; }
 
 .reason { font-weight: 600; }
@@ -286,7 +286,7 @@ onMounted(load)
 .table-empty { text-align: center; padding: 40px 16px; color: var(--muted); }
 
 .state-panel {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   padding: 32px;
@@ -297,8 +297,8 @@ onMounted(load)
 }
 
 .state-panel--error {
-  border-color: #FBEAE2;
-  background: linear-gradient(135deg, #FFF5F5 0%, white 100%);
+  border-color: var(--coral-soft);
+  background: linear-gradient(135deg, var(--coral-tint) 0%, var(--surface) 100%);
 }
 
 .state-panel strong { font-size: 16px; color: var(--ink); }

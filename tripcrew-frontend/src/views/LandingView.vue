@@ -116,7 +116,7 @@
             <h2 class="t-h1">동행자와 함께 계획하면<br />더 빠릅니다</h2>
             <p class="t-body" style="margin-top: 12px; color: var(--ink-3);">
               회원가입 후 친구를 초대하고 실시간으로 함께 일정을 편집하세요.<br />
-              최대 10명까지 동시 편집 · WebSocket 기반 즉시 동기화.
+              최대 10명까지 동시 편집.
             </p>
             <div style="margin-top: 24px;">
               <BaseButton variant="primary" size="lg" @click="$router.push({ path: '/auth', query: { mode: 'signup' } })">
@@ -203,7 +203,7 @@ onBeforeUnmount(() => {
   display: inline-block;
   padding: 6px 14px;
   background: var(--teal-soft);
-  color: var(--teal-3);
+  color: var(--teal-ink);
   border-radius: 999px;
   font-size: 13px;
   font-weight: 700;
@@ -258,7 +258,7 @@ onBeforeUnmount(() => {
 .chatbot-preview {
   width: 100%;
   max-width: 480px;
-  background: white;
+  background: var(--surface);
   border-radius: var(--r-xl);
   border: 1px solid var(--line);
   box-shadow: var(--sh-3);
@@ -325,7 +325,7 @@ onBeforeUnmount(() => {
 
 .preview-card {
   padding: 8px 12px;
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 8px;
   font-size: 13px;
@@ -335,7 +335,7 @@ onBeforeUnmount(() => {
 .preview-card--accent {
   border-color: var(--coral);
   background: var(--coral-tint);
-  color: var(--coral-2);
+  color: var(--coral-ink);
   font-weight: 600;
 }
 
@@ -358,7 +358,7 @@ onBeforeUnmount(() => {
   padding: 30px;
   border: 1px solid var(--line);
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.88);
+  background: var(--glass);
   box-shadow: var(--sh-1);
 }
 
@@ -386,7 +386,7 @@ onBeforeUnmount(() => {
 
 .ranking-more {
   padding: 7px 12px;
-  color: var(--teal-3);
+  color: var(--teal-ink);
   font-size: 13px;
   font-weight: 700;
 }
@@ -398,7 +398,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 6px;
   padding: 6px 14px;
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 999px;
   font-size: 12px;
@@ -430,7 +430,7 @@ onBeforeUnmount(() => {
   width: 100%;
   text-align: left;
   font: inherit;
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 14px;
@@ -515,7 +515,7 @@ onBeforeUnmount(() => {
 .trend--up { background: #E1F5EA; color: #1A7A4A; }
 .trend--down { background: #FBEAE2; color: #B12C3A; }
 .trend--same { background: var(--bg-2); color: var(--ink-soft); }
-.trend--new { background: var(--teal-soft); color: var(--teal-3); }
+.trend--new { background: var(--teal-soft); color: var(--teal-ink); }
 
 @media (max-width: 1080px) {
   .ranking-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -576,7 +576,7 @@ onBeforeUnmount(() => {
 }
 
 .avatar--more {
-  background: var(--ink-2) !important;
+  background: var(--surface-inverse) !important;
   font-size: 16px !important;
 }
 
@@ -584,7 +584,7 @@ onBeforeUnmount(() => {
   font-family: var(--font-mono);
   font-size: 13px;
   color: var(--ink-3);
-  background: white;
+  background: var(--surface);
   padding: 8px 16px;
   border-radius: 999px;
   border: 1px solid var(--line);

@@ -237,13 +237,13 @@ onMounted(load)
   transition: all 0.15s;
 }
 .filter-tab:hover { color: var(--ink); }
-.filter-tab.active { background: white; color: var(--teal-3); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.filter-tab.active { background: var(--surface); color: var(--teal-ink); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
 
 .list-empty { text-align: center; padding: 48px 16px; color: var(--muted); }
 
 .iq-list { display: grid; gap: 14px; }
 .iq-card {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   padding: 20px;
@@ -281,8 +281,8 @@ onMounted(load)
   font-weight: 700;
   flex-shrink: 0;
 }
-.status-chip--open { background: #FFF1E8; color: var(--coral); }
-.status-chip--answered { background: var(--teal-soft); color: var(--teal-3); }
+.status-chip--open { background: var(--coral-soft); color: var(--coral-ink); }
+.status-chip--answered { background: var(--teal-soft); color: var(--teal-ink); }
 
 /* 기존 답변 표시 */
 .iq-answer {
@@ -292,7 +292,7 @@ onMounted(load)
   border-radius: var(--r-md);
 }
 .iq-answer__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-.iq-answer__label { font-size: 12px; font-weight: 700; color: var(--teal-3); }
+.iq-answer__label { font-size: 12px; font-weight: 700; color: var(--teal-ink); }
 .iq-answer__label em { font-style: normal; font-weight: 600; color: var(--ink-soft); }
 .iq-answer__text { font-size: 14px; line-height: 1.65; color: var(--ink-2); white-space: pre-wrap; word-break: break-word; }
 
@@ -329,7 +329,7 @@ onMounted(load)
 .action-btn--primary:hover:not(:disabled) { background: var(--teal-3); }
 
 .state-panel {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   padding: 32px;
@@ -338,7 +338,7 @@ onMounted(load)
   gap: 10px;
   align-items: flex-start;
 }
-.state-panel--error { border-color: #FBEAE2; background: linear-gradient(135deg, #FFF5F5 0%, white 100%); }
+.state-panel--error { border-color: var(--coral-soft); background: linear-gradient(135deg, var(--coral-tint) 0%, var(--surface) 100%); }
 .state-panel strong { font-size: 16px; color: var(--ink); }
 .state-panel p { font-size: 13px; color: var(--ink-soft); }
 

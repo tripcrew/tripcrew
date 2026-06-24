@@ -13,6 +13,20 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Smooth light↔dark hand-off. Scoped to color props so layout never animates.
+   Suppressed when the user prefers reduced motion. */
+body,
+body * {
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body,
+  body * {
+    transition: none !important;
+  }
+}
+
 /* ============================================
  * Typography utilities
  * ============================================ */
@@ -88,6 +102,18 @@ body {
   background: var(--bg-soft);
 }
 
+/* Subtle, theme-aware ambient background for content pages.
+   A single soft brand glow anchored top-right over --bg-soft — gentler than
+   the dashboard's dual glow so /home stays the boldest. --page-glow flips per
+   theme (a touch stronger in dark so it still reads). Applied to exactly the
+   pages we want unified (/attractions·/chat·/plans·/wishlist·/notices) via the
+   .page-ambient class — declared after .page-soft so it wins when both apply. */
+.page-ambient {
+  background:
+    radial-gradient(72% 56% at 88% -8%, var(--page-glow), transparent 60%),
+    var(--bg-soft);
+}
+
 /* ============================================
  * Generic chip / badge
  * ============================================ */
@@ -107,12 +133,12 @@ body {
 
 .chip--teal {
   background: var(--teal-soft);
-  color: var(--teal-3);
+  color: var(--teal-ink);
 }
 
 .chip--coral {
   background: var(--coral-soft);
-  color: var(--coral-2);
+  color: var(--coral-ink);
 }
 
 .chip--success {

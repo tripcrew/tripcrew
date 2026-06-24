@@ -2,6 +2,21 @@
   <div class="page auth-page">
     <header class="auth-header">
       <router-link :to="authStore.isAuthenticated ? '/home' : '/'" class="logo">TripCrew<span class="dot">.</span></router-link>
+      <button
+        class="auth-theme-toggle"
+        type="button"
+        :aria-label="isDark ? '라이트 모드로 전환' : '다크 모드로 전환'"
+        :title="isDark ? '라이트 모드' : '다크 모드'"
+        @click="toggleTheme"
+      >
+        <svg v-if="isDark" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4.2"/>
+          <path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/>
+        </svg>
+        <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.5A8.5 8.5 0 1 1 11.5 3a6.5 6.5 0 0 0 9.5 9.5z"/>
+        </svg>
+      </button>
     </header>
 
     <div class="auth-grid">
@@ -22,14 +37,14 @@
             <div class="feature-icon">✓</div>
             <div>
               <strong>실제 이동 시간 기반</strong>
-              <span>네이버 Directions 동선 최적화</span>
+              <span>네이버 지도 기반 동선 최적화</span>
             </div>
           </li>
           <li>
             <div class="feature-icon">✓</div>
             <div>
               <strong>최대 10명까지 동시 편집</strong>
-              <span>WebSocket 실시간 동기화</span>
+              <span>실시간 동기화</span>
             </div>
           </li>
           <li>
@@ -187,7 +202,10 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import BaseButton from '@/components/common/BaseButton.vue'
+import { useTheme } from '@/composables/useTheme'
 import { useAuthStore } from '@/stores/auth'
+
+const { isDark, toggle: toggleTheme } = useTheme()
 
 const route = useRoute()
 const router = useRouter()
@@ -320,13 +338,32 @@ function getRedirectTarget() {
 }
 
 .auth-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 24px 32px;
+}
+
+.auth-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  color: var(--ink-3);
+  transition: background 0.15s, color 0.15s;
+}
+
+.auth-theme-toggle:hover {
+  background: var(--bg-2);
+  color: var(--ink);
 }
 
 .logo {
   font-size: 22px;
   font-weight: 800;
-  color: var(--teal-3);
+  color: var(--teal-ink);
   letter-spacing: -0.6px;
 }
 .logo .dot { color: var(--coral); }
@@ -352,7 +389,7 @@ function getRedirectTarget() {
 }
 
 .auth-left__title .brand {
-  color: var(--teal-3);
+  color: var(--teal-ink);
 }
 
 .auth-left__title .accent {
@@ -410,7 +447,7 @@ function getRedirectTarget() {
 }
 
 .auth-card {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
   box-shadow: var(--sh-2);
@@ -425,7 +462,7 @@ function getRedirectTarget() {
   border-radius: var(--r-xl);
   background:
     radial-gradient(circle at 90% 10%, rgba(255, 129, 102, 0.2), transparent 28%),
-    linear-gradient(135deg, #EFFAF8, #F8FCFB);
+    linear-gradient(135deg, var(--teal-tint), var(--surface));
 }
 
 .auth-trip-card::after {
@@ -453,13 +490,13 @@ function getRedirectTarget() {
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.12em;
-  color: var(--teal-3);
+  color: var(--teal-ink);
 }
 
 .auth-trip-card__badge {
   padding: 4px 8px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--glass);
   color: var(--ink-3);
   font-size: 11px;
   font-weight: 700;
@@ -535,7 +572,7 @@ function getRedirectTarget() {
 }
 
 .auth-tab.active {
-  background: white;
+  background: var(--surface);
   color: var(--ink);
   box-shadow: var(--sh-1);
 }
@@ -582,14 +619,14 @@ function getRedirectTarget() {
 
 .field input:focus {
   outline: none;
-  background: white;
+  background: var(--surface);
   border-color: var(--teal);
   box-shadow: 0 0 0 2px var(--teal-soft);
 }
 
 .field input.error-input {
   border-color: var(--danger);
-  background: #FFF5F5;
+  background: rgba(220, 53, 69, 0.12);
 }
 
 .field-help {
@@ -610,7 +647,7 @@ function getRedirectTarget() {
   margin: -4px 0 14px;
   border: 1px solid rgba(224, 70, 85, 0.25);
   border-radius: 8px;
-  background: #FFF5F5;
+  background: rgba(220, 53, 69, 0.12);
   color: var(--danger);
   font-size: 13px;
   font-weight: 600;

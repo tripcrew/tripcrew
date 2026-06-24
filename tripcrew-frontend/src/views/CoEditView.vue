@@ -277,7 +277,7 @@ onMounted(async () => {
 .ws-dot {
   width: 6px;
   height: 6px;
-  background: white;
+  background: var(--surface);
   border-radius: 50%;
   animation: pulse 1.6s ease-in-out infinite;
 }
@@ -302,7 +302,7 @@ onMounted(async () => {
 }
 
 .coedit-main {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
   padding: 24px;
@@ -429,7 +429,7 @@ onMounted(async () => {
 }
 
 .side-card {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   padding: 20px;
@@ -534,7 +534,7 @@ onMounted(async () => {
 }
 
 .modal--conflict {
-  background: white;
+  background: var(--surface);
   border-radius: var(--r-xl);
   padding: 32px;
   width: 90%;

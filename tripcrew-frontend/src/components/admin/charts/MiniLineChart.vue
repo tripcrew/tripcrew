@@ -176,7 +176,7 @@ function fullDate(label) {
 .chart-tip {
   position: absolute;
   transform: translate(-50%, -100%);
-  background: var(--ink);
+  background: var(--surface-inverse);
   color: white;
   padding: 7px 10px;
   border-radius: 8px;
