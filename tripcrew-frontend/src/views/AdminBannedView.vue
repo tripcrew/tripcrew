@@ -16,7 +16,7 @@
 
     <section v-if="forbidden" class="state-panel state-panel--error">
       <strong>접근 권한이 없습니다 (403)</strong>
-      <p>이 화면은 ADMIN 전용입니다. 서버 인가 규칙(<span class="t-mono">/api/admin/**</span>)이 요청을 거부했습니다.</p>
+      <p>이 화면은 관리자 전용입니다. 관리자 계정으로 다시 로그인해 주세요.</p>
     </section>
 
     <section v-else-if="error" class="state-panel state-panel--error">
@@ -70,9 +70,6 @@
       {{ notice.text }}
     </p>
 
-    <p class="api-note t-mono">
-      GET /api/admin/users 중 status=BANNED 필터 · PATCH /admin/users/{id}/unban (ROLE_ADMIN)
-    </p>
   </AdminLayout>
 </template>
 

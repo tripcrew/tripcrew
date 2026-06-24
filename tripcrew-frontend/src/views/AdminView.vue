@@ -16,7 +16,7 @@
           <article class="stat-card">
             <span class="stat-label">전체 회원</span>
             <strong class="stat-value">{{ users.length }}</strong>
-            <span class="stat-delta">GET /api/admin/users</span>
+            <span class="stat-delta">현재 등록된 계정 기준</span>
           </article>
           <article class="stat-card">
             <span class="stat-label">관리자 (ADMIN)</span>
@@ -35,8 +35,7 @@
         <!-- 403: 일반 USER 가 접근한 경우 (서버 인가 거부) -->
         <section v-if="forbidden" class="state-panel state-panel--error">
           <strong>접근 권한이 없습니다 (403)</strong>
-          <p>이 화면은 ADMIN 전용입니다. 서버 인가 규칙(<span class="t-mono">/api/admin/**</span>)이
-            요청을 거부했습니다.</p>
+          <p>이 화면은 관리자 전용입니다. 관리자 계정으로 다시 로그인해 주세요.</p>
         </section>
 
         <!-- 그 외 로드 실패 -->
@@ -115,7 +114,7 @@
                     v-else-if="u.role === 'SUPER_ADMIN'"
                     class="action-btn"
                     disabled
-                    title="최고관리자 권한은 API로 변경할 수 없습니다 (DB 직접 지정만)"
+                    title="최고관리자 권한은 이 화면에서 변경할 수 없습니다"
                   >최고관리자</button>
                   <button
                     v-else
@@ -136,10 +135,6 @@
           {{ notice.text }}
         </p>
 
-        <p class="api-note t-mono">
-          GET /api/admin/users (ROLE_ADMIN) · PATCH /{id}/role (ROLE_SUPER_ADMIN, USER↔ADMIN) ·
-          제재는 [신고 관리]에서 처리(누적 3회 자동) · 해제는 [정지된 계정]에서
-        </p>
   </AdminLayout>
 </template>
 
