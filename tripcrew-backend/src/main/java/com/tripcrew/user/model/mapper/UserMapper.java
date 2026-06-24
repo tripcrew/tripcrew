@@ -39,6 +39,9 @@ public interface UserMapper {
 
     int updateNickname(@Param("id") Long id, @Param("nickname") String nickname);
 
-    /** 신고 처리완료 시 누적 신고 횟수 +1. (3회 이상이면 호출측에서 자동 제재) */
+    /** 신고 처리완료 시 누적 신고 횟수 +1. (임계 도달 시 호출측에서 단계 제재) */
     int incrementReportCount(@Param("id") Long id);
+
+    /** 관리자(ADMIN/SUPER_ADMIN) 사용자 id 목록. 영구정지 검토 알림 발송 대상. */
+    List<Long> findAdminIds();
 }

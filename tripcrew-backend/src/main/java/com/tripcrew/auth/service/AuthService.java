@@ -12,8 +12,11 @@ import com.tripcrew.auth.exception.BannedUserException;
 import com.tripcrew.auth.exception.DuplicateEmailException;
 import com.tripcrew.auth.exception.InvalidCredentialsException;
 import com.tripcrew.auth.exception.InvalidTokenException;
+import com.tripcrew.auth.exception.SuspendedUserException;
 import com.tripcrew.auth.exception.WithdrawnUserException;
 import com.tripcrew.auth.jwt.JwtProvider;
+import com.tripcrew.restriction.model.RestrictionType;
+import com.tripcrew.restriction.service.RestrictionService;
 import com.tripcrew.auth.model.dto.LoginRequest;
 import com.tripcrew.auth.model.dto.RefreshToken;
 import com.tripcrew.auth.model.dto.SignupRequest;
@@ -36,6 +39,7 @@ public class AuthService {
     private final RefreshTokenMapper refreshTokenMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
+    private final RestrictionService restrictionService;
 
     /** 회원가입. 이메일 중복 시 409. */
     @Transactional
@@ -136,6 +140,10 @@ public class AuthService {
         if (user.getStatus() == Status.WITHDRAWN) {
             throw new WithdrawnUserException();
         }
+        // 신고 누적 단계 제재 중 '계정 임시정지'면 login/reissue 차단(만료 시각 안내).
+        // 능력제재(후기/계획 금지)는 인증을 막지 않고 해당 작성 엔드포인트에서만 거른다.
+        restrictionService.activeRestriction(user.getId(), RestrictionType.ACCOUNT_SUSPEND)
+                .ifPresent(r -> { throw new SuspendedUserException(r.getUntil()); });
     }
 
     /** access/refresh 발급 + refresh 는 사용자당 1개로 갱신(회전). */

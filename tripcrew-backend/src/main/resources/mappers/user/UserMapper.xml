@@ -67,4 +67,9 @@
          WHERE id = #{id}
     </update>
 
+    <!-- 관리자(ADMIN/SUPER_ADMIN) id 목록: 영구정지 검토 알림 발송 대상 -->
+    <select id="findAdminIds" resultType="java.lang.Long">
+        SELECT id FROM users WHERE role IN ('ADMIN', 'SUPER_ADMIN')
+    </select>
+
 </mapper>

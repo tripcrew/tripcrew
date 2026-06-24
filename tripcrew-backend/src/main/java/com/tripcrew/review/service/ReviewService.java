@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.tripcrew.common.exception.BusinessException;
+import com.tripcrew.restriction.model.RestrictionType;
+import com.tripcrew.restriction.service.RestrictionService;
 import com.tripcrew.review.model.ReviewStatus;
 import com.tripcrew.review.model.ReviewTargetType;
 import com.tripcrew.review.model.dto.RatingCount;
@@ -53,6 +55,7 @@ public class ReviewService {
 
     private final ReviewMapper reviewMapper;
     private final FileStorageService fileStorageService;
+    private final RestrictionService restrictionService;
 
     /**
      * 특정 대상의 후기 목록(페이징+정렬) + 평점 요약. 공개 조회.
@@ -93,6 +96,8 @@ public class ReviewService {
     /** 후기 작성. 작성자는 인증 주체. 대상 존재를 앱레벨에서 검증한다. 이미지는 최대 5장. */
     @Transactional
     public ReviewResponse create(Long userId, ReviewCreateRequest request) {
+        // 신고 누적 단계 제재(후기 작성 금지) 중이면 403.
+        restrictionService.requireAllowed(userId, RestrictionType.REVIEW_WRITE);
         validateTargetExists(request.targetType(), request.targetId());
         List<String> imageUrls = sanitizeImageUrls(request.imageUrls());
 
