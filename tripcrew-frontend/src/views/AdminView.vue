@@ -578,8 +578,8 @@ onMounted(load)
   font-weight: 700;
 }
 
-.status--active { background: #E1F5EA; color: #1A7A4A; }
-.status--locked { background: #FFE5E8; color: #B12C3A; }
+.status--active { background: var(--teal-soft); color: var(--teal-ink); }
+.status--locked { background: var(--coral-soft); color: var(--coral-ink); }
 .status--dormant { background: var(--bg-2); color: var(--ink-soft); }
 
 /* 활성 단계 제재 칩 (상태 셀 하단) */
@@ -596,8 +596,8 @@ onMounted(load)
   border-radius: 4px;
   font-size: 10px;
   font-weight: 700;
-  background: #FFF1E0;
-  color: #B5651D;
+  background: color-mix(in srgb, var(--amber) 16%, var(--surface));
+  color: color-mix(in srgb, var(--amber) 75%, var(--ink));
 }
 
 /* 신고 누적 카운트 + 검토 플래그 */
@@ -610,8 +610,8 @@ onMounted(load)
   border-radius: 4px;
   font-size: 10px;
   font-weight: 700;
-  background: #FFE5E8;
-  color: #B12C3A;
+  background: var(--coral-soft);
+  color: var(--coral-ink);
 }
 
 .sanction-cell {
@@ -649,7 +649,7 @@ onMounted(load)
   color: white;
 }
 
-.action-btn--danger:hover { background: #B12C3A; }
+.action-btn--danger:hover { background: color-mix(in srgb, var(--danger) 85%, black); }
 
 .action-btn--promote {
   background: var(--teal);
@@ -693,8 +693,8 @@ onMounted(load)
   font-weight: 600;
 }
 
-.toast--ok { background: #E1F5EA; color: #1A7A4A; }
-.toast--error { background: #FFE5E8; color: #B12C3A; }
+.toast--ok { background: var(--teal-soft); color: var(--teal-ink); }
+.toast--error { background: var(--coral-soft); color: var(--coral-ink); }
 
 .table-foot {
   display: flex;
