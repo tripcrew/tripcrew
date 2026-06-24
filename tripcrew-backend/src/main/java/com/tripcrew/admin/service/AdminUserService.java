@@ -106,4 +106,14 @@ public class AdminUserService {
         User target = userMapper.findById(targetId).orElseThrow(UserNotFoundException::new);
         userMapper.updateStatus(target.getId(), Status.ACTIVE);
     }
+
+    /**
+     * 신고 누적으로 적용된 활성 단계 제재(후기/계획 금지·계정 임시정지)를 모두 즉시 해제한다.
+     * 영구정지(status=BANNED)와는 별개 — 그건 {@link #unban} 으로 푼다. 대상이 없으면 404.
+     */
+    @Transactional
+    public void clearRestrictions(Long targetId) {
+        userMapper.findById(targetId).orElseThrow(UserNotFoundException::new);
+        restrictionService.clearActive(targetId);
+    }
 }

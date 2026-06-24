@@ -31,4 +31,12 @@
          ORDER BY user_id, until
     </select>
 
+    <!-- 활성 제재를 모두 즉시 만료(관리자 수동 해제). 행 보존, until 을 NOW() 로 당김. -->
+    <update id="expireActiveByUser">
+        UPDATE user_restrictions
+           SET until = NOW()
+         WHERE user_id = #{userId}
+           AND (until IS NULL OR until > NOW())
+    </update>
+
 </mapper>

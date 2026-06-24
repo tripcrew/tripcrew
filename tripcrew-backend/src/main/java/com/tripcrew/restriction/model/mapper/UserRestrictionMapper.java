@@ -25,4 +25,10 @@ public interface UserRestrictionMapper {
 
     /** 모든 활성 제재(관리자 목록에서 사용자별로 묶어 표시). 만료 행은 제외. */
     List<UserRestriction> findAllActive();
+
+    /**
+     * 대상의 활성 제재를 모두 즉시 만료시킨다(관리자 수동 해제). 행은 보존하되 until 을 NOW() 로
+     * 당겨 비활성으로 만든다(이력 보존). 영향받은 행 수를 반환한다.
+     */
+    int expireActiveByUser(@Param("userId") Long userId);
 }

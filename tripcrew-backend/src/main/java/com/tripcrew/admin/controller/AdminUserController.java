@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -55,5 +56,12 @@ public class AdminUserController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void unban(@PathVariable Long id) {
         adminUserService.unban(id);
+    }
+
+    /** 신고 누적 단계 제재(후기/계획 금지·계정 임시정지) 즉시 전부 해제. 영구정지(BANNED)와는 별개. */
+    @DeleteMapping("/{id}/restrictions")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void clearRestrictions(@PathVariable Long id) {
+        adminUserService.clearRestrictions(id);
     }
 }

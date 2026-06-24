@@ -69,4 +69,10 @@ public class RestrictionService {
         return restrictionMapper.findAllActive().stream()
                 .collect(Collectors.groupingBy(UserRestriction::getUserId));
     }
+
+    /** 대상의 활성 단계 제재를 모두 즉시 해제(관리자 수동). 해제된 건수를 반환한다. */
+    @Transactional
+    public int clearActive(Long userId) {
+        return restrictionMapper.expireActiveByUser(userId);
+    }
 }
