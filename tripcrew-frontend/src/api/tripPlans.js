@@ -4,6 +4,7 @@ import { http } from './http'
  * 여행계획(F03) API. 백엔드 엔드포인트와 1:1 대응.
  *   GET    /api/trip-plans        내 계획 목록
  *   GET    /api/trip-plans/{id}   단건 조회
+ *   POST   /api/trip-plans/{id}/views 열람 수 기록
  *   POST   /api/trip-plans        생성
  *   PUT    /api/trip-plans/{id}   수정 (낙관적 락: payload 에 version 포함)
  *   DELETE /api/trip-plans/{id}   삭제
@@ -25,6 +26,7 @@ import { http } from './http'
 export const tripPlanApi = {
   list: () => http.get('/trip-plans').then((r) => r.data),
   get: (id) => http.get(`/trip-plans/${id}`).then((r) => r.data),
+  recordView: (id) => http.post(`/trip-plans/${id}/views`),
   create: (payload) => http.post('/trip-plans', payload).then((r) => r.data),
   update: (id, payload) => http.put(`/trip-plans/${id}`, payload).then((r) => r.data),
   remove: (id) => http.delete(`/trip-plans/${id}`),

@@ -85,4 +85,10 @@ public class NotificationService {
             throw new BusinessException(HttpStatus.NOT_FOUND, "알림을 찾을 수 없습니다.");
         }
     }
+
+    /** 내 알림 전체 삭제(멱등). */
+    @Transactional
+    public void deleteAll(Long userId) {
+        notificationMapper.deleteAllByUser(userId);
+    }
 }

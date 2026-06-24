@@ -19,6 +19,9 @@ public interface TripPlanMapper {
     /** 특정 사용자가 소유한 계획 목록(최신순). */
     List<TripPlan> findByOwnerId(Long ownerId);
 
+    /** 계획 열람 수를 원자적으로 1 증가시킨다. */
+    int incrementViewCount(Long id);
+
     /**
      * 낙관적 락 UPDATE. {@code WHERE id = ? AND version = ?} 로 갱신하고
      * 성공 시 version 을 1 증가시킨다. 반환값(affected rows)이 0이면

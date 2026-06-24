@@ -6,6 +6,7 @@ import { http } from './http'
  *   GET   /api/me/notifications/unread-count  미읽음 개수 → { count }
  *   PATCH /api/me/notifications/{id}/read     한 건 읽음
  *   PATCH /api/me/notifications/read-all      전부 읽음
+ *   DELETE /api/me/notifications              전체 삭제
  *
  * 알림 한 건: { id, type, refId, message, read, createdAt }
  */
@@ -15,6 +16,7 @@ export const notificationApi = {
   markRead: (id) => http.patch(`/me/notifications/${id}/read`).then((r) => r.data),
   markAllRead: () => http.patch('/me/notifications/read-all').then((r) => r.data),
   remove: (id) => http.delete(`/me/notifications/${id}`).then((r) => r.data),
+  removeAll: () => http.delete('/me/notifications').then((r) => r.data),
 }
 
 /**

@@ -29,11 +29,18 @@
             <div v-if="notifOpen" class="notif__panel">
               <div class="notif__head">
                 <span class="notif__title">알림</span>
-                <button
-                  v-if="unreadCount > 0"
-                  class="notif__readall"
-                  @click="handleReadAll"
-                >모두 읽음</button>
+                <div v-if="notifications.length > 0" class="notif__actions">
+                  <button
+                    v-if="unreadCount > 0"
+                    class="notif__readall"
+                    @click="handleReadAll"
+                  >모두 읽음</button>
+                  <button
+                    class="notif__deleteall"
+                    :disabled="notifDeleting"
+                    @click="handleDeleteAll"
+                  >{{ notifDeleting ? '삭제 중…' : '전체 삭제' }}</button>
+                </div>
               </div>
 
               <div class="notif__list">
@@ -126,6 +133,7 @@ const NOTIF_PAGE = 10 // 한 번에 보여줄 개수(그 이상은 '더보기')
 const notifRef = ref(null)
 const notifOpen = ref(false)
 const notifLoading = ref(false)
+const notifDeleting = ref(false)
 const notifications = ref([])
 const unreadCount = ref(0)
 const visibleCount = ref(NOTIF_PAGE)
@@ -169,6 +177,20 @@ async function handleDelete(n) {
     if (wasUnread) unreadCount.value = Math.max(0, unreadCount.value - 1)
   } catch {
     /* 무시 */
+  }
+}
+
+async function handleDeleteAll() {
+  if (notifDeleting.value || notifications.value.length === 0) return
+  notifDeleting.value = true
+  try {
+    await notificationApi.removeAll()
+    notifications.value = []
+    unreadCount.value = 0
+  } catch {
+    /* 삭제 실패 시 현재 목록을 유지한다. */
+  } finally {
+    notifDeleting.value = false
   }
 }
 
@@ -401,10 +423,32 @@ const avatarText = computed(() => displayName.value.trim().slice(0, 1).toUpperCa
   color: var(--ink);
 }
 
+.notif__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .notif__readall {
   font-size: 12px;
   font-weight: 600;
   color: var(--teal-3);
+}
+
+.notif__deleteall {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-3);
+}
+
+.notif__deleteall:hover:not(:disabled) {
+  color: var(--coral);
+  text-decoration: underline;
+}
+
+.notif__deleteall:disabled {
+  cursor: wait;
+  opacity: 0.6;
 }
 
 .notif__readall:hover {

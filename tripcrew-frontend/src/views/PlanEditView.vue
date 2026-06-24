@@ -1502,6 +1502,9 @@ function cleanDisplayName(value) {
 
 onMounted(async () => {
   await load()
+  if (!loadError.value && myRole.value) {
+    tripPlanApi.recordView(id).catch(() => {})
+  }
   await nextTick()
   if (!loadError.value) initNaverMap()
   // 멤버일 때만 실시간 협업 연결(프레즌스 + 장소 동기화). 비멤버는 load()에서 이미 막힘.
