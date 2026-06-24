@@ -45,9 +45,8 @@
         <div class="filter-group">
           <h4>평점</h4>
           <div class="chip-row">
-            <button class="filter-chip active" type="button">전체</button>
-            <button class="filter-chip" type="button" disabled>★ 4+</button>
-            <button class="filter-chip" type="button" disabled>★ 4.5+</button>
+            <button :class="['filter-chip', { active: filters.minRating === null }]" type="button" @click="setMinRating(null)">전체</button>
+            <button :class="['filter-chip', { active: filters.minRating === 3.5 }]" type="button" @click="setMinRating(3.5)">★ 3.5+</button>
           </div>
         </div>
       </aside>
@@ -58,16 +57,13 @@
             <span class="search-icon">⌕</span>
             <input v-model.trim="keyword" type="text" placeholder="관광지 이름 또는 키워드" />
           </div>
-          <div class="view-toggle">
-            <button class="active" type="button">목록</button>
-            <button type="button" disabled>지도</button>
-          </div>
         </div>
 
         <div class="results-meta">
           <p>
             <strong>{{ selectedRegionLabel }}</strong>
             <span v-if="selectedTypeLabel"> · {{ selectedTypeLabel }}</span>
+            <span v-if="filters.minRating !== null"> · ★ {{ filters.minRating }} 이상</span>
             = <strong>{{ pageData.totalCount.toLocaleString() }}개</strong>
             <span v-if="isLoading" class="t-mono muted ml">조회 중...</span>
           </p>
@@ -200,6 +196,7 @@ const filters = reactive({
   sidoCode: null,
   gugunCode: null,
   contentTypeIds: [],
+  minRating: null,
   page: 1,
   size: DEFAULT_PAGE_SIZE,
 })
@@ -250,6 +247,7 @@ function buildParams() {
     sidoCode: filters.sidoCode,
     gugunCode: filters.gugunCode,
     contentTypeIds: filters.contentTypeIds,
+    minRating: filters.minRating,
     page: filters.page,
     size: filters.size,
   }
@@ -270,11 +268,17 @@ function toNumberArray(value) {
   return values.map((item) => Number(item)).filter((item) => Number.isInteger(item) && item > 0)
 }
 
+function toNullableRating(value) {
+  const parsed = Number(value)
+  return parsed === 3.5 ? parsed : null
+}
+
 function applyQueryToState(query) {
   keyword.value = typeof query.keyword === 'string' ? query.keyword : ''
   filters.sidoCode = toNullableNumber(query.sidoCode)
   filters.gugunCode = toNullableNumber(query.gugunCode)
   filters.contentTypeIds = toNumberArray(query.contentTypeIds)
+  filters.minRating = toNullableRating(query.minRating)
   filters.page = toPositiveNumber(query.page, 1)
   filters.size = toPositiveNumber(query.size, DEFAULT_PAGE_SIZE)
 }
@@ -334,6 +338,7 @@ function buildRouteQuery() {
   if (filters.contentTypeIds.length) {
     nextQuery.contentTypeIds = filters.contentTypeIds.map((typeId) => String(typeId))
   }
+  if (filters.minRating !== null) nextQuery.minRating = String(filters.minRating)
   if (filters.page > 1) nextQuery.page = String(filters.page)
   if (filters.size !== DEFAULT_PAGE_SIZE) nextQuery.size = String(filters.size)
 
@@ -406,6 +411,7 @@ async function resetFilters() {
   filters.sidoCode = null
   filters.gugunCode = null
   filters.contentTypeIds = []
+  filters.minRating = null
   filters.page = 1
   await syncRouteQuery()
   loadAttractions()
@@ -413,6 +419,10 @@ async function resetFilters() {
 
 function goToDetail(no) {
   router.push(`/attractions/${no}`)
+}
+
+function setMinRating(rating) {
+  filters.minRating = rating
 }
 
 // 카드 찜(좋아요) — 배치 조회로 채우고, 하트 클릭 시 토글
@@ -482,7 +492,7 @@ watch(
 )
 
 watch(
-  () => [filters.gugunCode, [...filters.contentTypeIds]],
+  () => [filters.gugunCode, [...filters.contentTypeIds], filters.minRating],
   async () => {
     if (isApplyingRouteQuery) return
 
@@ -610,11 +620,6 @@ onBeforeUnmount(() => {
   color: white;
 }
 
-.filter-chip:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
 .results-head {
   display: flex;
   gap: 12px;
@@ -639,33 +644,6 @@ onBeforeUnmount(() => {
   outline: none;
   background: none;
   font-size: 15px;
-}
-
-.view-toggle {
-  display: flex;
-  background: white;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 4px;
-  gap: 2px;
-}
-
-.view-toggle button {
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink-soft);
-}
-
-.view-toggle .active {
-  background: var(--teal);
-  color: white;
-}
-
-.view-toggle button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
 }
 
 .results-meta {
