@@ -12,7 +12,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = defineProps({
   value: { type: Number, default: null },
-  duration: { type: Number, default: 900 },
+  duration: { type: Number, default: 1000 },
 })
 
 const displayed = ref(0)

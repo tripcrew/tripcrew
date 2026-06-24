@@ -12,7 +12,7 @@
           rx="2"
           class="bar"
           :class="{ 'bar--active': hoverIndex === bar.key }"
-          :style="{ animationDelay: bar.key * 12 + 'ms' }"
+          :style="{ animationDelay: bar.key * 16 + 'ms' }"
           @mouseenter="hoverIndex = bar.key"
           @mouseleave="hoverIndex = -1"
         />
@@ -121,7 +121,7 @@ function fullDate(label) {
   transition: fill 0.12s;
   transform-box: fill-box;
   transform-origin: bottom;
-  animation: bar-grow 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: bar-grow 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .bar--active { fill: var(--teal-3); }
 

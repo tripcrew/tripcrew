@@ -82,7 +82,7 @@ const segments = computed(() => {
 
 /* 각 조각이 자기 시작점에서 제 길이(인라인 dasharray)까지 자라난다.
    from 만 정의 → 100% 는 인라인 stroke-dasharray(underlying value)가 적용됨. */
-.donut-seg { animation: donut-seg 0.7s ease-out both; }
+.donut-seg { animation: donut-seg 0.85s ease-out both; }
 @keyframes donut-seg {
   from { stroke-dasharray: 0 282.743; }
 }
