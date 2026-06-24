@@ -52,7 +52,11 @@
                   :disabled="likeBusy"
                   @click="toggleLike"
                 >
-                  <span class="like-heart">{{ liked ? '♥' : '♡' }}</span>
+                  <span
+                    class="like-heart"
+                    :class="{ 'like-heart--pop': likePop }"
+                    @animationend="likePop = false"
+                  >{{ liked ? '♥' : '♡' }}</span>
                   <span class="like-count">{{ likeCountLabel }}</span>
                 </button>
                 <button class="icon-action" type="button" aria-label="링크 복사" title="링크 복사" @click="copyShareUrl">⧉</button>
@@ -227,6 +231,7 @@ const errorMessage = ref('')
 const liked = ref(false)
 const likeCount = ref(0)
 const likeBusy = ref(false)
+const likePop = ref(false) // 찜 토글 시 하트 바운스(animationend에 초기화)
 // 999 초과는 999+ 로 표시
 const likeCountLabel = computed(() => (likeCount.value > 999 ? '999+' : String(likeCount.value)))
 
@@ -400,6 +405,7 @@ async function toggleLike() {
       : await attractionLikeApi.like(route.params.id)
     liked.value = res.liked
     likeCount.value = res.likeCount
+    likePop.value = true
   } catch {
     // 실패 시 상태 유지(서버 권위값 재동기화)
     await loadLikeStatus()
@@ -709,6 +715,17 @@ onMounted(loadAll)
   font-size: 18px;
   color: var(--ink-soft);
   transition: color 0.15s, transform 0.15s;
+}
+
+/* 찜 토글 시 하트가 통통 튀는 피드백 (reduced-motion이면 비활성) */
+@keyframes like-pop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.32); }
+  62% { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .like-heart--pop { animation: like-pop 0.4s ease-out; }
 }
 
 .like-action.liked {
