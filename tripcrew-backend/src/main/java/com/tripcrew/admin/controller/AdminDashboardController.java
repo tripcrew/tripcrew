@@ -1,11 +1,15 @@
 package com.tripcrew.admin.controller;
 
+import java.util.List;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.tripcrew.admin.model.dto.AdminDashboardResponse;
 import com.tripcrew.admin.model.dto.AdminDashboardStatsResponse;
+import com.tripcrew.admin.model.dto.DailyCount;
 import com.tripcrew.admin.service.AdminDashboardService;
 
 import lombok.RequiredArgsConstructor;
@@ -26,9 +30,16 @@ public class AdminDashboardController {
         return adminDashboardService.summary();
     }
 
-    /** 차트용 통계(최근 14일 추이 + 역할/상태 분포). */
+    /** 차트용 통계(최근 14일 활동 추이 + 역할/상태 분포). */
     @GetMapping("/stats")
     public AdminDashboardStatsResponse stats() {
         return adminDashboardService.stats();
+    }
+
+    /** 가입 추이(선택 연/월의 일자별, 1일~말일). 파라미터 생략 시 이번 달. */
+    @GetMapping("/signups")
+    public List<DailyCount> signups(@RequestParam(required = false) Integer year,
+                                    @RequestParam(required = false) Integer month) {
+        return adminDashboardService.signupsForMonth(year, month);
     }
 }

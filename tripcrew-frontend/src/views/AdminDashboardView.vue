@@ -76,15 +76,28 @@
       </div>
 
       <!-- 통계: 실제 도메인 데이터(가입/후기/신고/회원 분포) 기반 차트 -->
-      <h2 class="section-label">통계 <span class="section-note">최근 14일 · 실데이터</span></h2>
+      <h2 class="section-label">통계 <span class="section-note">실데이터</span></h2>
       <div class="chart-grid">
         <section class="panel">
-          <h3 class="panel-title">가입 추이</h3>
-          <MiniBarChart :data="signupSeries" aria-label="최근 14일 가입 추이" />
+          <div class="panel-head">
+            <h3 class="panel-title">가입 추이</h3>
+            <div class="period-picker">
+              <select v-model.number="signupYear" class="period-select" aria-label="연도 선택" @change="loadSignups">
+                <option v-for="y in yearOptions" :key="y" :value="y">{{ y }}년</option>
+              </select>
+              <select v-model.number="signupMonth" class="period-select" aria-label="월 선택" @change="loadSignups">
+                <option v-for="m in 12" :key="m" :value="m">{{ m }}월</option>
+              </select>
+            </div>
+          </div>
+          <MiniBarChart :data="signupSeries" unit="명" :aria-label="`${signupYear}년 ${signupMonth}월 가입 추이`" />
         </section>
         <section class="panel">
-          <h3 class="panel-title">콘텐츠 활동 추이</h3>
-          <MiniLineChart :series="activitySeries" aria-label="최근 14일 후기·신고 추이" />
+          <div class="panel-head">
+            <h3 class="panel-title">콘텐츠 활동 추이</h3>
+            <span class="panel-sub">최근 14일</span>
+          </div>
+          <MiniLineChart :series="activitySeries" unit="건" aria-label="최근 14일 후기·신고 추이" />
         </section>
         <section class="panel">
           <h3 class="panel-title">회원 역할 분포</h3>
@@ -170,14 +183,25 @@ const forbidden = ref(false)
 const hasOpenReports = computed(() => (summary.value.openReportCount || 0) > 0)
 const hasBanned = computed(() => (summary.value.bannedUserCount || 0) > 0)
 
-// 차트 데이터(최근 14일 추이 + 역할/상태 분포)
-const stats = ref({ signups: [], reviews: [], reports: [], roleDistribution: [], statusDistribution: [] })
+// 차트 데이터(최근 14일 활동 추이 + 역할/상태 분포)
+const stats = ref({ reviews: [], reports: [], roleDistribution: [], statusDistribution: [] })
 
 function toSeries(rows) {
   return (rows || []).map((r) => ({ label: r.day, value: r.count }))
 }
 
-const signupSeries = computed(() => toSeries(stats.value.signups))
+// 가입 추이 — 연/월 선택형(별도 엔드포인트). 기본=이번 달.
+const now = new Date()
+const signupYear = ref(now.getFullYear())
+const signupMonth = ref(now.getMonth() + 1)
+const signupDays = ref([])
+// 서비스 시작 연도(2026)부터 올해까지 선택 가능
+const yearOptions = computed(() => {
+  const years = []
+  for (let y = now.getFullYear(); y >= 2026; y--) years.push(y)
+  return years
+})
+const signupSeries = computed(() => toSeries(signupDays.value))
 
 const activitySeries = computed(() => [
   { name: '후기', color: 'var(--teal)', data: toSeries(stats.value.reviews) },
@@ -211,6 +235,15 @@ function display(value) {
   return value === null || value === undefined ? '—' : value
 }
 
+// 가입 추이만 별도 로드(연/월 변경 시 재호출). 차트만 갱신하고 전체 에러 상태는 건드리지 않음.
+async function loadSignups() {
+  try {
+    signupDays.value = await adminApi.dashboardSignups(signupYear.value, signupMonth.value)
+  } catch {
+    signupDays.value = []
+  }
+}
+
 async function load() {
   loading.value = true
   error.value = ''
@@ -219,6 +252,7 @@ async function load() {
     const [summaryData, statsData] = await Promise.all([adminApi.dashboard(), adminApi.dashboardStats()])
     summary.value = summaryData
     stats.value = statsData
+    await loadSignups()
   } catch (e) {
     if (e.response && e.response.status === 403) {
       forbidden.value = true
@@ -254,9 +288,10 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 와이드 모니터에서 패널·차트가 과도하게 커지지 않도록 콘텐츠 폭 상한 */
+/* 콘텐츠 폭 상한 — 큰 모니터는 넉넉히 채우되 초광폭에서 과도하게 늘어지지 않게.
+   차트는 높이 고정(ResizeObserver 픽셀 렌더)이라 폭이 넓어져도 세로로 길어지지 않는다. */
 .dash {
-  max-width: 1200px;
+  max-width: 1680px;
 }
 
 .admin-breadcrumb {
@@ -313,6 +348,37 @@ onMounted(() => {
   color: var(--ink-2);
   margin-bottom: 14px;
 }
+
+/* 차트 패널 헤더(제목 + 기간 선택/부제) */
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  min-height: 32px;
+}
+.panel-head .panel-title { margin-bottom: 0; }
+
+.panel-sub {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.period-picker { display: flex; gap: 6px; }
+
+.period-select {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.period-select:focus { outline: none; border-color: var(--teal); }
 
 /* 메인 카드 그리드 */
 .card-grid {

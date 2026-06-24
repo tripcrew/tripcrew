@@ -1,36 +1,57 @@
 <template>
-  <div class="chart-wrap">
-    <svg :viewBox="`0 0 ${W} ${H}`" class="chart-svg" role="img" :aria-label="ariaLabel">
-      <!-- 가로 기준선(0/최댓값) -->
-      <line :x1="padL" :y1="topY" :x2="W - padR" :y2="topY" class="grid" />
-      <line :x1="padL" :y1="baseY" :x2="W - padR" :y2="baseY" class="axis" />
+  <div ref="wrap" class="chart-wrap">
+    <svg :width="width" :height="H" class="chart-svg" role="img" :aria-label="ariaLabel">
+      <line :x1="plotL" :y1="plotTop" :x2="plotR" :y2="plotTop" class="grid" />
+      <line :x1="plotL" :y1="plotBottom" :x2="plotR" :y2="plotBottom" class="axis" />
       <g v-for="bar in bars" :key="bar.key">
-        <rect :x="bar.x" :y="bar.y" :width="bar.w" :height="bar.h" rx="2" class="bar">
-          <title>{{ bar.label }} · {{ bar.value }}</title>
-        </rect>
+        <rect
+          :x="bar.x"
+          :y="bar.y"
+          :width="bar.w"
+          :height="bar.h"
+          rx="2"
+          class="bar"
+          :class="{ 'bar--active': hoverIndex === bar.key }"
+          @mouseenter="hoverIndex = bar.key"
+          @mouseleave="hoverIndex = -1"
+        />
+        <text v-if="bar.showValue" :x="bar.cx" :y="bar.y - 5" class="val" text-anchor="middle">{{ bar.value }}</text>
         <text v-if="bar.showTick" :x="bar.cx" :y="H - 6" class="tick" text-anchor="middle">{{ bar.tick }}</text>
       </g>
     </svg>
+    <div v-if="tip" class="chart-tip" :style="tipStyle">
+      <strong>{{ tip.title }}</strong>
+      <span>{{ tip.value }}{{ unit }}</span>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+
+import { useChartWidth } from './useChartWidth'
 
 const props = defineProps({
   /** [{ label: 'YYYY-MM-DD', value: number }] */
   data: { type: Array, default: () => [] },
+  unit: { type: String, default: '명' },
   ariaLabel: { type: String, default: '막대 차트' },
 })
 
-// viewBox 좌표계(반응형: width:100% 로 스케일). 가로로 넓고 낮은 비율이라
-// 와이드 화면에서도 세로가 과하게 커지지 않는다.
-const W = 360
-const H = 132
-const padL = 10
-const padR = 10
-const topY = 10
-const baseY = 106
+const wrap = ref(null)
+const { width } = useChartWidth(wrap)
+const hoverIndex = ref(-1)
+
+const H = 220
+const padTop = 26
+const padBottom = 22
+const padL = 14
+const padR = 14
+const plotTop = padTop
+const plotBottom = H - padBottom
+const plotL = padL
+const plotR = computed(() => Math.max(plotL + 10, width.value - padR))
+const plotH = plotBottom - plotTop
 
 const maxValue = computed(() => {
   const max = props.data.reduce((m, d) => (d.value > m ? d.value : m), 0)
@@ -39,35 +60,82 @@ const maxValue = computed(() => {
 
 const bars = computed(() => {
   const n = props.data.length || 1
-  const plotW = W - padL - padR
+  const plotW = plotR.value - plotL
   const step = plotW / n
-  const barW = Math.max(2, step * 0.6)
-  const plotH = baseY - topY
+  const barW = Math.max(2, Math.min(40, step * 0.62))
+  // 라벨이 겹치지 않도록 가용 폭에 맞춰 눈금 솎아냄
+  const maxLabels = Math.max(6, Math.floor(plotW / 34))
+  const tickEvery = Math.ceil(n / maxLabels)
   return props.data.map((d, i) => {
     const h = (d.value / maxValue.value) * plotH
-    const x = padL + i * step + (step - barW) / 2
+    const cx = plotL + i * step + step / 2
     return {
       key: i,
       label: d.label,
       value: d.value,
-      x,
+      x: cx - barW / 2,
       w: barW,
       h,
-      y: baseY - h,
-      cx: padL + i * step + step / 2,
-      tick: String(d.label).slice(-2), // YYYY-MM-DD → DD
-      showTick: true, // 14일 전부 표시
+      y: plotBottom - h,
+      cx,
+      tick: shortDay(d.label),
+      showTick: i % tickEvery === 0 || i === n - 1,
+      showValue: d.value > 0 && barW >= 13,
     }
   })
 })
+
+const tip = computed(() => {
+  if (hoverIndex.value < 0) return null
+  const bar = bars.value[hoverIndex.value]
+  if (!bar) return null
+  return { title: fullDate(bar.label), value: bar.value, x: bar.cx, y: bar.y }
+})
+
+const tipStyle = computed(() => {
+  const t = tip.value
+  if (!t) return {}
+  return { left: `${t.x}px`, top: `${Math.max(4, t.y - 8)}px` }
+})
+
+// 'YYYY-MM-DD' → 일(앞 0 제거)
+function shortDay(label) {
+  const parts = String(label).split('-')
+  return parts.length === 3 ? String(Number(parts[2])) : String(label).slice(-2)
+}
+// 'YYYY-MM-DD' → 'M월 D일'
+function fullDate(label) {
+  const parts = String(label).split('-')
+  return parts.length === 3 ? `${Number(parts[1])}월 ${Number(parts[2])}일` : label
+}
 </script>
 
 <style scoped>
-.chart-wrap { width: 100%; }
-.chart-svg { width: 100%; height: auto; display: block; }
-.bar { fill: var(--teal); transition: fill 0.15s; }
-.bar:hover { fill: var(--teal-3); }
+.chart-wrap { width: 100%; position: relative; }
+.chart-svg { display: block; }
+.bar { fill: var(--teal); transition: fill 0.12s; }
+.bar--active { fill: var(--teal-3); }
 .grid { stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 3; }
 .axis { stroke: var(--line); stroke-width: 1; }
-.tick { fill: var(--muted); font-size: 9px; font-family: var(--font-mono); }
+.tick { fill: var(--muted); font-size: 10px; font-family: var(--font-mono); }
+.val { fill: var(--ink-soft); font-size: 10px; font-weight: 700; font-family: var(--font-mono); }
+
+.chart-tip {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  background: var(--ink);
+  color: white;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  z-index: 5;
+}
+.chart-tip strong { font-weight: 700; }
+.chart-tip span { color: rgba(255, 255, 255, 0.82); }
 </style>

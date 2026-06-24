@@ -4,10 +4,11 @@
 <mapper namespace="com.tripcrew.admin.model.mapper.AdminStatsMapper">
 
     <!-- 일자별 추이: DATE(created_at) 로 묶어 건수. 빈 날짜는 서비스에서 0 으로 채운다. -->
-    <select id="signupsByDay" resultType="DailyCount">
+    <select id="signupsBetween" resultType="DailyCount">
         SELECT DATE(created_at) AS day, COUNT(*) AS count
           FROM users
-         WHERE created_at &gt;= #{since}
+         WHERE created_at &gt;= #{start}
+           AND created_at &lt; #{endExclusive}
          GROUP BY DATE(created_at)
          ORDER BY day
     </select>

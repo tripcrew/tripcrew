@@ -16,8 +16,9 @@ import com.tripcrew.admin.model.dto.LabelCount;
 @Mapper
 public interface AdminStatsMapper {
 
-    /** since 이후 일자별 가입 수(빈 날짜는 결과에 없음 → 서비스에서 0 채움). */
-    List<DailyCount> signupsByDay(@Param("since") LocalDateTime since);
+    /** [start, endExclusive) 구간의 일자별 가입 수(빈 날짜는 결과에 없음 → 서비스에서 0 채움). */
+    List<DailyCount> signupsBetween(@Param("start") LocalDateTime start,
+                                    @Param("endExclusive") LocalDateTime endExclusive);
 
     /** since 이후 일자별 후기 작성 수. */
     List<DailyCount> reviewsByDay(@Param("since") LocalDateTime since);
