@@ -14,6 +14,27 @@ const routes = [
     meta: { title: '회원가입/로그인 (SC-02)' }
   },
   {
+    path: '/terms',
+    name: 'terms',
+    component: () => import('@/views/LegalView.vue'),
+    props: { documentType: 'terms' },
+    meta: { title: '이용약관' }
+  },
+  {
+    path: '/privacy',
+    name: 'privacy',
+    component: () => import('@/views/LegalView.vue'),
+    props: { documentType: 'privacy' },
+    meta: { title: '개인정보처리방침' }
+  },
+  {
+    path: '/data-sources',
+    name: 'data-sources',
+    component: () => import('@/views/LegalView.vue'),
+    props: { documentType: 'dataSources' },
+    meta: { title: '공공데이터 출처' }
+  },
+  {
     path: '/home',
     name: 'dashboard',
     component: () => import('@/views/DashboardView.vue'),
