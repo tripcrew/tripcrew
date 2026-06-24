@@ -38,7 +38,7 @@
       </button>
 
       <div class="admin-user">
-        <div class="avatar" style="background: var(--teal-3);">{{ userInitial }}</div>
+        <RouterLink to="/profile" class="avatar" style="background: var(--teal-3);" title="내 프로필 · 정보 수정" aria-label="내 프로필">{{ userInitial }}</RouterLink>
       </div>
     </header>
 
@@ -283,6 +283,12 @@ onMounted(() => {
   font-weight: 700;
   font-size: 14px;
   border: 2px solid white;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.admin-user .avatar:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
 }
 
 /* Layout */
