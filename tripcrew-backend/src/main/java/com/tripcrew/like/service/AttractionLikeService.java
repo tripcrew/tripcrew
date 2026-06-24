@@ -1,12 +1,14 @@
 package com.tripcrew.like.service;
 
 import java.util.List;
+import java.util.Objects;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.tripcrew.common.exception.BusinessException;
+import com.tripcrew.like.dto.AttractionLikeCount;
 import com.tripcrew.like.dto.LikeStatusResponse;
 import com.tripcrew.like.dto.WishlistItemResponse;
 import com.tripcrew.like.model.mapper.AttractionLikeMapper;
@@ -20,6 +22,9 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class AttractionLikeService {
+
+    /** 카드 배치 통계 한 번에 조회할 수 있는 관광지 수 상한(남용 방지). */
+    private static final int MAX_BATCH_NOS = 100;
 
     private final AttractionLikeMapper likeMapper;
 
@@ -51,6 +56,22 @@ public class AttractionLikeService {
     @Transactional(readOnly = true)
     public List<WishlistItemResponse> listMine(Long userId) {
         return likeMapper.findLikedByUser(userId);
+    }
+
+    /**
+     * 관광지 카드용 배치 좋아요 통계(총 찜 수 + 현재 사용자 찜 여부). nos 가 비면 빈 목록.
+     * 과도한 요청은 잘라낸다. 비로그인(userId=null)이면 liked 모두 false.
+     */
+    @Transactional(readOnly = true)
+    public List<AttractionLikeCount> listLikeCounts(Long userId, List<Integer> nos) {
+        if (nos == null || nos.isEmpty()) {
+            return List.of();
+        }
+        List<Integer> safe = nos.stream().filter(Objects::nonNull).distinct().limit(MAX_BATCH_NOS).toList();
+        if (safe.isEmpty()) {
+            return List.of();
+        }
+        return likeMapper.findLikeCountsByNos(userId, safe);
     }
 
     private void requireAttraction(Integer attractionNo) {

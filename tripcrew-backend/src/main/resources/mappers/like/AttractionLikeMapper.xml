@@ -57,4 +57,18 @@
          ORDER BY al.created_at DESC, al.id DESC
     </select>
 
+    <!-- 카드 배치 좋아요 통계: 여러 관광지의 총 찜 수 + 현재 사용자 찜 여부(N+1 방지).
+         user_id <=> #{userId} 는 NULL-safe 비교 → 비로그인(userId=null)이면 liked 항상 0.
+         찜 0건 관광지는 결과에 안 나옴(호출측 0/false 기본값). -->
+    <select id="findLikeCountsByNos" resultType="AttractionLikeCount">
+        SELECT
+            attraction_no AS no,
+            COUNT(*)      AS like_count,
+            MAX(user_id &lt;=&gt; #{userId}) AS liked
+          FROM attraction_likes
+         WHERE attraction_no IN
+        <foreach collection="nos" item="n" open="(" separator="," close=")">#{n}</foreach>
+         GROUP BY attraction_no
+    </select>
+
 </mapper>

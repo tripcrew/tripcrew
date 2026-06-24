@@ -114,6 +114,18 @@
               </div>
               <div class="card-title-row">
                 <h3>{{ cleanDisplayName(a.title) }}</h3>
+                <button
+                  class="card-like"
+                  :class="{ liked: likeState(a).liked }"
+                  type="button"
+                  :disabled="likeBusyNo === a.no"
+                  :aria-label="likeState(a).liked ? '찜 해제' : '찜하기'"
+                  :title="likeState(a).liked ? '찜 해제' : '가보고 싶어요(찜)'"
+                  @click.stop="toggleCardLike(a)"
+                >
+                  <span class="card-like__heart">{{ likeState(a).liked ? '♥' : '♡' }}</span>
+                  <span class="card-like__count">{{ formatLikeCount(likeState(a).likeCount) }}</span>
+                </button>
               </div>
               <p class="t-caption">{{ a.address || '주소 정보 없음' }}</p>
               <div class="card-footer">
@@ -157,8 +169,10 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import { useRoute, useRouter } from 'vue-router'
 
 import { attractionApi } from '@/api/attractions'
+import { attractionLikeApi } from '@/api/attractionLikes'
 import { regionApi } from '@/api/regions'
 import AppHeader from '@/components/common/AppHeader.vue'
+import { useAuthStore } from '@/stores/auth'
 
 const DEFAULT_PAGE_SIZE = 6
 const PAGE_GROUP_SIZE = 5
@@ -166,6 +180,7 @@ const MIN_KEYWORD_LENGTH = 2
 
 const route = useRoute()
 const router = useRouter()
+const auth = useAuthStore()
 const keyword = ref('')
 const isLoading = ref(false)
 const errorMessage = ref('')
@@ -343,6 +358,7 @@ async function loadAttractions() {
   try {
     const data = await attractionApi.search(buildParams())
     attractions.value = data.items || []
+    loadLikeCounts(attractions.value)
     pageData.page = data.page || filters.page
     pageData.size = data.size || filters.size
     pageData.totalCount = data.totalCount || 0
@@ -397,6 +413,50 @@ async function resetFilters() {
 
 function goToDetail(no) {
   router.push(`/attractions/${no}`)
+}
+
+// 카드 찜(좋아요) — 배치 조회로 채우고, 하트 클릭 시 토글
+const likeMap = ref({})
+const likeBusyNo = ref(null)
+
+function likeState(a) {
+  return likeMap.value[a.no] || { likeCount: 0, liked: false }
+}
+function formatLikeCount(n) {
+  return n > 999 ? '999+' : String(n || 0)
+}
+
+async function loadLikeCounts(items) {
+  const nos = items.map((a) => a.no)
+  if (nos.length === 0) return
+  try {
+    const rows = await attractionLikeApi.counts(nos)
+    const map = {}
+    rows.forEach((r) => {
+      map[r.no] = { likeCount: r.likeCount, liked: r.liked }
+    })
+    likeMap.value = map
+  } catch {
+    likeMap.value = {}
+  }
+}
+
+async function toggleCardLike(a) {
+  if (!auth.isAuthenticated) {
+    router.push({ path: '/auth', query: { mode: 'login', redirect: route.fullPath } })
+    return
+  }
+  if (likeBusyNo.value) return
+  likeBusyNo.value = a.no
+  const cur = likeState(a)
+  try {
+    const res = cur.liked ? await attractionLikeApi.unlike(a.no) : await attractionLikeApi.like(a.no)
+    likeMap.value = { ...likeMap.value, [a.no]: { likeCount: res.likeCount, liked: res.liked } }
+  } catch {
+    // 실패 시 현재 상태 유지
+  } finally {
+    likeBusyNo.value = null
+  }
 }
 
 function cleanDisplayName(value) {
@@ -726,7 +786,59 @@ onBeforeUnmount(() => {
 }
 
 .card-title-row h3 {
+  flex: 1;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 카드 찜 버튼: 제목 라인 우측, 하트 + 개수 */
+.card-like {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg-soft);
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.card-like:hover:not(:disabled) {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.card-like:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.card-like__heart {
+  font-size: 14px;
+  color: var(--ink-soft);
+  transition: color 0.15s;
+}
+
+.card-like.liked {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 8%, white);
+  color: var(--danger);
+}
+
+.card-like.liked .card-like__heart {
+  color: var(--danger);
+}
+
+.card-like__count {
+  font-family: var(--font-mono);
 }
 
 .review-stat {
