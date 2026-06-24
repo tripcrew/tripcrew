@@ -119,6 +119,12 @@ const routes = [
     meta: { title: '공지 상세' }
   },
   {
+    path: '/admin',
+    name: 'admin-dashboard',
+    component: () => import('@/views/AdminDashboardView.vue'),
+    meta: { title: '관리자 · 대시보드', requiresAuth: true, roles: ['ADMIN', 'SUPER_ADMIN'] }
+  },
+  {
     path: '/admin/users',
     name: 'admin',
     component: () => import('@/views/AdminView.vue'),
@@ -157,7 +163,11 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
-  scrollBehavior() {
+  scrollBehavior(to) {
+    // 해시(#system 등)가 있으면 해당 요소로 부드럽게 스크롤 — 없으면 맨 위로.
+    if (to.hash) {
+      return { el: to.hash, behavior: 'smooth', top: 80 }
+    }
     return { top: 0 }
   }
 })

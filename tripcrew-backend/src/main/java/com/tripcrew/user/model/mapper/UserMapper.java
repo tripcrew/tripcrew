@@ -25,6 +25,12 @@ public interface UserMapper {
     /** 관리자용 전체 사용자 목록 (비밀번호 제외). */
     List<User> findAll();
 
+    /** 전체 사용자 수 (관리자 대시보드 집계용). */
+    long countAll();
+
+    /** 특정 상태(ACTIVE/BANNED) 사용자 수 (관리자 대시보드 집계용). */
+    long countByStatus(@Param("status") Status status);
+
     /** 관리자용 role 변경. affected rows 0 이면 대상 없음. */
     int updateRole(@Param("id") Long id, @Param("role") Role role);
 

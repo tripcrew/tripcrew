@@ -16,6 +16,10 @@ import { http } from './http'
  * 밴 대상 제한(본인·SUPER_ADMIN 불가, ADMIN 은 SUPER_ADMIN 만)도 서버가 400 으로 막는다.
  */
 export const adminApi = {
+  dashboard: () => http.get('/admin/dashboard').then((r) => r.data),
+  dashboardStats: () => http.get('/admin/dashboard/stats').then((r) => r.data),
+  dashboardSignups: (year, month) =>
+    http.get('/admin/dashboard/signups', { params: { year, month } }).then((r) => r.data),
   listUsers: () => http.get('/admin/users').then((r) => r.data),
   updateRole: (id, role) => http.patch(`/admin/users/${id}/role`, { role }),
   ban: (id) => http.patch(`/admin/users/${id}/ban`),

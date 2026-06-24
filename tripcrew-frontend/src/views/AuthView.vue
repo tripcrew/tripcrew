@@ -277,10 +277,10 @@ function getRedirectTarget() {
   if (typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')) {
     return redirect
   }
-  // 관리자/최고관리자는 굳이 대시보드를 거치지 않고 바로 관리자 화면으로.
+  // 관리자/최고관리자는 사용자 대시보드 대신 관리자 대시보드로 바로 착지.
   const role = authStore.user?.role
   if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
-    return '/admin/users'
+    return '/admin'
   }
   return '/home'
 }

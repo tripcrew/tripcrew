@@ -33,6 +33,11 @@
          ORDER BY n.is_pinned DESC, n.created_at DESC, n.id DESC
     </select>
 
+    <!-- 관리자 대시보드 집계: 전체 공지 수 -->
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*) FROM notices
+    </select>
+
     <update id="update">
         UPDATE notices
            SET title = #{title},

@@ -31,6 +31,10 @@
       <aside class="admin-sidebar">
         <nav class="admin-nav">
           <h4 class="nav-title">관리</h4>
+          <RouterLink class="nav-item" :class="{ active: active === 'dashboard' }" to="/admin">
+            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+            대시보드
+          </RouterLink>
           <RouterLink class="nav-item" :class="{ active: active === 'users' }" to="/admin/users">
             <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             회원 관리
@@ -48,23 +52,7 @@
             <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 17-5v12L3 13v-2Z"/><path d="M11 15v4a2 2 0 0 1-4 0v-5"/><path d="M22 9v6"/></svg>
             공지사항
           </RouterLink>
-          <span class="nav-item nav-item--soon" title="준비 중인 메뉴입니다" aria-disabled="true">
-            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>
-            관광지 관리
-            <span class="nav-soon">준비 중</span>
-          </span>
-
-          <h4 class="nav-title">모니터링</h4>
-          <span class="nav-item nav-item--soon" title="준비 중인 메뉴입니다" aria-disabled="true">
-            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg>
-            통계 대시보드
-            <span class="nav-soon">준비 중</span>
-          </span>
-          <span class="nav-item nav-item--soon" title="준비 중인 메뉴입니다" aria-disabled="true">
-            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="6" rx="1"/><rect x="3" y="14" width="18" height="6" rx="1"/><path d="M7 7h.01M7 17h.01"/></svg>
-            시스템 상태
-            <span class="nav-soon">준비 중</span>
-          </span>
+          <!-- 시스템 상태는 대시보드 하단 패널로 제공 — 사이드바 중복 항목/모니터링 그룹 제거 -->
         </nav>
       </aside>
 
@@ -86,7 +74,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useAdminMetaStore } from '@/stores/adminMeta'
 
 defineProps({
-  /** 활성 사이드바 항목('users' | 'reports' | 'banned') */
+  /** 활성 사이드바 항목('dashboard' | 'users' | 'reports' | 'banned' | 'notices') */
   active: { type: String, default: '' },
 })
 

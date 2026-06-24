@@ -42,6 +42,9 @@ public interface ReportMapper {
      */
     List<AdminReportRow> findAllForAdmin(@Param("status") ReportStatus status);
 
+    /** 특정 상태(보통 OPEN) 신고 수 (관리자 대시보드 집계용). */
+    long countByStatus(@Param("status") ReportStatus status);
+
     /** 신고 처리상태 변경. affected rows 0 이면 대상 신고 없음. */
     int updateStatus(@Param("id") Long id, @Param("status") ReportStatus status);
 }
