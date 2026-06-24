@@ -16,7 +16,9 @@
 
       <div class="app-header__actions">
         <template v-if="isLoggedIn">
-          <div class="notif" ref="notifRef">
+          <!-- 내부 클릭은 바깥-클릭 핸들러로 전파시키지 않는다. 닫기는 모두 명시적으로 처리
+               (더보기/삭제 시 클릭한 엘리먼트가 DOM 에서 사라져 contains 판정이 빗나가는 버그 방지). -->
+          <div class="notif" ref="notifRef" @click.stop>
             <button class="icon-btn notif__bell" aria-label="알림" @click="toggleNotif">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M18 16v-5a6 6 0 1 0-12 0v5l-2 2h16l-2-2zM10 21a2 2 0 0 0 4 0"/>
