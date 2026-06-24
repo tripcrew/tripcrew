@@ -163,6 +163,7 @@
     </main>
 
     <!-- 신고 모달 -->
+    <transition name="overlay">
     <div v-if="reportModal.open" class="modal-backdrop" @click.self="closeReport">
       <div class="modal">
         <h3 class="t-h3">후기 신고</h3>
@@ -193,6 +194,7 @@
         </div>
       </div>
     </div>
+    </transition>
   </div>
 </template>
 

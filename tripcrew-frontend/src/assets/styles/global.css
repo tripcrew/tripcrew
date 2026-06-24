@@ -199,3 +199,26 @@ body * {
 .fade-enter-from, .fade-leave-to {
   opacity: 0;
 }
+
+/* ============================================
+ * Overlay & dropdown open (공유 모션 — v-if 토글을 <transition>으로 감싸 사용)
+ *  - name="overlay": 모달/다이얼로그. 백드롭은 fade, 안의 단일 패널은 살짝 pop.
+ *  - name="pop":     드롭다운/팝오버. fade + 살짝 scale.
+ * reduced-motion이면 위쪽 전역 규칙(transition:none)이 transition을 끄고,
+ * pop 키프레임은 no-preference 가드로 비활성 → 즉시 최종 상태.
+ * ============================================ */
+.overlay-enter-active, .overlay-leave-active { transition: opacity 0.22s ease; }
+.overlay-enter-from, .overlay-leave-to { opacity: 0; }
+
+@keyframes overlay-pop {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* 백드롭의 단일 패널 자식만 pop (백드롭마다 패널 1개 구조) */
+  .overlay-enter-active > * { animation: overlay-pop 0.2s ease-out; }
+}
+
+.pop-enter-active { transition: opacity 0.15s ease, transform 0.15s ease; }
+.pop-leave-active { transition: opacity 0.12s ease, transform 0.12s ease; }
+.pop-enter-from, .pop-leave-to { opacity: 0; transform: translateY(-6px) scale(0.98); }

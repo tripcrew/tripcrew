@@ -42,6 +42,7 @@
               <span v-if="unreadCount > 0" class="notif__badge">{{ badgeText }}</span>
             </button>
 
+            <transition name="pop">
             <div v-if="notifOpen" class="notif__panel">
               <div class="notif__head">
                 <span class="notif__title">알림</span>
@@ -96,6 +97,7 @@
                 >더보기 ({{ notifications.length - visibleCount }})</button>
               </div>
             </div>
+            </transition>
           </div>
           <router-link to="/profile" class="avatar avatar--sm" :aria-label="`${displayName} 프로필`">
             {{ avatarText }}
@@ -419,6 +421,7 @@ const avatarText = computed(() => displayName.value.trim().slice(0, 1).toUpperCa
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
+  transform-origin: top right;
   width: 320px;
   max-height: 420px;
   display: flex;

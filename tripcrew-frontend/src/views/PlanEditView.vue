@@ -313,6 +313,7 @@
     </main>
 
     <!-- F06 공동편집 — 공유/멤버 다이얼로그 -->
+    <transition name="overlay">
     <div v-if="shareOpen" class="share-overlay" @click.self="closeShare">
       <section class="share-modal">
         <header class="share-modal__head">
@@ -381,7 +382,9 @@
         </form>
       </section>
     </div>
+    </transition>
 
+    <transition name="overlay">
     <div v-if="optimizePanelVisible" class="optimize-overlay">
       <section class="optimize-modal" role="status" aria-live="polite">
         <div class="optimize-mark">
@@ -421,6 +424,7 @@
         </ol>
       </section>
     </div>
+    </transition>
 
     <!-- F06 P2a — 공동 편집 실시간 알림 토스트 -->
     <transition name="edit-toast">

@@ -64,6 +64,7 @@
     </main>
 
     <!-- 여행 계획에 담기 모달 -->
+    <transition name="overlay">
     <div v-if="planModal.open" class="modal-backdrop" @click.self="closePlanModal">
       <div class="modal">
         <h3 class="t-h3">여행 계획에 담기</h3>
@@ -106,6 +107,7 @@
         </template>
       </div>
     </div>
+    </transition>
   </div>
 </template>
 
