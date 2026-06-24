@@ -7,8 +7,10 @@ package com.tripcrew.notification.model;
  * 프론트는 {@code type} 으로 알림 클릭 시 이동 경로를 분기한다.
  */
 public enum NotificationType {
-    /** 내가 한 신고가 처리완료됨(ref_id = 신고 id) */
+    /** 내가 한 신고가 검토되어 조치 완료됨(ref_id = 신고 id) */
     REPORT_RESOLVED,
+    /** 내가 한 신고가 검토 결과 기각됨(ref_id = 신고 id) */
+    REPORT_DISMISSED,
     /** 여행 종료 후 후기 작성 격려(ref_id = 여행계획 id) */
     REVIEW_NUDGE,
     /** 여행계획 공동편집 초대(ref_id = 여행계획 id) */

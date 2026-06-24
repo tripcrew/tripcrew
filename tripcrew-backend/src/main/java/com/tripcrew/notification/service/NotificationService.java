@@ -76,4 +76,13 @@ public class NotificationService {
     public void markAllRead(Long userId) {
         notificationMapper.markAllRead(userId);
     }
+
+    /** 알림 한 건 삭제(본인 것만). 없거나 내 것이 아니면 404. */
+    @Transactional
+    public void delete(Long userId, Long id) {
+        int affected = notificationMapper.deleteByIdAndUser(id, userId);
+        if (affected == 0) {
+            throw new BusinessException(HttpStatus.NOT_FOUND, "알림을 찾을 수 없습니다.");
+        }
+    }
 }

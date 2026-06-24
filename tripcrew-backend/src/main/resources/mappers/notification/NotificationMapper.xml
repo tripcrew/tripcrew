@@ -50,4 +50,10 @@
            AND is_read = FALSE
     </update>
 
+    <delete id="deleteByIdAndUser">
+        DELETE FROM notifications
+         WHERE id = #{id}
+           AND user_id = #{userId}
+    </delete>
+
 </mapper>

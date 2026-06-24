@@ -14,6 +14,7 @@ export const notificationApi = {
   unreadCount: () => http.get('/me/notifications/unread-count').then((r) => r.data.count),
   markRead: (id) => http.patch(`/me/notifications/${id}/read`).then((r) => r.data),
   markAllRead: () => http.patch('/me/notifications/read-all').then((r) => r.data),
+  remove: (id) => http.delete(`/me/notifications/${id}`).then((r) => r.data),
 }
 
 /**
