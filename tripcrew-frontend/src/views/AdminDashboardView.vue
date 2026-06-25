@@ -159,17 +159,24 @@
         </section>
 
         <section id="system" class="panel">
-          <h2 class="panel-title">시스템 상태</h2>
+          <div class="system-head">
+            <h2 class="panel-title">시스템 상태</h2>
+            <button class="system-refresh" :disabled="healthLoading" @click="checkExternalHealth(true)">
+              {{ healthLoading ? '확인 중...' : '실시간 확인' }}
+            </button>
+          </div>
           <ul class="health-list">
-            <li class="health-row">
-              <span class="health-name">백엔드 API</span>
-              <span class="health-state">
-                <span class="hd" :class="healthDotClass"></span>{{ healthText }}
+            <li v-for="item in healthItems" :key="item.key" class="health-row">
+              <span class="health-name">{{ item.name }}</span>
+              <span class="health-state" :title="item.message">
+                <span class="hd" :class="healthDotClass(item.status)"></span>
+                {{ healthStatusText(item.status) }}
+                <em v-if="item.latencyMs !== null && item.latencyMs !== undefined">{{ item.latencyMs }}ms</em>
               </span>
             </li>
           </ul>
-          <p class="health-note">
-            Redis · 외부 API(관광/날씨/Gemini)별 상태는 전용 헬스 엔드포인트가 마련되면 확장합니다.
+          <p class="health-note" :class="{ 'health-note--error': healthError }">
+            {{ healthNote }}
           </p>
         </section>
       </div>
@@ -285,19 +292,69 @@ async function load() {
 
 // 시스템 상태: 프론트가 실제로 확인 가능한 건 백엔드 생존뿐이라 /api/health 를 핑한다.
 const apiHealthy = ref(null) // null=확인 중, true=정상, false=연결 끊김
-const healthText = computed(() =>
-  apiHealthy.value === null ? '확인 중' : apiHealthy.value ? '정상' : '연결 끊김',
-)
-const healthDotClass = computed(() =>
-  apiHealthy.value === null ? 'hd--warn' : apiHealthy.value ? 'hd--ok' : 'hd--down',
-)
+const apiLatencyMs = ref(null)
+const externalHealth = ref([])
+const externalHealthCheckedAt = ref(null)
+const healthError = ref('')
+const healthLoading = ref(false)
+const healthItems = computed(() => [
+  {
+    key: 'backend',
+    name: '백엔드 API',
+    status: apiHealthy.value === null ? 'CHECKING' : apiHealthy.value ? 'UP' : 'DOWN',
+    message: apiHealthy.value === null ? '확인 중' : apiHealthy.value ? '정상' : '연결 끊김',
+    latencyMs: apiLatencyMs.value,
+  },
+  ...externalHealth.value,
+])
+const healthNote = computed(() => {
+  if (healthError.value) return healthError.value
+  if (!externalHealthCheckedAt.value) return '외부 API 상태를 확인 중입니다.'
+  return `마지막 확인 ${formatHealthTime(externalHealthCheckedAt.value)}`
+})
 async function checkHealth() {
+  healthError.value = ''
+  const started = performance.now()
   try {
     const { data } = await http.get('/health')
     apiHealthy.value = !!(data && data.status === 'UP')
+    apiLatencyMs.value = Math.round(performance.now() - started)
   } catch {
     apiHealthy.value = false
+    apiLatencyMs.value = Math.round(performance.now() - started)
   }
+  await checkExternalHealth(false)
+}
+async function checkExternalHealth(live) {
+  healthLoading.value = live
+  try {
+    const data = await adminApi.externalHealth(live)
+    externalHealth.value = data.services || []
+    externalHealthCheckedAt.value = data.checkedAt || null
+  } catch (e) {
+    externalHealth.value = []
+    externalHealthCheckedAt.value = null
+    healthError.value = e.response?.data?.message || '외부 API 상태를 확인하지 못했습니다.'
+  } finally {
+    healthLoading.value = false
+  }
+}
+function healthStatusText(status) {
+  if (status === 'UP') return '정상'
+  if (status === 'CONFIGURED') return '설정됨'
+  if (status === 'UNAVAILABLE') return '설정 필요'
+  if (status === 'CHECKING') return '확인 중'
+  return '장애'
+}
+function healthDotClass(status) {
+  if (status === 'UP') return 'hd--ok'
+  if (status === 'CONFIGURED' || status === 'CHECKING' || status === 'UNAVAILABLE') return 'hd--warn'
+  return 'hd--down'
+}
+function formatHealthTime(value) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '-'
+  return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
 }
 
 onMounted(() => {
@@ -517,6 +574,35 @@ onMounted(() => {
   margin-bottom: 14px;
 }
 
+.system-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.system-head .panel-title { margin-bottom: 0; }
+
+.system-refresh {
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.system-refresh:hover:not(:disabled) {
+  background: var(--bg-2);
+  color: var(--ink);
+}
+
+.system-refresh:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 /* 바로가기 */
 .quick-list { display: flex; flex-direction: column; gap: 8px; }
 
@@ -588,6 +674,13 @@ onMounted(() => {
   color: var(--ink-3);
 }
 
+.health-state em {
+  font-style: normal;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
 .hd { position: relative; display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
 .hd--ok { background: var(--success); }
 .hd--warn { background: var(--warning); }
@@ -617,6 +710,8 @@ onMounted(() => {
   color: var(--muted);
   line-height: 1.5;
 }
+
+.health-note--error { color: var(--danger); }
 
 /* 화면을 줄이면 칸 수를 단계적으로 줄여 자연스럽게 접힌다 (회원관리 등과 동일한 유동 동작).
    카드 그리드는 auto-fit(minmax 220px)으로 폭에 따라 스스로 접히므로 별도 분기 불필요. */

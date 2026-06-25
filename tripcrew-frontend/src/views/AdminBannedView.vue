@@ -43,7 +43,7 @@
             <td colspan="7" class="table-empty">불러오는 중…</td>
           </tr>
           <tr v-else-if="bannedUsers.length === 0">
-            <td colspan="7" class="table-empty">정지된 계정이 없습니다. 👍</td>
+            <td colspan="7" class="table-empty">정지된 계정이 없습니다.</td>
           </tr>
           <tr v-for="u in bannedUsers" :key="u.id">
             <td class="t-mono">{{ u.id }}</td>
