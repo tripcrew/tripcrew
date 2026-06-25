@@ -33,7 +33,7 @@
                     <i class="chip-dot"></i><span class="chip-label">{{ c.title }}</span>
                   </span>
                 </div>
-                <small v-else>첫 여행을 계획해 보세요 ✈️</small>
+                <small v-else>여행을 계획해 보세요 ✈️</small>
               </div>
             </div>
           </div>
