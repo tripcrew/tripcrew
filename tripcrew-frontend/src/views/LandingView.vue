@@ -12,7 +12,7 @@
             <span class="accent">나만의 여행 계획</span>
           </h1>
           <p class="hero__lead">
-            한국관광공사 데이터를 기반으로 한 신뢰도 높은 추천과,
+            취향과 일정에 맞춘 여행지 추천부터,
             <br />AI 챗봇으로 5초 만에 만드는 코스.
           </p>
           <div class="hero__cta">
