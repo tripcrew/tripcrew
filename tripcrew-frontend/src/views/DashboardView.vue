@@ -3,7 +3,7 @@
     <AppHeader />
 
     <main class="container dashboard">
-      <section class="dashboard-hero">
+      <section v-reveal class="dashboard-hero">
         <div class="dashboard-hero__copy">
           <p class="dashboard-hero__eyebrow">YOUR TRAVEL DESK</p>
           <h1>안녕하세요, {{ displayName }} 님.<br /><span>다음 여행을 시작해 볼까요?</span></h1>
@@ -14,20 +14,40 @@
           </div>
         </div>
         <div class="dashboard-hero__stats" aria-label="여행 현황">
-          <div class="stat-card stat-card--plans">
-            <span>진행 중인 계획</span>
-            <strong>{{ dashboardPlans.length }}</strong>
-            <small>개 여행을 준비 중이에요</small>
+          <div class="stat-flip">
+            <div class="stat-flip__inner">
+              <div class="stat-card stat-card--plans stat-flip__face">
+                <span>진행 중인 계획</span>
+                <strong>{{ dashboardPlans.length }}</strong>
+                <small>개 여행을 준비 중이에요</small>
+              </div>
+              <div class="stat-card stat-card--plans stat-flip__face stat-flip__back stat-back">
+                <span>준비 중인 여행</span>
+                <div v-if="planChips.length" class="stat-back__chips">
+                  <span v-for="(t, i) in planChips" :key="i" class="stat-back__chip">{{ t }}</span>
+                </div>
+                <small v-else>첫 여행을 계획해 보세요 ✈️</small>
+              </div>
+            </div>
           </div>
-          <div class="stat-card stat-card--guide">
-            <span class="stat-card__spark">✦</span>
-            <strong>여행은<br />가볍게 시작해요</strong>
-            <small>아래 도우미가 취향을 정리해드려요.</small>
+          <div class="stat-flip">
+            <div class="stat-flip__inner">
+              <div class="stat-card stat-card--guide stat-flip__face">
+                <span class="stat-card__spark">✦</span>
+                <strong>여행은<br />가볍게 시작해요</strong>
+                <small>아래 도우미가 취향을 정리해드려요.</small>
+              </div>
+              <div class="stat-card stat-card--guide stat-flip__face stat-flip__back stat-back">
+                <span class="stat-card__spark">🤖</span>
+                <strong>TripBot이<br />코스를 짜드려요</strong>
+                <small>취향만 고르면 바로 추천을 시작해요.</small>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <section class="trip-starter">
+      <section v-reveal class="trip-starter">
         <div class="trip-starter__head">
           <div>
             <p class="section-kicker">QUICK START</p>
@@ -59,7 +79,7 @@
         </div>
       </section>
 
-      <section class="block plans-block">
+      <section v-reveal class="block plans-block">
         <div class="block__head">
           <div>
             <p class="section-kicker">MY PLANS</p>
@@ -112,7 +132,7 @@
       </section>
 
       <div class="two-col">
-        <section class="block explore-block">
+        <section v-reveal class="block explore-block">
           <p class="section-kicker">EXPLORE</p>
           <h2 class="t-h2">여행 준비, 이렇게 이어가 보세요</h2>
           <div class="explore-steps">
@@ -141,8 +161,8 @@
             <p v-else-if="rankingError" class="ranking-state">{{ rankingError }}</p>
             <p v-else-if="ranking.length === 0" class="ranking-state">아직 최근 1시간 내 랭킹 데이터가 없습니다.</p>
 
-            <ol v-else class="ranking-list">
-              <li v-for="item in ranking" :key="item.id">
+            <ol v-else v-stagger class="ranking-list">
+              <li v-for="(item, i) in ranking" :key="item.id" :style="{ '--i': i }">
                 <button type="button" class="ranking-list__button" @click="goToAttraction(item.id)">
                   <span class="rank-no">{{ item.rank }}</span>
                   <span class="rank-info">
@@ -167,8 +187,8 @@
             <p v-if="activitiesLoading" class="activity-state">최근 활동을 불러오는 중입니다.</p>
             <p v-else-if="activitiesError" class="activity-state">{{ activitiesError }}</p>
             <p v-else-if="activities.length === 0" class="activity-state">아직 최근 활동이 없습니다.</p>
-            <ul v-else class="activity">
-              <li v-for="activity in activities" :key="activity.id">
+            <ul v-else v-stagger class="activity">
+              <li v-for="(activity, i) in activities" :key="activity.id" :style="{ '--i': i }">
                 <div :class="['activity-dot', `activity-dot--${activity.activityType}`]"></div>
                 <div>
                   <p>{{ activityMessage(activity) }}</p>
@@ -192,6 +212,7 @@ import { useRouter } from 'vue-router'
 import AppFooter from '@/components/common/AppFooter.vue'
 import AppHeader from '@/components/common/AppHeader.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
+import { vReveal, vStagger } from '@/composables/useReveal'
 import { activityApi } from '@/api/activities'
 import { rankingApi } from '@/api/rankings'
 import { tripPlanApi } from '@/api/tripPlans'
@@ -235,6 +256,9 @@ const dashboardPlans = computed(() =>
     .map(toDashboardPlan)
     .sort((a, b) => a.sortTime - b.sortTime),
 )
+
+// 진행 중인 계획 카드 뒷면(flip)용 — 계획 제목 칩 클러스터(여행지 요약 느낌). 최대 6개.
+const planChips = computed(() => dashboardPlans.value.map((p) => p.title).slice(0, 6))
 
 const welcomeMessage = computed(() => {
   if (plansLoading.value) return '내 여행 계획을 확인하고 있습니다.'
@@ -447,6 +471,73 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+/* 스크롤 진입 시 섹션이 차례로 fade-up (v-reveal 디렉티브). reduced-motion이면 비활성 → 즉시 노출 */
+@media (prefers-reduced-motion: no-preference) {
+  .reveal-init { opacity: 0; transform: translateY(16px); }
+  .reveal-in {
+    opacity: 1;
+    transform: none;
+    transition: opacity 0.5s ease, transform 0.6s cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+}
+
+/* === Hero stat 카드 flip (hover 시 뒤집혀 요약/안내 노출) — grid-stack 방식이라 고정 높이 불필요 === */
+.stat-flip { perspective: 1200px; }
+.stat-flip__inner {
+  display: grid;
+  min-height: 100%;
+  transform-style: preserve-3d;
+}
+.stat-flip__face {
+  grid-area: 1 / 1;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.stat-flip__back { transform: rotateY(180deg); }
+
+/* 진행 중인 계획 뒷면 — 계획 제목 칩 클러스터(여행지 요약 느낌) */
+.stat-back { justify-content: flex-start; }
+.stat-back__chips {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-content: flex-start;
+}
+.stat-back__chip {
+  max-width: 100%;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--teal-soft);
+  color: var(--teal-ink);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .stat-flip__inner { transition: transform 0.55s cubic-bezier(0.4, 0.15, 0.2, 1); }
+  .stat-flip:hover .stat-flip__inner { transform: rotateY(180deg); }
+
+  /* 실시간 랭킹 — 보이면 행이 순차로 떠오름 */
+  .ranking-list > li { opacity: 0; }
+  .ranking-list.stagger-in > li {
+    animation: rank-rise 0.5s ease-out forwards;
+    animation-delay: calc(var(--i, 0) * 0.06s);
+  }
+  /* 최근 활동 — 보이면 항목이 왼쪽에서 펼쳐짐 */
+  .activity > li { opacity: 0; }
+  .activity.stagger-in > li {
+    animation: act-slide 0.5s ease-out forwards;
+    animation-delay: calc(var(--i, 0) * 0.07s);
+  }
+}
+@keyframes rank-rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes act-slide { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
+
 .page-soft {
   background: linear-gradient(120deg, #e8f3ef 0%, #f5f7f5 46%, #faeee8 100%);
 }
@@ -554,7 +645,8 @@ onBeforeUnmount(() => {
   overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory;
   scroll-padding: 2px;
-  padding: 2px 2px 12px;
+  /* 위쪽 여백을 줘서 카드가 hover로 떠오를 때(-4px+그림자) 윗부분이 잘리지 않게 */
+  padding: 12px 2px 14px;
   cursor: grab;
   -webkit-overflow-scrolling: touch;
 }
@@ -592,8 +684,8 @@ onBeforeUnmount(() => {
 }
 
 .plan-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--sh-2);
+  transform: translateY(-4px);
+  box-shadow: var(--sh-3);
   border-color: var(--teal);
 }
 
