@@ -10,7 +10,9 @@ import org.springframework.web.bind.annotation.RestController;
 import com.tripcrew.admin.model.dto.AdminDashboardResponse;
 import com.tripcrew.admin.model.dto.AdminDashboardStatsResponse;
 import com.tripcrew.admin.model.dto.DailyCount;
+import com.tripcrew.admin.model.dto.ExternalApiHealthResponse;
 import com.tripcrew.admin.service.AdminDashboardService;
+import com.tripcrew.admin.service.AdminExternalHealthService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -24,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 public class AdminDashboardController {
 
     private final AdminDashboardService adminDashboardService;
+    private final AdminExternalHealthService adminExternalHealthService;
 
     @GetMapping
     public AdminDashboardResponse summary() {
@@ -41,5 +44,11 @@ public class AdminDashboardController {
     public List<DailyCount> signups(@RequestParam(required = false) Integer year,
                                     @RequestParam(required = false) Integer month) {
         return adminDashboardService.signupsForMonth(year, month);
+    }
+
+    /** 외부 API 상태. 관리자 대시보드 표시용이며 API 키 값은 절대 내려주지 않는다. */
+    @GetMapping("/external-health")
+    public ExternalApiHealthResponse externalHealth(@RequestParam(defaultValue = "false") boolean live) {
+        return adminExternalHealthService.externalHealth(live);
     }
 }

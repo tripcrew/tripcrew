@@ -147,7 +147,7 @@ const headSub = computed(() => {
   return `처리 이력 ${reports.value.length}건 · ${statusFilter.value === 'RESOLVED' ? '조치 완료' : '기각'}된 신고`
 })
 const emptyText = computed(() => {
-  if (isOpenTab.value) return '미처리 신고가 없습니다. 👍'
+  if (isOpenTab.value) return '미처리 신고가 없습니다.'
   return statusFilter.value === 'RESOLVED' ? '처리완료된 신고가 없습니다.' : '기각된 신고가 없습니다.'
 })
 

@@ -21,6 +21,8 @@ import { http } from './http'
 export const adminApi = {
   dashboard: () => http.get('/admin/dashboard').then((r) => r.data),
   dashboardStats: () => http.get('/admin/dashboard/stats').then((r) => r.data),
+  externalHealth: (live = false) =>
+    http.get('/admin/dashboard/external-health', { params: { live } }).then((r) => r.data),
   dashboardSignups: (year, month) =>
     http.get('/admin/dashboard/signups', { params: { year, month } }).then((r) => r.data),
   listUsers: () => http.get('/admin/users').then((r) => r.data),

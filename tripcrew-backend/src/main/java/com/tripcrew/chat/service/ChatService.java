@@ -52,6 +52,25 @@ public class ChatService implements InitializingBean {
                 .build();
     }
 
+    public boolean isGeminiConfigured() {
+        return apiKey != null && !apiKey.isBlank();
+    }
+
+    public void checkGeminiHealth() {
+        if (!isGeminiConfigured()) {
+            throw new BusinessException(HttpStatus.SERVICE_UNAVAILABLE, "Gemini API 키가 설정되지 않았습니다.");
+        }
+        try {
+            restClient.get()
+                    .uri("/models/{model}", normalizedModel())
+                    .header("x-goog-api-key", apiKey)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientResponseException e) {
+            throw toGeminiException(e);
+        }
+    }
+
     @Transactional
     public ChatMessageResponse send(Long userId, ChatMessageRequest request) {
         save(userId, request.tripPlanId(), "USER", request.message());
@@ -88,6 +107,13 @@ public class ChatService implements InitializingBean {
         return UriComponentsBuilder.fromPath("/models/{model}:generateContent")
                 .buildAndExpand(model)
                 .toUriString();
+    }
+
+    private String normalizedModel() {
+        if (model == null || model.isBlank()) {
+            return "gemini-2.5-flash-lite";
+        }
+        return model.startsWith("models/") ? model.substring("models/".length()) : model;
     }
 
     private GeminiResponse callGeminiWithRetry(GeminiRequest request) {

@@ -141,7 +141,7 @@ const headSub = computed(() => {
   return `전체 문의 ${inquiries.value.length}건`
 })
 const emptyText = computed(() => {
-  if (statusFilter.value === 'OPEN') return '미답변 문의가 없습니다. 👍'
+  if (statusFilter.value === 'OPEN') return '미답변 문의가 없습니다.'
   if (statusFilter.value === 'ANSWERED') return '답변완료된 문의가 없습니다.'
   return '문의가 없습니다.'
 })
@@ -251,7 +251,7 @@ onMounted(load)
 .filter-tab:hover { color: var(--ink); }
 .filter-tab.active { background: var(--surface); color: var(--teal-ink); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
 
-.list-empty { text-align: center; padding: 48px 16px; color: var(--muted); }
+.list-empty { text-align: center; padding: 48px 16px; color: var(--ink); }
 
 .iq-list { display: grid; gap: 14px; }
 .iq-card {
