@@ -476,6 +476,17 @@ onBeforeUnmount(() => {
   background: linear-gradient(135deg, var(--coral-tint) 0%, var(--teal-tint) 100%);
 }
 
+/* 다크모드: coral-tint→teal-tint 가 둘 다 어두워 단색 덩어리처럼 보였고,
+   푸터의 전역 상단 여백(margin-top:80px)이 섹션과 푸터 사이 '검은 띠'로 떠 보였다.
+   → 섹션을 세로 그라데이션으로 바꿔 바닥을 푸터 색(teal-3)까지 자연스럽게 잇고,
+     랜딩에 한해 그 검은 간격을 없앤다. (라이트 모드는 그대로 유지) */
+[data-theme="dark"] .section--coral {
+  background: linear-gradient(180deg, var(--coral-tint) 0%, var(--teal-tint) 42%, var(--teal-3) 100%);
+}
+[data-theme="dark"] .page :deep(.app-footer) {
+  margin-top: 0;
+}
+
 .section--ranking {
   padding-top: 52px;
   padding-bottom: 56px;
