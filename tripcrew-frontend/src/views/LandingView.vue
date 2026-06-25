@@ -58,7 +58,7 @@
     </section>
 
     <!-- Ranking -->
-    <section class="section section--ranking">
+    <section v-reveal class="section section--ranking">
       <div class="container">
         <div class="ranking-panel">
           <div class="section__head">
@@ -116,7 +116,7 @@
     </section>
 
     <!-- Co-edit CTA -->
-    <section class="section section--coral">
+    <section v-reveal class="section section--coral">
       <div class="container">
         <div class="co-edit-banner">
           <div>
@@ -157,6 +157,7 @@ import AppHeader from '@/components/common/AppHeader.vue'
 import AppFooter from '@/components/common/AppFooter.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
 import { rankingApi } from '@/api/rankings'
+import { vReveal } from '@/composables/useReveal'
 
 const router = useRouter()
 const popular = ref([])
@@ -399,6 +400,15 @@ onBeforeUnmount(() => {
 @keyframes rise {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+/* hero 아래 섹션(랭킹·협업)이 스크롤 진입 시 fade-up (v-reveal). reduced-motion이면 즉시 노출 */
+@media (prefers-reduced-motion: no-preference) {
+  .reveal-init { opacity: 0; transform: translateY(20px); }
+  .reveal-in {
+    opacity: 1;
+    transform: none;
+    transition: opacity 0.55s ease, transform 0.65s cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
 }
 /* 추천 코스(주황) 카드가 등장 후 아주 은은하게 위아래로 떠다니며 시선을 끈다 */
 @keyframes float-accent {
