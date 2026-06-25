@@ -139,7 +139,7 @@
           </form>
 
           <form v-else class="auth-form" @submit.prevent="handleLogin">
-            <h2 class="auth-form__title">만나서 반갑습니다 👋</h2>
+            <h2 class="auth-form__title">만나서 반갑습니다.</h2>
             <p class="auth-form__lead">계정 정보를 입력해주세요.</p>
 
             <div class="field">
