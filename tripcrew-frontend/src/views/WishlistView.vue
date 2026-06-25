@@ -21,8 +21,8 @@
         <BaseButton variant="primary" @click="goExplore">관광지 둘러보기</BaseButton>
       </div>
 
-      <div v-else class="cards-grid">
-        <article v-for="item in items" :key="item.no" class="wish-card">
+      <div v-else v-stagger class="cards-grid">
+        <article v-for="(item, i) in items" :key="item.no" class="wish-card" :style="{ '--i': i }">
           <div class="wish-card__thumb" @click="goToDetail(item.no)">
             <img v-if="item.imageUrl" :src="item.imageUrl" :alt="cleanDisplayName(item.title)" />
             <div v-else class="thumb-grad"></div>
@@ -120,6 +120,7 @@ import BaseButton from '@/components/common/BaseButton.vue'
 import { attractionLikeApi } from '@/api/attractionLikes'
 import { tripPlanApi } from '@/api/tripPlans'
 import { useAuthStore } from '@/stores/auth'
+import { vStagger } from '@/composables/useReveal'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -315,6 +316,19 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 20px;
+}
+
+/* 찜 카드가 보이면 순차로 fade-up (v-stagger, 최초 1회). reduced-motion이면 즉시 노출 */
+@media (prefers-reduced-motion: no-preference) {
+  .cards-grid > .wish-card { opacity: 0; }
+  .cards-grid.stagger-in > .wish-card {
+    animation: wish-rise 0.5s ease-out forwards;
+    animation-delay: calc(min(var(--i, 0), 12) * 0.05s);
+  }
+}
+@keyframes wish-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
 }
 
 .wish-card {
