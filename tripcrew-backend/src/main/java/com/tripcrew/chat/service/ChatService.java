@@ -36,7 +36,7 @@ public class ChatService implements InitializingBean {
     @Value("${gemini.api-key:}")
     private String apiKey;
 
-    @Value("${gemini.model:gemini-2.5-flash-lite}")
+    @Value("${gemini.model:gemini-3.1-flash-lite}")
     private String model;
 
     @Value("${gemini.base-url:https://generativelanguage.googleapis.com/v1beta}")
@@ -111,7 +111,7 @@ public class ChatService implements InitializingBean {
 
     private String normalizedModel() {
         if (model == null || model.isBlank()) {
-            return "gemini-2.5-flash-lite";
+            return "gemini-3.1-flash-lite";
         }
         return model.startsWith("models/") ? model.substring("models/".length()) : model;
     }
