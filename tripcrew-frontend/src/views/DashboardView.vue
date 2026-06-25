@@ -17,14 +17,21 @@
           <div class="stat-flip">
             <div class="stat-flip__inner">
               <div class="stat-card stat-card--plans stat-flip__face">
-                <span>진행 중인 계획</span>
-                <strong>{{ dashboardPlans.length }}</strong>
+                <span>나의 계획</span>
+                <strong>{{ upcomingCount }}</strong>
                 <small>개 여행을 준비 중이에요</small>
               </div>
               <div class="stat-card stat-card--plans stat-flip__face stat-flip__back stat-back">
-                <span>준비 중인 여행</span>
+                <span>나의 여행</span>
                 <div v-if="planChips.length" class="stat-back__chips">
-                  <span v-for="(t, i) in planChips" :key="i" class="stat-back__chip">{{ t }}</span>
+                  <span
+                    v-for="(c, i) in planChips"
+                    :key="i"
+                    class="stat-back__chip"
+                    :class="`stat-back__chip--${c.statusKey}`"
+                  >
+                    <i class="chip-dot"></i><span class="chip-label">{{ c.title }}</span>
+                  </span>
                 </div>
                 <small v-else>첫 여행을 계획해 보세요 ✈️</small>
               </div>
@@ -257,8 +264,15 @@ const dashboardPlans = computed(() =>
     .sort((a, b) => a.sortTime - b.sortTime),
 )
 
-// 진행 중인 계획 카드 뒷면(flip)용 — 계획 제목 칩 클러스터(여행지 요약 느낌). 최대 6개.
-const planChips = computed(() => dashboardPlans.value.map((p) => p.title).slice(0, 6))
+// 카드 숫자/뒷면 — 예정·진행 계획만(날짜 미정·완료 제외)
+const upcomingPlans = computed(() =>
+  dashboardPlans.value.filter((p) => p.statusKey === 'ready' || p.statusKey === 'active'),
+)
+const upcomingCount = computed(() => upcomingPlans.value.length)
+// flip 뒷면 칩 — 제목 + 상태(색상). 최대 6개.
+const planChips = computed(() =>
+  upcomingPlans.value.slice(0, 6).map((p) => ({ title: p.title, statusKey: p.statusKey })),
+)
 
 const welcomeMessage = computed(() => {
   if (plansLoading.value) return '내 여행 계획을 확인하고 있습니다.'
@@ -505,18 +519,29 @@ onBeforeUnmount(() => {
   align-content: flex-start;
 }
 .stat-back__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   max-width: 100%;
-  padding: 5px 10px;
+  padding: 5px 11px;
   border-radius: 999px;
-  background: var(--teal-soft);
-  color: var(--teal-ink);
   font-size: 12px;
   font-weight: 700;
   line-height: 1.2;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
+.chip-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 상태 점 + 희미한 외곽 링(currentColor 기반 → 초록·주황 모두, 라이트/다크 일관) */
+.chip-dot {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 24%, transparent);
+}
+/* 진행 중 = 초록(teal), 예정 = 주황(coral) — MY PLANS 상태색과 동일 계열 */
+.stat-back__chip--active { background: var(--teal-soft); color: var(--teal-ink); }
+.stat-back__chip--ready { background: var(--coral-soft); color: var(--coral-ink); }
 
 @media (prefers-reduced-motion: no-preference) {
   .stat-flip__inner { transition: transform 0.55s cubic-bezier(0.4, 0.15, 0.2, 1); }

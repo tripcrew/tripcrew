@@ -1636,7 +1636,8 @@ onBeforeUnmount(() => {
   z-index: 700;
   padding: 11px 20px;
   border-radius: 999px;
-  background: var(--ink, #16242a);
+  /* 양 테마에서 어둡게 유지되는 inverse 표면(흰 글씨 전제). --ink는 다크모드에서 밝아져 글씨가 묻혔음 */
+  background: var(--surface-inverse, #16242a);
   color: white;
   font-size: 13px;
   font-weight: 600;
