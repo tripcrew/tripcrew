@@ -229,6 +229,10 @@ async function handlePasswordChange() {
     passwordChangeError.value = '비밀번호는 8자 이상이어야 합니다.'
     return
   }
+  if (!/[A-Za-z]/.test(newPassword.value) || !/\d/.test(newPassword.value)) {
+    passwordChangeError.value = '비밀번호는 영문과 숫자를 포함해야 합니다.'
+    return
+  }
   if (newPassword.value !== confirmPassword.value) {
     passwordChangeError.value = '새 비밀번호가 일치하지 않습니다.'
     return
@@ -241,10 +245,14 @@ async function handlePasswordChange() {
     newPassword.value = ''
     confirmPassword.value = ''
   } catch (error) {
-    passwordChangeError.value = error?.response?.data?.message || '비밀번호를 변경하지 못했습니다.'
+    passwordChangeError.value = fieldError(error, 'newPassword') || error?.response?.data?.message || '비밀번호를 변경하지 못했습니다.'
   } finally {
     isUpdatingPassword.value = false
   }
+}
+
+function fieldError(error, field) {
+  return error?.response?.data?.errors?.[field] || ''
 }
 
 async function handleWithdraw() {
