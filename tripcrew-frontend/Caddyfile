@@ -1,0 +1,25 @@
+# =================================================
+# Caddy 리버스 프록시 (운영)
+#   /api, /ws, /uploads → 백엔드(같은 compose 네트워크의 backend:8080)
+#   그 외 → SPA 정적 파일 (Vue Router history 모드: 없는 경로는 index.html 로)
+#
+# HTTPS 전환:
+#   아래 `:80` 을 도메인(예: tripcrew.example.com)으로 바꾸면 Caddy 가
+#   Let's Encrypt 인증서를 자동 발급/갱신한다(80·443 포트 개방 필요). 그 외 설정 동일.
+# =================================================
+:80 {
+	encode gzip
+
+	# 백엔드로 보낼 경로 (REST + WebSocket + 업로드 이미지)
+	@backend path /api/* /ws /ws/* /uploads/*
+	handle @backend {
+		reverse_proxy backend:8080
+	}
+
+	# 나머지는 SPA. 실제 파일 없으면 index.html (클라 라우팅)
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

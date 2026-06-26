@@ -1,0 +1,28 @@
+# =================================================
+# 운영용 백엔드 이미지 (멀티스테이지)
+#   build: Maven 으로 실행가능 jar 패키징
+#   run : 슬림 JRE 에서 jar 실행 (개발용 Dockerfile 의 mvnw spring-boot:run 과 분리)
+# =================================================
+
+# ---- build stage ----
+FROM eclipse-temurin:17-jdk AS build
+WORKDIR /app
+
+COPY .mvn .mvn
+COPY mvnw pom.xml ./
+RUN ./mvnw -q -DskipTests dependency:go-offline
+
+COPY src src
+RUN ./mvnw -q -DskipTests clean package
+
+# ---- run stage ----
+FROM eclipse-temurin:17-jre
+WORKDIR /app
+
+# 빌드 산출물(실행가능 jar)만 복사. *.jar.original 은 제외됨.
+COPY --from=build /app/target/*.jar app.jar
+
+EXPOSE 8080
+
+# JAVA_OPTS 로 메모리 등 튜닝 가능 (예: -XX:MaxRAMPercentage=75)
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

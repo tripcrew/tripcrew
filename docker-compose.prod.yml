@@ -1,0 +1,84 @@
+# =================================================
+# 운영(서버) 배포용 compose
+#   개발용 docker-compose.yml 과 분리. 빌드된 산출물로 띄운다.
+#     backend = Dockerfile.prod(실행 jar) / web = Dockerfile.prod(Vite 빌드 + Caddy)
+#   외부 노출은 web(:80) 하나뿐. mysql/redis/backend 는 내부 네트워크로만 접근.
+#
+#   실행:  docker compose -f docker-compose.prod.yml up -d --build
+# =================================================
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: tripcrew-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-tripcrew}
+      TZ: Asia/Seoul
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: tripcrew-redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./tripcrew-backend
+      dockerfile: Dockerfile.prod
+    container_name: tripcrew-backend
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DB_URL: ${DB_URL:-jdbc:mysql://mysql:3306/tripcrew?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8}
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      # 사용자가 접속하는 origin. WS 핸드셰이크 origin 검증에 사용(REST 는 같은 origin 이라 무관).
+      APP_CORS_ORIGINS: ${APP_CORS_ORIGINS:?APP_CORS_ORIGINS is required}
+      # 업로드 이미지 영속 경로 (아래 uploads 볼륨에 보존)
+      UPLOAD_DIR: /app/uploads
+      NAVER_MAP_CLIENT_ID: ${NAVER_MAP_CLIENT_ID:-}
+      NAVER_MAP_CLIENT_SECRET: ${NAVER_MAP_CLIENT_SECRET:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:?GEMINI_API_KEY is required}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.1-flash-lite}
+      JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=70}
+    volumes:
+      - uploads:/app/uploads
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./tripcrew-frontend
+      dockerfile: Dockerfile.prod
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
+        VITE_NAVER_MAP_CLIENT_ID: ${VITE_NAVER_MAP_CLIENT_ID:-}
+    container_name: tripcrew-web
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+      # HTTPS 전환 시 443 도 개방하고 Caddyfile 의 :80 을 도메인으로 변경
+      # - "443:443"
+    restart: unless-stopped
+
+volumes:
+  mysql-data:
+  uploads:
