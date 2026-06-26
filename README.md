@@ -8,7 +8,8 @@
 
 <br/>
 
-<img src="docs/images/hero.png" alt="TripCrew 랜딩 페이지" width="800"/>
+<img src="docs/images/hero-light.png" alt="TripCrew 랜딩 페이지" width="800"/>
+<img src="docs/images/hero-dark.png" alt="TripCrew 랜딩 페이지" width="800"/>
 
 <br/>
 
