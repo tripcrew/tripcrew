@@ -37,5 +37,8 @@ member.sql
 CLAUDE.md
 AGENTS.md
 
+# Claude Code 개인 설정 (권한 허용목록 등 — 로컬 전용, 커밋 금지)
+.claude/
+
 # 제출용 산출물 (보고서·설계문서 HTML/PDF — 생성물, 커밋 금지)
 docs/report/
