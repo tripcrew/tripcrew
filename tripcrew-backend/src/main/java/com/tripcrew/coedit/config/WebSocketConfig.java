@@ -1,5 +1,6 @@
 package com.tripcrew.coedit.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
@@ -25,11 +26,15 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final StompAuthChannelInterceptor authChannelInterceptor;
 
+    /** WebSocket 핸드셰이크 허용 origin. 운영에서는 APP_CORS_ORIGINS(콤마 구분)로 주입. 기본값은 로컬 개발 origin. */
+    @Value("${app.cors.allowed-origins:http://localhost:5173,http://127.0.0.1:5173}")
+    private String[] allowedOrigins;
+
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         // 핸드셰이크(HTTP 업그레이드)는 SecurityConfig 에서 permitAll, 실제 인증은 STOMP CONNECT 에서.
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("http://localhost:5173", "http://127.0.0.1:5173");
+                .setAllowedOriginPatterns(allowedOrigins);
     }
 
     @Override

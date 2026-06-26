@@ -18,10 +18,18 @@ export function usePresence(planId, options = {}) {
   const roster = ref([])
   let client = null
 
-  // VITE_API_BASE_URL(http://host/api) → ws://host/ws
+  // API base → WebSocket URL
+  //  - 절대(http://host/api): ws://host/ws 로 변환 (개발: vite 5173 → 백엔드 8080)
+  //  - 상대(/api): 현재 페이지 origin 에서 ws(s)://host/ws 유도 (운영: 같은 origin 리버스 프록시.
+  //    http→ws, https→wss 자동 → IP↔도메인·HTTP↔HTTPS 전환 시 프론트 재빌드 불필요)
   function resolveWsUrl() {
     const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api'
-    return base.replace(/^http/, 'ws').replace(/\/api\/?$/, '/ws')
+    if (/^https?:\/\//.test(base)) {
+      return base.replace(/^http/, 'ws').replace(/\/api\/?$/, '/ws')
+    }
+    const wsProto = window.location.protocol === 'https:' ? 'wss' : 'ws'
+    const path = base.replace(/\/api\/?$/, '/ws')
+    return `${wsProto}://${window.location.host}${path}`
   }
 
   function connect() {
