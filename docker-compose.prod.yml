@@ -14,6 +14,8 @@ services:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-tripcrew}
       TZ: Asia/Seoul
+    # 메모리 작은 인스턴스(t2.micro 1GB) 대비 풋프린트 축소. 큰 인스턴스면 올려도 됨.
+    command: ["--innodb-buffer-pool-size=64M", "--performance-schema=OFF"]
     volumes:
       - mysql-data:/var/lib/mysql
     healthcheck:
@@ -34,6 +36,9 @@ services:
     restart: unless-stopped
 
   backend:
+    image: ${IMAGE_PREFIX:-tripcrew}/tripcrew-backend:latest
+    # EC2 는 amd64. (로컬 빌드→푸시 방식 쓸 때 Apple Silicon 에서도 amd64 로 빌드되게 고정)
+    platform: linux/amd64
     build:
       context: ./tripcrew-backend
       dockerfile: Dockerfile.prod
@@ -58,12 +63,15 @@ services:
       NAVER_MAP_CLIENT_SECRET: ${NAVER_MAP_CLIENT_SECRET:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:?GEMINI_API_KEY is required}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.1-flash-lite}
-      JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=70}
+      # 1GB 인스턴스 기준 하드캡. 더 큰 인스턴스면 .env 에서 올린다(예: -Xmx768m).
+      JAVA_OPTS: ${JAVA_OPTS:--Xmx384m}
     volumes:
       - uploads:/app/uploads
     restart: unless-stopped
 
   web:
+    image: ${IMAGE_PREFIX:-tripcrew}/tripcrew-web:latest
+    platform: linux/amd64
     build:
       context: ./tripcrew-frontend
       dockerfile: Dockerfile.prod
