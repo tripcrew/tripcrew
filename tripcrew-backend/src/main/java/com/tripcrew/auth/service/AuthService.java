@@ -122,14 +122,12 @@ public class AuthService {
         }
     }
 
-    /** 현재 비밀번호를 확인한 뒤 로그인한 사용자의 닉네임을 변경한다. */
+    /** 닉네임을 변경한다. LOCAL 계정은 현재 비밀번호를 확인하고, 소셜 계정은 JWT 인증으로 갈음한다. */
     @Transactional
     public UserResponse updateNickname(Long userId, String nickname, String currentPassword) {
         User user = findUser(userId);
         ensureActive(user);
-        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
-            throw new InvalidCredentialsException();
-        }
+        verifyPasswordIfLocal(user, currentPassword);
         userMapper.updateNickname(userId, nickname.trim());
         user.setNickname(nickname.trim());
         return UserResponse.from(user);
@@ -153,14 +151,12 @@ public class AuthService {
         userMapper.updatePassword(userId, passwordEncoder.encode(newPassword));
     }
 
-    /** 비밀번호 재확인 후 계정을 비활성화하고 모든 세션을 끊는다. */
+    /** 계정을 비활성화하고 모든 세션을 끊는다. LOCAL 계정만 현재 비밀번호를 확인한다. */
     @Transactional
     public void withdraw(Long userId, String currentPassword) {
         User user = findUser(userId);
         ensureActive(user);
-        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
-            throw new InvalidCredentialsException();
-        }
+        verifyPasswordIfLocal(user, currentPassword);
         userMapper.updateStatus(userId, Status.WITHDRAWN);
         refreshTokenMapper.deleteByUserId(userId);
     }
@@ -168,6 +164,19 @@ public class AuthService {
     private User findUser(Long userId) {
         return userMapper.findById(userId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
+    }
+
+    /**
+     * LOCAL 계정만 현재 비밀번호를 확인한다.
+     * 소셜 전용 계정(password=null)은 비밀번호가 없으므로 JWT 인증을 신뢰하고 통과시킨다.
+     */
+    private void verifyPasswordIfLocal(User user, String currentPassword) {
+        if (user.getPassword() == null) {
+            return;
+        }
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new InvalidCredentialsException();
+        }
     }
 
     private void ensureActive(User user) {
