@@ -44,6 +44,9 @@ public interface UserMapper {
 
     int updatePassword(@Param("id") Long id, @Param("password") String password);
 
+    /** 소셜 로그인: 기존 계정에 (provider, provider_id) 연동. */
+    int linkProvider(@Param("id") Long id, @Param("provider") String provider, @Param("providerId") String providerId);
+
     /** 신고 처리완료 시 누적 신고 횟수 +1. (임계 도달 시 호출측에서 단계 제재) */
     int incrementReportCount(@Param("id") Long id);
 

@@ -15,6 +15,7 @@ import com.tripcrew.auth.exception.InvalidTokenException;
 import com.tripcrew.auth.exception.SuspendedUserException;
 import com.tripcrew.auth.exception.WithdrawnUserException;
 import com.tripcrew.auth.jwt.JwtProvider;
+import com.tripcrew.auth.oauth.OAuthCodeStore;
 import com.tripcrew.restriction.model.RestrictionType;
 import com.tripcrew.restriction.service.RestrictionService;
 import com.tripcrew.auth.model.dto.LoginRequest;
@@ -41,6 +42,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
     private final RestrictionService restrictionService;
+    private final OAuthCodeStore oAuthCodeStore;
 
     /** 회원가입. 이메일 중복 시 409. */
     @Transactional
@@ -88,6 +90,17 @@ public class AuthService {
             throw new InvalidTokenException();
         }
         User user = userMapper.findById(stored.getUserId())
+                .orElseThrow(InvalidTokenException::new);
+        ensureActive(user);
+        return issueTokens(user);
+    }
+
+    /** 소셜 로그인 일회용 코드를 검증하고 우리 JWT 를 발급한다(기존 토큰 흐름 재사용). */
+    @Transactional
+    public TokenResponse exchangeOAuthCode(String code) {
+        Long userId = oAuthCodeStore.consume(code)
+                .orElseThrow(InvalidTokenException::new);
+        User user = userMapper.findById(userId)
                 .orElseThrow(InvalidTokenException::new);
         ensureActive(user);
         return issueTokens(user);

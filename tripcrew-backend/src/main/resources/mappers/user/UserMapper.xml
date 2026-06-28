@@ -74,6 +74,13 @@
          WHERE id = #{id}
     </update>
 
+    <!-- 소셜 로그인: 기존 계정에 (provider, provider_id) 연동. -->
+    <update id="linkProvider">
+        UPDATE users
+           SET provider = #{provider}, provider_id = #{providerId}
+         WHERE id = #{id}
+    </update>
+
     <!-- 신고 처리완료 시 누적 신고 횟수 +1 -->
     <update id="incrementReportCount">
         UPDATE users
