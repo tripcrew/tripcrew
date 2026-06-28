@@ -23,6 +23,7 @@ import com.tripcrew.auth.model.dto.SignupRequest;
 import com.tripcrew.auth.model.dto.TokenResponse;
 import com.tripcrew.auth.model.dto.UserResponse;
 import com.tripcrew.auth.model.mapper.RefreshTokenMapper;
+import com.tripcrew.user.model.Provider;
 import com.tripcrew.user.model.Role;
 import com.tripcrew.user.model.Status;
 import com.tripcrew.user.model.dto.User;
@@ -52,6 +53,7 @@ public class AuthService {
                 .password(passwordEncoder.encode(request.password()))
                 .nickname(request.nickname())
                 .role(Role.USER)
+                .provider(Provider.LOCAL)
                 .build();
         userMapper.insert(user);
         return UserResponse.from(user);
@@ -62,6 +64,10 @@ public class AuthService {
     public TokenResponse login(LoginRequest request) {
         User user = userMapper.findByEmail(request.email())
                 .orElseThrow(InvalidCredentialsException::new);
+        // 소셜 전용 계정은 비밀번호가 없다 → 비밀번호 로그인 불가(소셜 버튼으로 로그인).
+        if (user.getPassword() == null) {
+            throw new InvalidCredentialsException();
+        }
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new InvalidCredentialsException();
         }
@@ -121,6 +127,10 @@ public class AuthService {
     public void updatePassword(Long userId, String currentPassword, String newPassword) {
         User user = findUser(userId);
         ensureActive(user);
+        // 소셜 전용 계정은 비밀번호가 없어 변경 대상이 아니다.
+        if (user.getPassword() == null) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "소셜 로그인 계정은 비밀번호를 변경할 수 없습니다.");
+        }
         if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
             throw new InvalidCredentialsException();
         }

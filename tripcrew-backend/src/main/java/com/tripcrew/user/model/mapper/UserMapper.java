@@ -17,6 +17,9 @@ public interface UserMapper {
 
     Optional<User> findByEmail(String email);
 
+    /** 소셜 로그인: (provider, provider_id) 로 기존 소셜 계정 조회. */
+    Optional<User> findByProvider(@Param("provider") String provider, @Param("providerId") String providerId);
+
     Optional<User> findById(Long id);
 
     /** 성공 시 user.id 에 생성된 PK가 채워진다(useGeneratedKeys). */
