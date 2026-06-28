@@ -92,8 +92,15 @@ services:
       - "80:80"
       # HTTPS: Caddy 가 Let's Encrypt 인증서 자동 발급(Caddyfile 의 도메인 사용)
       - "443:443"
+    # ⚠️ Caddy 인증서/ACME 계정 영속화 — 없으면 컨테이너 재생성(재빌드) 때마다
+    #    인증서가 날아가 Let's Encrypt 에 재발급 요청 → 발급 실패/레이트리밋 위험.
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
     restart: unless-stopped
 
 volumes:
   mysql-data:
   uploads:
+  caddy_data:
+  caddy_config:
