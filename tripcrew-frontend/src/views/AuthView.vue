@@ -166,6 +166,19 @@
               {{ isSubmitting ? '처리 중...' : '로그인' }}
             </BaseButton>
           </form>
+
+          <!-- 소셜 로그인(로그인/회원가입 공통). 백엔드 OAuth2 로 top-level 이동. -->
+          <div class="social-login">
+            <div class="social-divider"><span>또는 소셜 계정으로</span></div>
+            <button type="button" class="social-btn social-btn--kakao" @click="socialLogin('kakao')">
+              <span class="social-btn__icon">K</span>
+              카카오로 시작하기
+            </button>
+            <button type="button" class="social-btn social-btn--naver" @click="socialLogin('naver')">
+              <span class="social-btn__icon">N</span>
+              네이버로 시작하기
+            </button>
+          </div>
         </div>
 
         <aside v-if="mode === 'login'" class="auth-trip-card" aria-label="TripCrew 여행 계획 기능 소개">
@@ -202,6 +215,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import BaseButton from '@/components/common/BaseButton.vue'
+import { assetBaseURL } from '@/api/http'
 import { useTheme } from '@/composables/useTheme'
 import { useAuthStore } from '@/stores/auth'
 
@@ -299,6 +313,12 @@ async function handleSignup() {
   } finally {
     isSubmitting.value = false
   }
+}
+
+// 소셜 로그인: 백엔드 OAuth2 인가요청으로 top-level 이동(XHR 아님).
+// 성공 시 백엔드가 /oauth/callback?code=... 로 되돌려보낸다.
+function socialLogin(provider) {
+  window.location.href = `${assetBaseURL}/oauth2/authorization/${provider}`
 }
 
 async function handleLogin() {
@@ -812,5 +832,80 @@ function getRedirectTarget() {
     min-width: 1px;
     margin-left: 4px;
   }
+}
+
+/* 소셜 로그인 */
+.social-login {
+  margin-top: 18px;
+}
+
+.social-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0 14px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.social-divider::before,
+.social-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.social-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 16px;
+  margin-bottom: 10px;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.05s ease;
+}
+
+.social-btn:hover { filter: brightness(0.96); }
+.social-btn:active { transform: translateY(1px); }
+
+.social-btn__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+/* 제공자 브랜드 컬러(식별성 위해 토큰 대신 브랜드 색 사용) */
+.social-btn--kakao {
+  background: #fee500;
+  color: rgba(0, 0, 0, 0.85);
+}
+.social-btn--kakao .social-btn__icon {
+  background: rgba(0, 0, 0, 0.85);
+  color: #fee500;
+}
+
+.social-btn--naver {
+  background: #03c75a;
+  color: #fff;
+}
+.social-btn--naver .social-btn__icon {
+  background: #fff;
+  color: #03c75a;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .social-btn { transition: none; }
 }
 </style>
