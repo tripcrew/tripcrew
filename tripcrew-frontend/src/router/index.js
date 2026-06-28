@@ -14,6 +14,12 @@ const routes = [
     meta: { title: '회원가입/로그인 (SC-02)' }
   },
   {
+    path: '/oauth/callback',
+    name: 'oauth-callback',
+    component: () => import('@/views/OAuthCallbackView.vue'),
+    meta: { title: '소셜 로그인 처리' }
+  },
+  {
     path: '/terms',
     name: 'terms',
     component: () => import('@/views/LegalView.vue'),

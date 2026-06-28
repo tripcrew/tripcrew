@@ -8,25 +8,33 @@
     </select>
 
     <select id="findByEmail" resultType="User">
-        SELECT id, email, password, nickname, role, status, created_at, updated_at
+        SELECT id, email, password, nickname, role, status, provider, provider_id, created_at, updated_at
           FROM users
          WHERE email = #{email}
     </select>
 
+    <!-- 소셜 로그인: (provider, provider_id) 로 기존 소셜 계정 조회. -->
+    <select id="findByProvider" resultType="User">
+        SELECT id, email, password, nickname, role, status, provider, provider_id, created_at, updated_at
+          FROM users
+         WHERE provider = #{provider} AND provider_id = #{providerId}
+    </select>
+
     <select id="findById" resultType="User">
-        SELECT id, email, password, nickname, role, status, report_count, created_at, updated_at
+        SELECT id, email, password, nickname, role, status, provider, provider_id, report_count, created_at, updated_at
           FROM users
          WHERE id = #{id}
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO users (email, password, nickname, role)
-        VALUES (#{email}, #{password}, #{nickname}, #{role})
+        INSERT INTO users (email, password, nickname, role, provider, provider_id)
+        VALUES (#{email}, #{password}, #{nickname}, #{role},
+                COALESCE(#{provider}, 'LOCAL'), #{providerId})
     </insert>
 
     <!-- 관리자용 전체 사용자 목록. password 는 노출하지 않으려 SELECT 에서 제외(null 로 둠). -->
     <select id="findAll" resultType="User">
-        SELECT id, email, nickname, role, status, report_count, created_at, updated_at
+        SELECT id, email, nickname, role, status, provider, provider_id, report_count, created_at, updated_at
           FROM users
          ORDER BY id ASC
     </select>
@@ -63,6 +71,13 @@
     <update id="updatePassword">
         UPDATE users
            SET password = #{password}
+         WHERE id = #{id}
+    </update>
+
+    <!-- 소셜 로그인: 기존 계정에 (provider, provider_id) 연동. -->
+    <update id="linkProvider">
+        UPDATE users
+           SET provider = #{provider}, provider_id = #{providerId}
          WHERE id = #{id}
     </update>
 

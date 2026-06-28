@@ -10,6 +10,8 @@ export const authApi = {
   login: (payload) => http.post('/auth/login', payload).then((r) => r.data),
   reissue: (refreshToken) =>
     http.post('/auth/reissue', { refreshToken }).then((r) => r.data),
+  // 소셜 로그인 일회용 코드 → JWT 교환
+  oauthExchange: (code) => http.post('/auth/oauth/exchange', { code }).then((r) => r.data),
   logout: () => http.post('/auth/logout'),
   verifyPassword: (currentPassword) => http.post('/auth/me/verify-password', { currentPassword }),
   updateNickname: (nickname, currentPassword) =>
