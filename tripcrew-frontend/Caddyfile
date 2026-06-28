@@ -1,17 +1,18 @@
 # =================================================
 # Caddy 리버스 프록시 (운영)
-#   /api, /ws, /uploads → 백엔드(같은 compose 네트워크의 backend:8080)
+#   /api, /ws, /uploads, /oauth2, /login/oauth2 → 백엔드(backend:8080)
 #   그 외 → SPA 정적 파일 (Vue Router history 모드: 없는 경로는 index.html 로)
 #
-# HTTPS 전환:
-#   아래 `:80` 을 도메인(예: tripcrew.example.com)으로 바꾸면 Caddy 가
-#   Let's Encrypt 인증서를 자동 발급/갱신한다(80·443 포트 개방 필요). 그 외 설정 동일.
+# 도메인을 쓰면 Caddy 가 Let's Encrypt 인증서를 자동 발급/갱신한다(80·443 개방).
+# 로컬/IP-only 로 띄울 땐 아래 도메인을 `:80` 으로 바꾼다.
 # =================================================
-:80 {
+tripcrew.duckdns.org {
 	encode gzip
 
-	# 백엔드로 보낼 경로 (REST + WebSocket + 업로드 이미지)
-	@backend path /api/* /ws /ws/* /uploads/*
+	# 백엔드로 보낼 경로 (REST + WebSocket + 업로드 이미지 + OAuth2 소셜 로그인)
+	#   /oauth2/*       : 소셜 로그인 인가요청 시작(/oauth2/authorization/{provider})
+	#   /login/oauth2/* : 제공자 콜백(/login/oauth2/code/{provider})
+	@backend path /api/* /ws /ws/* /uploads/* /oauth2/* /login/oauth2/*
 	handle @backend {
 		reverse_proxy backend:8080
 	}

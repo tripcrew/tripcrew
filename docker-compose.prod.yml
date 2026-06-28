@@ -65,6 +65,13 @@ services:
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.1-flash-lite}
       # 1GB 인스턴스 기준 하드캡. 더 큰 인스턴스면 .env 에서 올린다(예: -Xmx768m).
       JAVA_OPTS: ${JAVA_OPTS:--Xmx384m}
+      # OAuth2 소셜 로그인(Kakao/Naver). 실제 키는 .env 에. 미설정이면 placeholder 로 기동(소셜만 비활성).
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:-placeholder-kakao}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-}
+      NAVER_CLIENT_ID: ${NAVER_CLIENT_ID:-placeholder-naver}
+      NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET:-placeholder-secret}
+      # 소셜 로그인 성공 후 돌아갈 프론트 콜백 베이스(운영 도메인)
+      APP_OAUTH_REDIRECT_BASE: ${APP_OAUTH_REDIRECT_BASE:-https://tripcrew.duckdns.org}
     volumes:
       - uploads:/app/uploads
     restart: unless-stopped
@@ -83,8 +90,8 @@ services:
       - backend
     ports:
       - "80:80"
-      # HTTPS 전환 시 443 도 개방하고 Caddyfile 의 :80 을 도메인으로 변경
-      # - "443:443"
+      # HTTPS: Caddy 가 Let's Encrypt 인증서 자동 발급(Caddyfile 의 도메인 사용)
+      - "443:443"
     restart: unless-stopped
 
 volumes:
