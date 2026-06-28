@@ -58,9 +58,11 @@ public record OAuthAttributes(
         String id = String.valueOf(response.get("id"));
         String email = (String) response.get("email");
         String nickname = (String) response.getOrDefault("nickname", response.get("name"));
-        // 네이버는 동의받은 이메일을 검증된 값으로 제공한다.
-        boolean verified = email != null && !email.isBlank();
-        return new OAuthAttributes(Provider.NAVER, id, email, nickname, verified);
+        // ⚠️ 네이버 이메일은 '연락처 이메일'이라 계정마다 고유하지 않고 소유권이 검증된 값이 아니다
+        //   (아무 도메인 가능·변경 가능). 따라서 검증값으로 신뢰하지 않는다(emailVerified=false)
+        //   → 기존 계정과 이메일이 겹쳐도 자동 연동하지 않는다(계정 탈취 방지).
+        //   신규 가입(이메일 미충돌)은 그대로 가능하다. 식별은 고유한 response.id 로 한다.
+        return new OAuthAttributes(Provider.NAVER, id, email, nickname, false);
     }
 
     static OAuth2AuthenticationException oauthError(String code, String message) {
