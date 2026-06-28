@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.tripcrew.auth.model.dto.LoginRequest;
 import com.tripcrew.auth.model.dto.NicknameUpdateRequest;
+import com.tripcrew.auth.model.dto.OAuthExchangeRequest;
 import com.tripcrew.auth.model.dto.PasswordUpdateRequest;
 import com.tripcrew.auth.model.dto.PasswordVerificationRequest;
 import com.tripcrew.auth.model.dto.ReissueRequest;
@@ -46,6 +47,12 @@ public class AuthController {
     @PostMapping("/reissue")
     public TokenResponse reissue(@Valid @RequestBody ReissueRequest request) {
         return authService.reissue(request.refreshToken());
+    }
+
+    /** 소셜 로그인 일회용 코드 → JWT 교환(프론트 콜백에서 호출). */
+    @PostMapping("/oauth/exchange")
+    public TokenResponse exchangeOAuth(@Valid @RequestBody OAuthExchangeRequest request) {
+        return authService.exchangeOAuthCode(request.code());
     }
 
     @PostMapping("/logout")

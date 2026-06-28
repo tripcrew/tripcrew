@@ -2,6 +2,7 @@ package com.tripcrew.user.model.dto;
 
 import java.time.LocalDateTime;
 
+import com.tripcrew.user.model.Provider;
 import com.tripcrew.user.model.Role;
 import com.tripcrew.user.model.Status;
 
@@ -24,10 +25,12 @@ public class User {
 
     private Long id;
     private String email;
-    private String password;   // BCrypt 해시
+    private String password;   // BCrypt 해시. 소셜 전용 계정은 null
     private String nickname;
     private Role role;
     private Status status;
+    private Provider provider;     // LOCAL | KAKAO | NAVER (가입/로그인 경로)
+    private String providerId;     // 소셜 제공자 고유 식별자. LOCAL 은 null
     private Integer reportCount;   // 처리완료된 신고 누적 횟수(3회 이상 자동 제재)
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

@@ -49,6 +49,12 @@ services:
       NAVER_MAP_CLIENT_SECRET: ${NAVER_MAP_CLIENT_SECRET:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:?GEMINI_API_KEY is required}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.1-flash-lite}
+      # OAuth2 소셜 로그인(Kakao/Naver). 미설정이면 placeholder 로 기동(소셜 로그인만 비활성).
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:-placeholder-kakao}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-}
+      NAVER_CLIENT_ID: ${NAVER_CLIENT_ID:-placeholder-naver}
+      NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET:-placeholder-secret}
+      APP_OAUTH_REDIRECT_BASE: ${APP_OAUTH_REDIRECT_BASE:-http://localhost:5173}
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     volumes:

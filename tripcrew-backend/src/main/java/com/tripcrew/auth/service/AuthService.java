@@ -15,6 +15,7 @@ import com.tripcrew.auth.exception.InvalidTokenException;
 import com.tripcrew.auth.exception.SuspendedUserException;
 import com.tripcrew.auth.exception.WithdrawnUserException;
 import com.tripcrew.auth.jwt.JwtProvider;
+import com.tripcrew.auth.oauth.OAuthCodeStore;
 import com.tripcrew.restriction.model.RestrictionType;
 import com.tripcrew.restriction.service.RestrictionService;
 import com.tripcrew.auth.model.dto.LoginRequest;
@@ -23,6 +24,7 @@ import com.tripcrew.auth.model.dto.SignupRequest;
 import com.tripcrew.auth.model.dto.TokenResponse;
 import com.tripcrew.auth.model.dto.UserResponse;
 import com.tripcrew.auth.model.mapper.RefreshTokenMapper;
+import com.tripcrew.user.model.Provider;
 import com.tripcrew.user.model.Role;
 import com.tripcrew.user.model.Status;
 import com.tripcrew.user.model.dto.User;
@@ -40,6 +42,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
     private final RestrictionService restrictionService;
+    private final OAuthCodeStore oAuthCodeStore;
 
     /** 회원가입. 이메일 중복 시 409. */
     @Transactional
@@ -52,6 +55,7 @@ public class AuthService {
                 .password(passwordEncoder.encode(request.password()))
                 .nickname(request.nickname())
                 .role(Role.USER)
+                .provider(Provider.LOCAL)
                 .build();
         userMapper.insert(user);
         return UserResponse.from(user);
@@ -62,6 +66,10 @@ public class AuthService {
     public TokenResponse login(LoginRequest request) {
         User user = userMapper.findByEmail(request.email())
                 .orElseThrow(InvalidCredentialsException::new);
+        // 소셜 전용 계정은 비밀번호가 없다 → 비밀번호 로그인 불가(소셜 버튼으로 로그인).
+        if (user.getPassword() == null) {
+            throw new InvalidCredentialsException();
+        }
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new InvalidCredentialsException();
         }
@@ -87,6 +95,17 @@ public class AuthService {
         return issueTokens(user);
     }
 
+    /** 소셜 로그인 일회용 코드를 검증하고 우리 JWT 를 발급한다(기존 토큰 흐름 재사용). */
+    @Transactional
+    public TokenResponse exchangeOAuthCode(String code) {
+        Long userId = oAuthCodeStore.consume(code)
+                .orElseThrow(InvalidTokenException::new);
+        User user = userMapper.findById(userId)
+                .orElseThrow(InvalidTokenException::new);
+        ensureActive(user);
+        return issueTokens(user);
+    }
+
     /** 로그아웃: 해당 사용자의 리프레시 토큰 폐기. */
     @Transactional
     public void logout(Long userId) {
@@ -103,14 +122,12 @@ public class AuthService {
         }
     }
 
-    /** 현재 비밀번호를 확인한 뒤 로그인한 사용자의 닉네임을 변경한다. */
+    /** 닉네임을 변경한다. LOCAL 계정은 현재 비밀번호를 확인하고, 소셜 계정은 JWT 인증으로 갈음한다. */
     @Transactional
     public UserResponse updateNickname(Long userId, String nickname, String currentPassword) {
         User user = findUser(userId);
         ensureActive(user);
-        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
-            throw new InvalidCredentialsException();
-        }
+        verifyPasswordIfLocal(user, currentPassword);
         userMapper.updateNickname(userId, nickname.trim());
         user.setNickname(nickname.trim());
         return UserResponse.from(user);
@@ -121,6 +138,10 @@ public class AuthService {
     public void updatePassword(Long userId, String currentPassword, String newPassword) {
         User user = findUser(userId);
         ensureActive(user);
+        // 소셜 전용 계정은 비밀번호가 없어 변경 대상이 아니다.
+        if (user.getPassword() == null) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "소셜 로그인 계정은 비밀번호를 변경할 수 없습니다.");
+        }
         if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
             throw new InvalidCredentialsException();
         }
@@ -130,14 +151,12 @@ public class AuthService {
         userMapper.updatePassword(userId, passwordEncoder.encode(newPassword));
     }
 
-    /** 비밀번호 재확인 후 계정을 비활성화하고 모든 세션을 끊는다. */
+    /** 계정을 비활성화하고 모든 세션을 끊는다. LOCAL 계정만 현재 비밀번호를 확인한다. */
     @Transactional
     public void withdraw(Long userId, String currentPassword) {
         User user = findUser(userId);
         ensureActive(user);
-        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
-            throw new InvalidCredentialsException();
-        }
+        verifyPasswordIfLocal(user, currentPassword);
         userMapper.updateStatus(userId, Status.WITHDRAWN);
         refreshTokenMapper.deleteByUserId(userId);
     }
@@ -145,6 +164,19 @@ public class AuthService {
     private User findUser(Long userId) {
         return userMapper.findById(userId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
+    }
+
+    /**
+     * LOCAL 계정만 현재 비밀번호를 확인한다.
+     * 소셜 전용 계정(password=null)은 비밀번호가 없으므로 JWT 인증을 신뢰하고 통과시킨다.
+     */
+    private void verifyPasswordIfLocal(User user, String currentPassword) {
+        if (user.getPassword() == null) {
+            return;
+        }
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new InvalidCredentialsException();
+        }
     }
 
     private void ensureActive(User user) {

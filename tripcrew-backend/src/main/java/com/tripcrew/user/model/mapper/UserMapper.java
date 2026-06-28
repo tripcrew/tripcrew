@@ -17,6 +17,9 @@ public interface UserMapper {
 
     Optional<User> findByEmail(String email);
 
+    /** 소셜 로그인: (provider, provider_id) 로 기존 소셜 계정 조회. */
+    Optional<User> findByProvider(@Param("provider") String provider, @Param("providerId") String providerId);
+
     Optional<User> findById(Long id);
 
     /** 성공 시 user.id 에 생성된 PK가 채워진다(useGeneratedKeys). */
@@ -40,6 +43,9 @@ public interface UserMapper {
     int updateNickname(@Param("id") Long id, @Param("nickname") String nickname);
 
     int updatePassword(@Param("id") Long id, @Param("password") String password);
+
+    /** 소셜 로그인: 기존 계정에 (provider, provider_id) 연동. */
+    int linkProvider(@Param("id") Long id, @Param("provider") String provider, @Param("providerId") String providerId);
 
     /** 신고 처리완료 시 누적 신고 횟수 +1. (임계 도달 시 호출측에서 단계 제재) */
     int incrementReportCount(@Param("id") Long id);

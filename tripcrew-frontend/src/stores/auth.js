@@ -36,13 +36,22 @@ export const useAuthStore = defineStore('auth', () => {
     return authApi.signup(payload)
   }
 
-  async function login(credentials) {
-    const tokens = await authApi.login(credentials)
+  // 토큰 응답을 로컬 세션에 반영(이메일 로그인/소셜 로그인 공통).
+  function setSession(tokens) {
     tokenStorage.set(tokens.accessToken, tokens.refreshToken)
     accessToken.value = tokens.accessToken
     user.value = tokens.user || null
     writeStoredUser(user.value)
     return tokens
+  }
+
+  async function login(credentials) {
+    return setSession(await authApi.login(credentials))
+  }
+
+  // 소셜 로그인 콜백: 일회용 코드를 JWT 로 교환해 동일 세션 처리.
+  async function loginWithOAuthCode(code) {
+    return setSession(await authApi.oauthExchange(code))
   }
 
   async function logout() {
@@ -80,5 +89,5 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
   }
 
-  return { accessToken, user, isAuthenticated, signup, login, logout, verifyPassword, updateNickname, updatePassword, withdraw }
+  return { accessToken, user, isAuthenticated, signup, login, loginWithOAuthCode, logout, verifyPassword, updateNickname, updatePassword, withdraw }
 })

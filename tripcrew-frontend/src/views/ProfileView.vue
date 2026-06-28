@@ -26,19 +26,24 @@
             <dt>권한</dt>
             <dd>{{ userRole }}</dd>
           </div>
+          <div>
+            <dt>로그인</dt>
+            <dd>{{ providerLabel }}</dd>
+          </div>
         </dl>
 
         <section v-if="isEditMode" class="edit-section">
           <div class="edit-section__head">
             <div>
               <h2>정보 수정</h2>
-              <p v-if="isAdmin">정보를 변경하려면 현재 비밀번호를 입력해 주세요.</p>
+              <p v-if="isSocial">{{ providerLabel }} 연결 계정이에요. 비밀번호 없이 변경할 수 있어요.</p>
+              <p v-else-if="isAdmin">정보를 변경하려면 현재 비밀번호를 입력해 주세요.</p>
               <p v-else>변경하거나 탈퇴하려면 현재 비밀번호를 입력해 주세요.</p>
             </div>
             <button type="button" class="edit-close" aria-label="정보 수정 닫기" @click="closeEditMode">×</button>
           </div>
 
-          <form v-if="!isPasswordVerified" class="password-check" @submit.prevent="handlePasswordVerification">
+          <form v-if="!isSocial && !isPasswordVerified" class="password-check" @submit.prevent="handlePasswordVerification">
             <label class="form-label" for="current-password">비밀번호</label>
             <div class="password-check__row">
               <input id="current-password" v-model="currentPassword" type="password" maxlength="64" autocomplete="current-password" required />
@@ -49,8 +54,8 @@
             <p v-if="passwordError" class="form-error">{{ passwordError }}</p>
           </form>
 
-          <template v-else>
-            <p class="verified-message">비밀번호 인증이 완료되었습니다.</p>
+          <template v-if="isSocial || isPasswordVerified">
+            <p v-if="!isSocial" class="verified-message">비밀번호 인증이 완료되었습니다.</p>
             <form class="nickname-form" @submit.prevent="handleNicknameUpdate">
               <label class="form-label" for="nickname">새 닉네임</label>
               <div class="nickname-form__row">
@@ -63,7 +68,7 @@
               <p v-if="nicknameError" class="form-error">{{ nicknameError }}</p>
             </form>
 
-            <form class="nickname-form password-form" @submit.prevent="handlePasswordChange">
+            <form v-if="!isSocial" class="nickname-form password-form" @submit.prevent="handlePasswordChange">
               <label class="form-label" for="new-password">새 비밀번호</label>
               <input id="new-password" v-model="newPassword" type="password" minlength="8" maxlength="64" autocomplete="new-password" placeholder="8자 이상" required />
               <label class="form-label" for="confirm-password">새 비밀번호 확인</label>
@@ -129,6 +134,13 @@ const authStore = useAuthStore()
 const displayName = computed(() => authStore.user?.nickname || '여행자')
 const userEmail = computed(() => authStore.user?.email || '이메일 정보 없음')
 const userRole = computed(() => authStore.user?.role || 'USER')
+const userProvider = computed(() => authStore.user?.provider || 'LOCAL')
+const isSocial = computed(() => userProvider.value === 'KAKAO' || userProvider.value === 'NAVER')
+const providerLabel = computed(() => {
+  if (userProvider.value === 'KAKAO') return '카카오'
+  if (userProvider.value === 'NAVER') return '네이버'
+  return '이메일'
+})
 const avatarText = computed(() => displayName.value.trim().slice(0, 1).toUpperCase() || 'U')
 const isEditMode = ref(false)
 const isPasswordVerified = ref(false)
@@ -208,11 +220,12 @@ async function handlePasswordVerification() {
 async function handleNicknameUpdate() {
   nicknameMessage.value = ''
   nicknameError.value = ''
-  if (!nickname.value || !currentPassword.value) return
+  if (!nickname.value) return
+  if (!isSocial.value && !currentPassword.value) return
 
   isUpdatingNickname.value = true
   try {
-    await authStore.updateNickname(nickname.value, currentPassword.value)
+    await authStore.updateNickname(nickname.value, isSocial.value ? '' : currentPassword.value)
     nicknameMessage.value = '닉네임을 변경했어요.'
   } catch (error) {
     nicknameError.value = error?.response?.data?.message || '닉네임을 변경하지 못했습니다.'
@@ -260,7 +273,7 @@ async function handleWithdraw() {
 
   isWithdrawing.value = true
   try {
-    await authStore.withdraw(currentPassword.value)
+    await authStore.withdraw(isSocial.value ? '' : currentPassword.value)
     router.replace('/')
   } catch (error) {
     withdrawError.value = error?.response?.data?.message || '회원 탈퇴를 처리하지 못했습니다.'

@@ -12,6 +12,11 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.client.InMemoryOAuth2AuthorizedClientService;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.client.web.AuthenticatedPrincipalOAuth2AuthorizedClientRepository;
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizedClientRepository;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -22,6 +27,10 @@ import com.tripcrew.auth.jwt.JwtAccessDeniedHandler;
 import com.tripcrew.auth.jwt.JwtAuthenticationEntryPoint;
 import com.tripcrew.auth.jwt.JwtAuthenticationFilter;
 import com.tripcrew.auth.jwt.JwtProvider;
+import com.tripcrew.auth.oauth.CustomOAuth2UserService;
+import com.tripcrew.auth.oauth.HttpCookieOAuth2AuthorizationRequestRepository;
+import com.tripcrew.auth.oauth.OAuth2FailureHandler;
+import com.tripcrew.auth.oauth.OAuth2SuccessHandler;
 import com.tripcrew.user.model.mapper.UserMapper;
 
 import lombok.RequiredArgsConstructor;
@@ -40,6 +49,9 @@ public class SecurityConfig {
     private final JwtAuthenticationEntryPoint authenticationEntryPoint;
     private final JwtAccessDeniedHandler accessDeniedHandler;
     private final UserMapper userMapper;
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2SuccessHandler oAuth2SuccessHandler;
+    private final OAuth2FailureHandler oAuth2FailureHandler;
 
     /** CORS 허용 origin 목록. 운영에서는 APP_CORS_ORIGINS(콤마 구분)로 주입. 기본값은 로컬 개발 origin. */
     @Value("${app.cors.allowed-origins:http://localhost:5173,http://127.0.0.1:5173}")
@@ -56,7 +68,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // 공개: 헬스체크, 인증(회원가입/로그인/재발급)
                         .requestMatchers("/api/health").permitAll()
-                        .requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/reissue").permitAll()
+                        .requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/reissue",
+                                "/api/auth/oauth/exchange").permitAll()
+                        // 소셜 로그인(OAuth2): 인가요청 시작(/oauth2/authorization/*) 과
+                        // 제공자 콜백(/login/oauth2/code/*) 은 공개. 실제 인증은 oauth2Login 필터가 처리.
+                        .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                         // F06 공동편집: WebSocket 핸드셰이크(HTTP 업그레이드)는 통과시키고,
                         // 실제 인증은 STOMP CONNECT 프레임에서(StompAuthChannelInterceptor) 처리.
                         .requestMatchers("/ws/**").permitAll()
@@ -79,6 +95,14 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         // 그 외는 인증 필요
                         .anyRequest().authenticated())
+                // 소셜 로그인(Kakao/Naver). STATELESS 라 인가요청은 세션이 아닌 쿠키에 보존.
+                // userInfo 수신→users 매핑은 CustomOAuth2UserService, 성공 시 일회용 코드로 프론트 콜백 리다이렉트.
+                .oauth2Login(oauth -> oauth
+                        .authorizationEndpoint(a -> a
+                                .authorizationRequestRepository(new HttpCookieOAuth2AuthorizationRequestRepository()))
+                        .userInfoEndpoint(u -> u.userService(customOAuth2UserService))
+                        .successHandler(oAuth2SuccessHandler)
+                        .failureHandler(oAuth2FailureHandler))
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler))
@@ -91,6 +115,23 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    /**
+     * STATELESS 구성에서 oauth2Login 이 인증 직후 authorized client 를 저장할 때
+     * 세션(HttpSession)을 만들지 않도록 인메모리 저장소로 대체한다.
+     * (제공자 access token 은 프로필 1회 조회 후 더 쓰지 않으므로 인메모리로 충분.)
+     */
+    @Bean
+    public OAuth2AuthorizedClientService authorizedClientService(
+            ClientRegistrationRepository clientRegistrationRepository) {
+        return new InMemoryOAuth2AuthorizedClientService(clientRegistrationRepository);
+    }
+
+    @Bean
+    public OAuth2AuthorizedClientRepository authorizedClientRepository(
+            OAuth2AuthorizedClientService authorizedClientService) {
+        return new AuthenticatedPrincipalOAuth2AuthorizedClientRepository(authorizedClientService);
     }
 
     @Bean

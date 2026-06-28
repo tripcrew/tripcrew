@@ -248,6 +248,13 @@ onBeforeUnmount(() => {
     var(--bg);
 }
 
+[data-theme="dark"] .hero {
+  background:
+    radial-gradient(ellipse 58% 90% at 0% 55%, rgba(216, 90, 48, 0.1), transparent 72%),
+    radial-gradient(ellipse 54% 92% at 100% 40%, rgba(15, 110, 86, 0.16), transparent 74%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-soft) 100%);
+}
+
 .hero__inner {
   display: grid;
   grid-template-columns: 1.1fr 1fr;
@@ -280,6 +287,10 @@ onBeforeUnmount(() => {
   color: var(--teal);
   position: relative;
   display: inline-block;
+}
+
+[data-theme="dark"] .hero__title .accent {
+  color: var(--teal-ink);
 }
 
 .hero__title .accent::after {
@@ -491,6 +502,10 @@ onBeforeUnmount(() => {
   padding-top: 52px;
   padding-bottom: 56px;
   background: linear-gradient(180deg, var(--bg) 0%, #f6fbf8 100%);
+}
+
+[data-theme="dark"] .section--ranking {
+  background: linear-gradient(180deg, var(--bg-soft) 0%, var(--bg) 100%);
 }
 
 .ranking-panel {
