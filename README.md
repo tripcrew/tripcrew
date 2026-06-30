@@ -18,7 +18,7 @@
 <br/>
 
 ![Java](https://img.shields.io/badge/Java-17-007396?logo=openjdk&logoColor=white)
-![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.3-6DB33F?logo=springboot&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.2.5-6DB33F?logo=springboot&logoColor=white)
 ![Vue](https://img.shields.io/badge/Vue-3-4FC08D?logo=vuedotjs&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-8-4479A1?logo=mysql&logoColor=white)
 ![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white)
@@ -59,7 +59,7 @@
 | 구분 | 기술 |
 |---|---|
 | Language | Java 17 |
-| Framework | Spring Boot 3.3.x |
+| Framework | Spring Boot 3.2.5 |
 | Persistence | MyBatis · MySQL 8 |
 | Cache / Pub-Sub | Redis 7 |
 | Security | Spring Security · JWT (Refresh Token Rotation) |
@@ -73,7 +73,7 @@
 | Framework | Vue 3 (Composition API) |
 | Build | Vite 5 |
 | Routing | Vue Router 4 |
-| State | Pinia *(API 연동 시 도입)* |
+| State | Pinia |
 | Style | Plain CSS · CSS Variables |
 
 ### Infra & DevOps
@@ -225,7 +225,7 @@ sequenceDiagram
 
 ## 🖼 주요 화면
 
-> Vue 3 정적 화면 12개 구현 완료. API 연동은 다음 단계입니다.
+> Vue 3 화면 12개 + REST · WebSocket API 연동 완료.
 
 | 화면 | 경로 | 관련 시나리오 |
 |---|---|---|
@@ -238,7 +238,7 @@ sequenceDiagram
 | 여행 계획 편집 | `/plans/:id/edit` | @Async 동선 최적화 |
 | **공동 편집** | `/plans/:id/co` | WebSocket + 낙관적 락 |
 | 내 계획 리스트 | `/plans` | 페이지네이션 |
-| 후기 작성 / 조회 | `/attractions/:id/reviews` | S3 업로드 |
+| 후기 작성 / 조회 | `/attractions/:id/reviews` | 로컬 파일시스템 업로드 |
 | 관리자 페이지 | `/admin/users` | ADMIN 권한 |
 | 에러 / 빈 상태 | `/errors/:type` | Circuit Breaker UI |
 
@@ -280,9 +280,9 @@ sequenceDiagram
 
 ```
 tripcrew/
-├── tripcrew-backend/      # Spring Boot 백엔드 (작업 예정)
+├── tripcrew-backend/      # Spring Boot 백엔드
 │
-├── tripcrew-frontend/     # Vue 3 프론트엔드 (정적 화면 완성)
+├── tripcrew-frontend/     # Vue 3 프론트엔드
 │   └── src/
 │       ├── views/         # 12개 화면 (SC-01 ~ SC-12)
 │       ├── components/    # 공통 컴포넌트
