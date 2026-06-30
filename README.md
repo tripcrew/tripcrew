@@ -13,6 +13,10 @@
 
 <br/>
 
+[![Live Demo](https://img.shields.io/badge/▶_Live_Demo-tripcrew.duckdns.org-0F6E56?style=for-the-badge)](http://tripcrew.duckdns.org)
+
+<br/>
+
 ![Java](https://img.shields.io/badge/Java-17-007396?logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.3-6DB33F?logo=springboot&logoColor=white)
 ![Vue](https://img.shields.io/badge/Vue-3-4FC08D?logo=vuedotjs&logoColor=white)
@@ -20,7 +24,8 @@
 ![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white)
 
 ![Last Commit](https://img.shields.io/github/last-commit/jhyungit/tripcrew)
-![Status](https://img.shields.io/badge/status-in__progress-orange)
+![Status](https://img.shields.io/badge/status-live-brightgreen)
+![Deploy](https://img.shields.io/badge/deploy-AWS_EC2-FF9900?logo=amazonaws&logoColor=white)
 
 </div>
 
@@ -77,6 +82,7 @@
 |---|---|
 | Build | Maven |
 | Container | Docker · Docker Compose |
+| Deploy | AWS EC2 · Docker Compose · Caddy (HTTPS Reverse Proxy) |
 | Monitoring | Spring Actuator · Prometheus · Grafana *(예정)* |
 
 ### External APIs
@@ -307,7 +313,7 @@ npm run dev
 # → http://localhost:5173
 ```
 
-### Backend *(준비 중)*
+### Backend *(현재 실행 가능)*
 
 ```bash
 cd tripcrew-backend
@@ -335,6 +341,12 @@ docker compose up -d --build
 > ⚠️ 셸(`~/.zshrc`)에 `DB_PASSWORD` 를 export 해 두면 compose 치환에서 `.env` 보다 **우선**한다.
 > mysql 과 백엔드 모두 `DB_PASSWORD` 한 소스로 초기화하므로 값이 같이 바뀌어 불일치는 없지만,
 > 컨테이너 DB 는 그 값으로 초기화된다. 비번을 바꾸면 `docker compose down -v` 후 재기동(볼륨 재생성).
+
+### 운영 배포 *(라이브)*
+
+AWS EC2에 `docker-compose.prod.yml` + **Caddy**(리버스 프록시 · HTTPS 자동 발급)로 배포되어 있습니다.
+
+🔗 **라이브 데모 — [tripcrew.duckdns.org](http://tripcrew.duckdns.org)**
 
 <br/>
 
