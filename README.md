@@ -13,14 +13,19 @@
 
 <br/>
 
+[![Live Demo](https://img.shields.io/badge/▶_Live_Demo-tripcrew.duckdns.org-0F6E56?style=for-the-badge)](http://tripcrew.duckdns.org)
+
+<br/>
+
 ![Java](https://img.shields.io/badge/Java-17-007396?logo=openjdk&logoColor=white)
-![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.3-6DB33F?logo=springboot&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.2.5-6DB33F?logo=springboot&logoColor=white)
 ![Vue](https://img.shields.io/badge/Vue-3-4FC08D?logo=vuedotjs&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-8-4479A1?logo=mysql&logoColor=white)
 ![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white)
 
 ![Last Commit](https://img.shields.io/github/last-commit/jhyungit/tripcrew)
-![Status](https://img.shields.io/badge/status-in__progress-orange)
+![Status](https://img.shields.io/badge/status-live-brightgreen)
+![Deploy](https://img.shields.io/badge/deploy-AWS_EC2-FF9900?logo=amazonaws&logoColor=white)
 
 </div>
 
@@ -54,7 +59,7 @@
 | 구분 | 기술 |
 |---|---|
 | Language | Java 17 |
-| Framework | Spring Boot 3.3.x |
+| Framework | Spring Boot 3.2.5 |
 | Persistence | MyBatis · MySQL 8 |
 | Cache / Pub-Sub | Redis 7 |
 | Security | Spring Security · JWT (Refresh Token Rotation) |
@@ -68,7 +73,7 @@
 | Framework | Vue 3 (Composition API) |
 | Build | Vite 5 |
 | Routing | Vue Router 4 |
-| State | Pinia *(API 연동 시 도입)* |
+| State | Pinia |
 | Style | Plain CSS · CSS Variables |
 
 ### Infra & DevOps
@@ -77,6 +82,7 @@
 |---|---|
 | Build | Maven |
 | Container | Docker · Docker Compose |
+| Deploy | AWS EC2 · Docker Compose · Caddy (HTTPS Reverse Proxy) |
 | Monitoring | Spring Actuator · Prometheus · Grafana *(예정)* |
 
 ### External APIs
@@ -219,7 +225,7 @@ sequenceDiagram
 
 ## 🖼 주요 화면
 
-> Vue 3 정적 화면 12개 구현 완료. API 연동은 다음 단계입니다.
+> Vue 3 화면 12개 + REST · WebSocket API 연동 완료.
 
 | 화면 | 경로 | 관련 시나리오 |
 |---|---|---|
@@ -232,7 +238,7 @@ sequenceDiagram
 | 여행 계획 편집 | `/plans/:id/edit` | @Async 동선 최적화 |
 | **공동 편집** | `/plans/:id/co` | WebSocket + 낙관적 락 |
 | 내 계획 리스트 | `/plans` | 페이지네이션 |
-| 후기 작성 / 조회 | `/attractions/:id/reviews` | S3 업로드 |
+| 후기 작성 / 조회 | `/attractions/:id/reviews` | 로컬 파일시스템 업로드 |
 | 관리자 페이지 | `/admin/users` | ADMIN 권한 |
 | 에러 / 빈 상태 | `/errors/:type` | Circuit Breaker UI |
 
@@ -263,8 +269,8 @@ sequenceDiagram
 |:---:|---|---|:---:|
 | 1주차 | 2026.05.18 ~ 05.22 | 기획, 요구사항 명세, WBS, 화면 설계 | ✅ |
 | 2주차 | 2026.05.25 ~ 05.29 | Vue 프론트엔드 12개 화면, 디자인 시스템 | ✅ |
-| 3주차 | 2026.06.01 ~ 06.05 | DB 설계(ERD), 기본 CRUD(F01~F03), 인증 | 🚧 |
-| 4주차 | 2026.06.08 ~ 06.12 | 캐싱·동선·공동 편집, 통합 테스트, 발표 | 📅 |
+| 3주차 | 2026.06.01 ~ 06.05 | DB 설계(ERD), 기본 CRUD(F01~F03), 인증 | ✅ |
+| 4주차 | 2026.06.08 ~ 06.12 | 캐싱·동선·공동 편집, 통합 테스트 | ✅ |
 
 <br/>
 
@@ -274,9 +280,9 @@ sequenceDiagram
 
 ```
 tripcrew/
-├── tripcrew-backend/      # Spring Boot 백엔드 (작업 예정)
+├── tripcrew-backend/      # Spring Boot 백엔드
 │
-├── tripcrew-frontend/     # Vue 3 프론트엔드 (정적 화면 완성)
+├── tripcrew-frontend/     # Vue 3 프론트엔드
 │   └── src/
 │       ├── views/         # 12개 화면 (SC-01 ~ SC-12)
 │       ├── components/    # 공통 컴포넌트
@@ -307,7 +313,7 @@ npm run dev
 # → http://localhost:5173
 ```
 
-### Backend *(준비 중)*
+### Backend *(현재 실행 가능)*
 
 ```bash
 cd tripcrew-backend
@@ -335,6 +341,12 @@ docker compose up -d --build
 > ⚠️ 셸(`~/.zshrc`)에 `DB_PASSWORD` 를 export 해 두면 compose 치환에서 `.env` 보다 **우선**한다.
 > mysql 과 백엔드 모두 `DB_PASSWORD` 한 소스로 초기화하므로 값이 같이 바뀌어 불일치는 없지만,
 > 컨테이너 DB 는 그 값으로 초기화된다. 비번을 바꾸면 `docker compose down -v` 후 재기동(볼륨 재생성).
+
+### 운영 배포 *(라이브)*
+
+AWS EC2에 `docker-compose.prod.yml` + **Caddy**(리버스 프록시 · HTTPS 자동 발급)로 배포되어 있습니다.
+
+🔗 **라이브 데모 — [tripcrew.duckdns.org](http://tripcrew.duckdns.org)**
 
 <br/>
 
