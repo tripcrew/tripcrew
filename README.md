@@ -13,7 +13,7 @@
 
 <br/>
 
-[![Live Demo](https://img.shields.io/badge/▶_Live_Demo-tripcrew.duckdns.org-0F6E56?style=for-the-badge)](http://tripcrew.duckdns.org)
+[![Live Demo](https://img.shields.io/badge/▶_Live_Demo-tripcrew.duckdns.org-0F6E56?style=for-the-badge)](https://tripcrew.duckdns.org)
 
 <br/>
 
@@ -62,7 +62,7 @@
 | Framework | Spring Boot 3.2.5 |
 | Persistence | MyBatis · MySQL 8 |
 | Cache / Pub-Sub | Redis 7 |
-| Security | Spring Security · JWT (Refresh Token Rotation) |
+| Security | Spring Security · JWT (Refresh Token Rotation) · OAuth2 Client (Kakao · Naver) |
 | Resilience | Resilience4j (Circuit Breaker · Retry · TimeLimiter) |
 | Real-time | WebSocket (STOMP) · Redis Pub/Sub |
 
@@ -97,7 +97,7 @@
 
 | ID | 분류 | 기능 | 우선순위 |
 |:---:|:---:|---|:---:|
-| F01 | 회원 | 회원가입, 로그인, 정보 수정, 탈퇴 | 필수 |
+| F01 | 회원 | 회원가입, 로그인(이메일 + 카카오·네이버 소셜 로그인), 정보 수정, 탈퇴 | 필수 |
 | F02 | 여행 | 지역별 관광지 조회 (캐싱) | 필수 |
 | F03 | 여행 | 여행 계획 CRUD | 필수 |
 | F04 | 여행 | 동선 최적화 (비동기 + TSP 2-opt) | 필수 |
@@ -346,7 +346,7 @@ docker compose up -d --build
 
 AWS EC2에 `docker-compose.prod.yml` + **Caddy**(리버스 프록시 · HTTPS 자동 발급)로 배포되어 있습니다.
 
-🔗 **라이브 데모 — [tripcrew.duckdns.org](http://tripcrew.duckdns.org)**
+🔗 **라이브 데모 — [tripcrew.duckdns.org](https://tripcrew.duckdns.org)**
 
 <br/>
 

@@ -10,7 +10,10 @@ TripCrew(여행 계획 공유 플랫폼)의 백엔드 REST API 서버.
 | Framework | Spring Boot 3.2 |
 | Persistence | MyBatis 3.0 · MySQL 8 |
 | Migration | Flyway |
-| Security | Spring Security · JWT (jjwt) |
+| Cache / Pub-Sub | Redis 7 (캐싱 · 실시간 랭킹 ZSet) |
+| Security | Spring Security · JWT (jjwt) · OAuth2 Client (Kakao · Naver) |
+| Real-time | WebSocket (STOMP) |
+| Resilience | Resilience4j (Circuit Breaker · Retry) |
 | Build | Maven (wrapper 포함) |
 
 > 설계 문서(ERD·스키마·결정 근거)는 저장소 루트 [`docs/`](../docs) 참고:
@@ -28,13 +31,21 @@ tripcrew-backend
     │   ├── common/                           # 공통: 설정·예외·응답 등 횡단 관심사
     │   │   ├── config/SecurityConfig.java     #   REST/stateless 보안 설정
     │   │   └── web/HealthController.java       #   GET /api/health
-    │   ├── auth/        # F01 인증 (JWT, 회원가입/로그인)
+    │   ├── auth/        # F01 인증 (JWT, 회원가입/로그인, OAuth2 소셜 로그인)
     │   ├── user/        # users
     │   ├── attraction/  # F02 관광지(외부 API 캐시)
-    │   ├── tripplan/    # F03/F04/F06 여행계획·동선·공동편집
-    │   ├── review/      # F08 후기/평점
+    │   ├── region/      # 시도/구군 등 지역 데이터
+    │   ├── tripplan/    # F03/F04 여행계획·동선
+    │   ├── coedit/      # F06 실시간 공동 편집(WebSocket)
+    │   ├── review/      # F08 후기/평점 · like/ upload/ 이미지·찜
+    │   ├── ranking/     # F07 실시간 랭킹(Redis ZSet)
     │   ├── notice/      # F10 공지
-    │   └── chat/        # F05 챗봇 (옵션)
+    │   ├── chat/        # F05 챗봇
+    │   ├── admin/       # F09 관리자(대시보드·회원·신고)
+    │   ├── report/  restriction/  # 신고·단계별 제재
+    │   ├── inquiry/     # 1:1 문의
+    │   ├── notification/ activity/  # 알림·활동 피드
+    │   └── ...
     └── resources
         ├── application.properties
         ├── db/migration/        # Flyway 마이그레이션 (V1__init.sql ...)
