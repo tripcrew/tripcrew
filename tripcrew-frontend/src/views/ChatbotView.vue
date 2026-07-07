@@ -60,9 +60,12 @@
             <div class="msg__avatar">🤖</div>
             <div class="msg__content">
               <div class="msg__bubble typing-bubble">
-                <span></span>
-                <span></span>
-                <span></span>
+                <span class="typing-text">생각 중</span>
+                <span class="typing-dots">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </span>
               </div>
             </div>
           </div>
@@ -497,20 +500,37 @@ async function scrollToBottom() {
   gap: 6px;
 }
 
-.typing-bubble span {
+.typing-text {
+  font-size: 15px;
+  color: var(--ink-soft);
+}
+
+.typing-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.typing-dots span {
   width: 7px;
   height: 7px;
   background: var(--muted);
   border-radius: 50%;
-  animation: typing 1s ease-in-out infinite;
+  opacity: 0.5;
 }
 
-.typing-bubble span:nth-child(2) {
-  animation-delay: 0.12s;
-}
+@media (prefers-reduced-motion: no-preference) {
+  .typing-dots span {
+    animation: typing 1s ease-in-out infinite;
+  }
 
-.typing-bubble span:nth-child(3) {
-  animation-delay: 0.24s;
+  .typing-dots span:nth-child(2) {
+    animation-delay: 0.12s;
+  }
+
+  .typing-dots span:nth-child(3) {
+    animation-delay: 0.24s;
+  }
 }
 
 @keyframes typing {
