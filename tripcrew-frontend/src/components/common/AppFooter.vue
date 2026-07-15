@@ -50,7 +50,9 @@
   background: var(--teal-3);
   color: rgba(255, 255, 255, 0.86);
   padding: 64px 0 32px;
-  margin-top: 80px;
+  /* Pin to viewport bottom on short pages (parent .page is a flex column);
+     on tall pages this collapses to 0 and the footer follows content. */
+  margin-top: auto;
 }
 
 .app-footer__inner {
