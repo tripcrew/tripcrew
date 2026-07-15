@@ -14,7 +14,15 @@
           </div>
         </div>
         <div class="dashboard-hero__stats" aria-label="여행 현황">
-          <div class="stat-flip">
+          <div
+            class="stat-flip stat-flip--link"
+            role="link"
+            tabindex="0"
+            aria-label="나의 계획 전체 보기"
+            @click="$router.push('/plans')"
+            @keydown.enter="$router.push('/plans')"
+            @keydown.space.prevent="$router.push('/plans')"
+          >
             <div class="stat-flip__inner">
               <div class="stat-card stat-card--plans stat-flip__face">
                 <span>나의 계획</span>
@@ -27,8 +35,10 @@
                   <span
                     v-for="(c, i) in planChips"
                     :key="i"
-                    class="stat-back__chip"
+                    class="stat-back__chip stat-back__chip--clickable"
                     :class="`stat-back__chip--${c.statusKey}`"
+                    :title="`${c.title} 계획 열기`"
+                    @click.stop="openPlan(c.id)"
                   >
                     <i class="chip-dot"></i><span class="chip-label">{{ c.title }}</span>
                   </span>
@@ -37,7 +47,15 @@
               </div>
             </div>
           </div>
-          <div class="stat-flip">
+          <div
+            class="stat-flip stat-flip--link"
+            role="link"
+            tabindex="0"
+            aria-label="여행 추천 챗봇 열기"
+            @click="$router.push('/chat')"
+            @keydown.enter="$router.push('/chat')"
+            @keydown.space.prevent="$router.push('/chat')"
+          >
             <div class="stat-flip__inner">
               <div class="stat-card stat-card--guide stat-flip__face">
                 <span class="stat-card__spark">✦</span>
@@ -271,7 +289,7 @@ const upcomingPlans = computed(() =>
 const upcomingCount = computed(() => upcomingPlans.value.length)
 // flip 뒷면 칩 — 제목 + 상태(색상). 최대 6개.
 const planChips = computed(() =>
-  upcomingPlans.value.slice(0, 6).map((p) => ({ title: p.title, statusKey: p.statusKey })),
+  upcomingPlans.value.slice(0, 6).map((p) => ({ id: p.id, title: p.title, statusKey: p.statusKey })),
 )
 
 const welcomeMessage = computed(() => {
@@ -542,6 +560,19 @@ onBeforeUnmount(() => {
 /* 진행 중 = 초록(teal), 예정 = 주황(coral) — MY PLANS 상태색과 동일 계열 */
 .stat-back__chip--active { background: var(--teal-soft); color: var(--teal-ink); }
 .stat-back__chip--ready { background: var(--coral-soft); color: var(--coral-ink); }
+
+/* 클릭 가능: 카드 전체 → /plans, 칩 → 해당 계획 */
+.stat-flip--link { cursor: pointer; }
+.stat-flip--link:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 3px;
+  border-radius: 20px;
+}
+.stat-back__chip--clickable { cursor: pointer; }
+.stat-back__chip--clickable:hover { filter: brightness(0.95); }
+@media (prefers-reduced-motion: no-preference) {
+  .stat-back__chip--clickable { transition: filter 0.15s ease; }
+}
 
 @media (prefers-reduced-motion: no-preference) {
   .stat-flip__inner { transition: transform 0.55s cubic-bezier(0.4, 0.15, 0.2, 1); }
