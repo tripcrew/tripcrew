@@ -75,6 +75,25 @@
             </button>
           </div>
 
+          <!-- 채용담당자용 원클릭 데모 로그인 (로그인 탭에서만 노출) -->
+          <div v-if="mode === 'login'" class="demo-hint">
+            <p class="demo-hint__title">🎯 채용담당자님, 환영합니다 👋</p>
+            <p class="demo-hint__desc">가입 없이 데모 계정으로 전체 기능을 둘러보세요.</p>
+            <button
+              type="button"
+              class="demo-hint__btn"
+              :disabled="isSubmitting"
+              @click="handleDemoLogin"
+            >
+              {{ isSubmitting ? '로그인 중…' : '데모 계정으로 바로 로그인 →' }}
+            </button>
+            <p class="demo-hint__cred">
+              <span>{{ DEMO_EMAIL }}</span>
+              <span class="demo-hint__sep">·</span>
+              <span>{{ DEMO_PASSWORD }}</span>
+            </p>
+          </div>
+
           <form v-if="mode === 'signup'" class="auth-form" @submit.prevent="handleSignup">
             <h2 class="auth-form__title">계정 만들기</h2>
             <p class="auth-form__lead">이메일, 닉네임, 비밀번호를 입력해주세요.</p>
@@ -332,6 +351,16 @@ async function handleLogin() {
   } finally {
     isSubmitting.value = false
   }
+}
+
+// 채용담당자용 체험 계정. 값을 채운 뒤 일반 로그인 흐름을 그대로 재사용한다.
+const DEMO_EMAIL = 'demo@tripcrew.kr'
+const DEMO_PASSWORD = 'tripcrew1234'
+
+async function handleDemoLogin() {
+  loginForm.email = DEMO_EMAIL
+  loginForm.password = DEMO_PASSWORD
+  await handleLogin()
 }
 
 function getRedirectTarget() {
@@ -905,7 +934,52 @@ function getRedirectTarget() {
   color: #03c75a;
 }
 
+/* 채용담당자용 원클릭 데모 로그인 카드 */
+.demo-hint {
+  margin-bottom: var(--space-5);
+  padding: 16px;
+  border: 1px solid var(--teal);
+  border-radius: var(--radius-md);
+  background: var(--teal-tint);
+}
+.demo-hint__title {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--teal-ink);
+}
+.demo-hint__desc {
+  margin: 0 0 12px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+.demo-hint__btn {
+  width: 100%;
+  padding: 11px 14px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--teal);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.05s ease;
+}
+.demo-hint__btn:hover:not(:disabled) { filter: brightness(1.06); }
+.demo-hint__btn:active:not(:disabled) { transform: translateY(1px); }
+.demo-hint__btn:disabled { opacity: 0.6; cursor: default; }
+.demo-hint__cred {
+  margin: 10px 0 0;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.demo-hint__sep { margin: 0 6px; opacity: 0.5; }
+
 @media (prefers-reduced-motion: reduce) {
-  .social-btn { transition: none; }
+  .social-btn,
+  .demo-hint__btn { transition: none; }
 }
 </style>
