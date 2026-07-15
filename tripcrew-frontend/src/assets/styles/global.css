@@ -100,6 +100,13 @@ body * {
   flex-direction: column;
 }
 
+/* .page 가 플렉스 컬럼이라, max-width + margin:0 auto 로 가운데 정렬하던 직계 자식
+   (.container·.auth-grid 등)이 교차축 auto 마진 탓에 '내용 너비로 축소'되는 회귀가 있었다.
+   직계 자식 폭을 100% 로 고정하면 축소가 사라진다(max-width·margin:auto 는 그대로 동작). */
+.page > * {
+  width: 100%;
+}
+
 .page-soft {
   background: var(--bg-soft);
 }
