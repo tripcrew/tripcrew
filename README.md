@@ -33,6 +33,25 @@
 
 ---
 
+<div align="center">
+
+### 🎯 채용담당자님, 바로 체험해보세요
+
+로그인 페이지의 **「데모 계정으로 바로 로그인」** 버튼을 누르면 입력 없이 한 번에 접속되어<br/>
+여행 계획 · 공동 편집 · 챗봇 · 관광지 검색 · 후기 등 전체 기능을 둘러볼 수 있습니다.
+
+🔗 **[tripcrew.duckdns.org](https://tripcrew.duckdns.org)**
+
+| 이메일 | 비밀번호 |
+|---|---|
+| `demo@tripcrew.kr` | `tripcrew1234` |
+
+</div>
+
+<br/>
+
+---
+
 ## 📌 프로젝트 개요
 
 **TripCrew**는 여행 계획을 짜기 귀찮거나 어려운 사용자에게 편리하고 특색 있는 맞춤형 여행 계획을 제안하는 서비스입니다. 혼자서도, 친구와 함께서도 짤 수 있는 협업형 여행 계획 플랫폼을 지향합니다.
@@ -61,10 +80,9 @@
 | Language | Java 17 |
 | Framework | Spring Boot 3.2.5 |
 | Persistence | MyBatis · MySQL 8 |
-| Cache / Pub-Sub | Redis 7 |
-| Security | Spring Security · JWT (Refresh Token Rotation) · OAuth2 Client (Kakao · Naver) |
-| Resilience | Resilience4j (Circuit Breaker · Retry · TimeLimiter) |
-| Real-time | WebSocket (STOMP) · Redis Pub/Sub |
+| Cache / Ranking | Redis 7 (Sorted Set 실시간 랭킹 · OAuth 코드 핸드오프) |
+| Security | Spring Security · JWT (Access · Refresh Token) · OAuth2 Client (Kakao · Naver) |
+| Real-time | WebSocket (STOMP) |
 
 ### Frontend
 
@@ -83,11 +101,11 @@
 | Build | Maven |
 | Container | Docker · Docker Compose |
 | Deploy | AWS EC2 · Docker Compose · Caddy (HTTPS Reverse Proxy) |
-| Monitoring | Spring Actuator · Prometheus · Grafana *(예정)* |
+| Monitoring | 커스텀 헬스 체크 `/api/health` (앱 · 외부 API 상태) · Prometheus/Grafana *(예정)* |
 
 ### External APIs
 
-한국관광공사 **TourAPI** · **OpenWeatherMap** · **한국천문연구원**(일출/일몰) · **한국환경공단**(전기차 충전소) · **Kakao Mobility** · **Gemini API**
+한국관광공사 **TourAPI**(관광지 공공데이터) · **Naver Maps**(지도 · Directions 동선 최적화) · **Gemini API**(챗봇)
 
 <br/>
 
@@ -100,7 +118,7 @@
 | F01 | 회원 | 회원가입, 로그인(이메일 + 카카오·네이버 소셜 로그인), 정보 수정, 탈퇴 | 필수 |
 | F02 | 여행 | 지역별 관광지 조회 (캐싱) | 필수 |
 | F03 | 여행 | 여행 계획 CRUD | 필수 |
-| F04 | 여행 | 동선 최적화 (비동기 + TSP 2-opt) | 필수 |
+| F04 | 여행 | 동선 최적화 (TSP 2-opt · Naver Directions) | 필수 |
 | F05 | 여행 | 챗봇 기반 추천 | 추가 |
 | F06 | 여행 | 여행 계획 공동 편집 | 추가 |
 | F07 | 여행 | 인기 관광지 실시간 랭킹 | 추가 |
@@ -121,13 +139,13 @@ flowchart TB
     Filter["🛡️ Spring Security Filter<br/>JWT · CORS"]
 
     Controller["📡 Controller<br/>REST + STOMP WebSocket"]
-    Service["⚙️ Service<br/>Transactional · Async · Resilience4j"]
+    Service["⚙️ Service<br/>Transactional · WebSocket"]
 
-    Redis[("⚡ Redis 7<br/>Cache · Pub/Sub · Sorted Set")]
+    Redis[("⚡ Redis 7<br/>Sorted Set · OAuth Code")]
     MySQL[("💾 MySQL 8<br/>MyBatis")]
-    Adapter["🔌 External API Adapter<br/>+ Circuit Breaker"]
+    Adapter["🔌 External API Adapter"]
 
-    Ext["🌐 TourAPI · Weather<br/>Kakao · Gemini"]
+    Ext["🌐 Naver Directions · Gemini"]
 
     Vue -->|HTTPS / WSS| Filter
     Filter --> Controller
@@ -152,68 +170,42 @@ flowchart TB
 
 각 시나리오는 실제 화면(UI)에 시각적으로 반영되어 있습니다.
 
-### 시나리오 A · 캐싱 전략 (Cache-Aside + Circuit Breaker)
+### 시나리오 A · 관광지 데이터 & 검색
 
-관광지 조회 시 Redis 캐시를 우선 조회하고, MISS 시 외부 API를 호출해 응답을 캐싱합니다. 외부 API 장애 시 Circuit Breaker가 stale 캐시로 graceful degradation을 수행합니다.
-
-```mermaid
-sequenceDiagram
-    participant C as Client
-    participant A as API
-    participant R as Redis
-    participant T as TourAPI
-
-    C->>A: GET /api/attractions?sido=전남
-    A->>R: GET attractions:전남
-    alt Cache HIT (~5ms)
-        R-->>A: cached data
-        A-->>C: 200 OK
-    else Cache MISS
-        A->>T: 조회 요청
-        alt API 정상 (~800ms)
-            T-->>A: response
-            A->>R: SET (TTL 30min)
-            A-->>C: 200 OK
-        else Circuit Breaker OPEN
-            A->>R: stale 캐시 조회
-            R-->>A: stale data
-            A-->>C: 200 OK (degraded)
-        end
-    end
-```
+한국관광공사 TourAPI 공공데이터(약 5만 건)를 MySQL에 적재하고 **FULLTEXT 인덱스**로 지역·키워드 검색을 제공합니다. 관광지 조회 이벤트는 Redis Sorted Set에 집계되어 실시간 랭킹(→ 시나리오 E)으로 이어집니다.
 
 ### 시나리오 B · 동시성 제어 (낙관적 락)
 
-공동 편집 시 `version` 컬럼 기반 낙관적 락을 적용합니다. 두 사용자가 동시에 같은 일정을 수정하면 **HTTP 409 Conflict**를 응답하고, 충돌 UI에서 머지 옵션을 제공합니다.
+공동 편집 시 `version` 컬럼 기반 낙관적 락을 적용합니다. 두 사용자가 동시에 같은 일정을 수정하면 **HTTP 409 Conflict**를 응답하고, 충돌 UI에서 "최신 불러오기 / 내 변경 유지"를 선택할 수 있습니다.
 
 ```sql
-UPDATE travel_plans
+UPDATE trip_plans
    SET ..., version = version + 1
- WHERE id = ? AND version = ?   -- 보낸 version이 일치할 때만 UPDATE
+ WHERE id = ? AND version = ?   -- 보낸 version이 일치할 때만 UPDATE (affected 0 = 409)
 ```
 
-### 시나리오 C · 비동기 처리 (@Async + WebSocket)
+### 시나리오 C · 동선 최적화 (TSP 2-opt + WebSocket 브로드캐스트)
 
-동선 최적화는 톰캣 스레드를 점유하지 않도록 비동기로 처리하고, 완료 시 WebSocket으로 결과를 푸시합니다.
+여러 목적지의 방문 순서를 nearest-neighbor + 2-opt로 최적화합니다. Naver Directions로 실제 도로 소요시간을 받아 이동시간 기준으로 재정렬하고, 완료 후 공동 편집자들에게 WebSocket(STOMP)으로 변경을 브로드캐스트합니다.
 
 ```mermaid
 sequenceDiagram
     participant C as Client
     participant A as API
-    participant W as Async Worker
+    participant N as Naver Directions
     participant S as WebSocket
 
-    C->>A: POST /api/plans/42/optimize
-    A->>W: Async 작업 위임
-    A-->>C: 202 Accepted (즉시 응답)
-    W->>W: Kakao Mobility 호출 + 2-opt
-    W->>S: STOMP push
-    S-->>C: /topic/plan/42/route
+    C->>A: POST /api/trip-plans/42/places/optimize
+    A->>N: 구간별 도로 소요시간 조회
+    A->>A: nearest-neighbor + 2-opt
+    A-->>C: 200 OK (재정렬된 장소 목록)
+    A->>S: STOMP 브로드캐스트
+    S-->>C: /topic/plans/42/places (공동 편집자)
 ```
 
-### 시나리오 D · 실시간 협업 (WebSocket + Redis Pub/Sub)
+### 시나리오 D · 실시간 협업 (WebSocket · STOMP)
 
-멀티 인스턴스 환경에서 사용자들이 서로 다른 서버에 연결되어 있어도 Redis Pub/Sub으로 편집 내용을 브로드캐스트합니다.
+공동 편집 중 접속자 프레즌스와 장소 변경을 WebSocket(STOMP)으로 실시간 동기화합니다. *(현재 단일 인스턴스 인메모리 브로커. 다중 인스턴스 확장 시 Redis Pub/Sub으로 교체 예정.)*
 
 ### 시나리오 E · 실시간 랭킹 (Redis Sorted Set)
 
@@ -225,7 +217,7 @@ sequenceDiagram
 
 ## 🖼 주요 화면
 
-> Vue 3 화면 12개 + REST · WebSocket API 연동 완료.
+> Vue 3 화면 25개 + REST · WebSocket API 연동 완료. (아래는 대표 화면)
 
 | 화면 | 경로 | 관련 시나리오 |
 |---|---|---|
@@ -233,14 +225,14 @@ sequenceDiagram
 | 회원가입 / 로그인 | `/auth` | JWT 발급 |
 | 메인 대시보드 | `/home` | 추천 + 활동 피드 |
 | AI 챗봇 | `/chat` | Gemini API |
-| 관광지 검색 | `/attractions` | Cache-Aside + 스켈레톤 |
-| 관광지 상세 | `/attractions/:id` | 다중 외부 API |
-| 여행 계획 편집 | `/plans/:id/edit` | @Async 동선 최적화 |
-| **공동 편집** | `/plans/:id/co` | WebSocket + 낙관적 락 |
+| 관광지 검색 | `/attractions` | FULLTEXT 검색 + 스켈레톤 |
+| 관광지 상세 | `/attractions/:id` | 네이버 지도 + 최근 후기 |
+| 여행 계획 편집 | `/plans/:id/edit` | 동선 최적화 (2-opt) |
+| **공동 편집** | `/plans/:id/edit` | WebSocket + 낙관적 락 |
 | 내 계획 리스트 | `/plans` | 페이지네이션 |
 | 후기 작성 / 조회 | `/attractions/:id/reviews` | 로컬 파일시스템 업로드 |
 | 관리자 페이지 | `/admin/users` | ADMIN 권한 |
-| 에러 / 빈 상태 | `/errors/:type` | Circuit Breaker UI |
+| 에러 / 빈 상태 | `/errors/:type` | 403 / 404 / 오프라인 |
 
 <!-- ────────────────────────────────────────────────
      TODO: 데모 GIF를 만든 뒤 아래 주석을 푸세요.
@@ -270,7 +262,8 @@ sequenceDiagram
 | 1주차 | 2026.05.18 ~ 05.22 | 기획, 요구사항 명세, WBS, 화면 설계 | ✅ |
 | 2주차 | 2026.05.25 ~ 05.29 | Vue 프론트엔드 12개 화면, 디자인 시스템 | ✅ |
 | 3주차 | 2026.06.01 ~ 06.05 | DB 설계(ERD), 기본 CRUD(F01~F03), 인증 | ✅ |
-| 4주차 | 2026.06.08 ~ 06.12 | 캐싱·동선·공동 편집, 통합 테스트 | ✅ |
+| 4주차 | 2026.06.08 ~ 06.12 | 관광지·동선·공동 편집, 통합 테스트 | ✅ |
+| 이후 | 2026.06 ~ 07 | 운영 배포(AWS EC2 · HTTPS) · 소셜 로그인 · 실시간 협업 고도화 | ✅ |
 
 <br/>
 
@@ -284,7 +277,7 @@ tripcrew/
 │
 ├── tripcrew-frontend/     # Vue 3 프론트엔드
 │   └── src/
-│       ├── views/         # 12개 화면 (SC-01 ~ SC-12)
+│       ├── views/         # 화면 컴포넌트 (25개)
 │       ├── components/    # 공통 컴포넌트
 │       ├── router/        # Vue Router 설정
 │       └── assets/styles/ # 디자인 토큰
@@ -369,8 +362,6 @@ AWS EC2에 `docker-compose.prod.yml` + **Caddy**(리버스 프록시 · HTTPS �
 공공데이터는 각 기관의 이용약관을 따릅니다.
 
 - 한국관광공사 TourAPI — 공공누리 제1유형
-- 한국환경공단 — 공공누리 제1유형
-- 한국천문연구원 — 공공누리 제1유형
 
 <br/>
 
