@@ -1046,5 +1046,43 @@ onMounted(loadAll)
   .add-plan-panel {
     grid-template-columns: 1fr;
   }
+
+  /* 세로 스택 시 지도는 height:auto라 canvas(height:100%)가 무너짐 → 고정 높이 부여 */
+  .gallery__map {
+    height: 300px;
+  }
+}
+
+@media (max-width: 640px) {
+  .detail-layout {
+    padding: 20px var(--space-4) 56px;
+  }
+  .detail-main {
+    padding: 20px;
+  }
+  .gallery__map {
+    height: 240px;
+  }
+  /* 제목 + 액션(찜/공유) 세로 스택 — 좁은 폭에서 제목이 눌리지 않게 */
+  .detail-header {
+    flex-direction: column;
+  }
+  .header-actions {
+    width: 100%;
+  }
+  /* 데이터 라벨 + 태그 스택 */
+  .rating-block {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  /* 후기 헤더(제목 + 평균/모두보기) 줄바꿈 허용 */
+  .block-head {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .detail-info div {
+    grid-template-columns: 64px 1fr;
+  }
 }
 </style>

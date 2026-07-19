@@ -181,4 +181,15 @@ const def = computed(() => ERRORS[route.params.type] || ERRORS['404'])
   font-size: 11px;
   color: var(--muted);
 }
+
+/* 반응형: 폰에서 카드 여백·아이콘 축소, 액션 버튼 세로 꽉 채움 */
+@media (max-width: 640px) {
+  .error-layout { padding: 24px var(--space-4) 56px; }
+  .error-focus { margin: 20px auto; max-width: 100%; }
+  .error-card { padding: 28px 20px; min-height: 320px; gap: 12px; }
+  .error-icon { font-size: 52px; margin-top: 22px; }
+  .error-card h2 { font-size: 20px; }
+  .error-actions { flex-direction: column; align-self: stretch; }
+  .error-actions :deep(.base-btn) { width: 100%; }
+}
 </style>

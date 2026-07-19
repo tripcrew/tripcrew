@@ -192,7 +192,7 @@ function toggleAnswer(index) {
 @media (max-width: 640px) {
   .faq-page { padding: 32px var(--space-4) 0; }
   .faq-header { padding: 32px 24px; }
-  .faq-header h1 { font-size: 28px; }
+  .faq-header h1 { font-size: 26px; }
   .faq-question { padding: 20px; gap: 12px; font-size: 15px; }
   .faq-answer { padding: 0 20px 20px; }
   .help-box { align-items: flex-start; flex-direction: column; }

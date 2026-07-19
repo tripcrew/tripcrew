@@ -81,7 +81,7 @@
             <input
               v-model="input"
               type="text"
-              placeholder="예: 2박3일, 부모님 모시고, 휠체어 접근 가능한 곳..."
+              placeholder="예: 2박3일 부산여행 추천"
               :disabled="loading"
             />
             <button class="send-btn" type="submit" :disabled="!canSend">
@@ -605,6 +605,50 @@ async function scrollToBottom() {
 
   .msg--user .msg__bubble {
     max-width: 86%;
+  }
+}
+
+/* 폰: 여백 축소 + 버블/입력바 폭 정리 + 하단 세이프에어리어 */
+@media (max-width: 640px) {
+  .chat-layout {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .chat-header {
+    padding: 14px 16px;
+  }
+
+  .chat-body {
+    padding: 16px;
+    gap: 18px;
+  }
+
+  .chat-input {
+    padding: 14px 16px;
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+  }
+
+  .msg--user .msg__bubble {
+    max-width: 88%;
+  }
+
+  .msg__bubble {
+    font-size: 14px;
+    padding: 12px 14px;
+  }
+
+  .msg__bubble--intro {
+    min-width: 0;
+  }
+
+  /* 터치 타겟 확보 */
+  .input-wrap input {
+    min-height: 44px;
+  }
+
+  .send-btn {
+    min-height: 44px;
   }
 }
 </style>

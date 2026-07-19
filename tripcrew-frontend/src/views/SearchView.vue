@@ -2,11 +2,23 @@
   <div class="page page-soft page-ambient">
     <AppHeader />
 
-    <main class="container search-layout">
-      <aside class="filter-panel">
+    <main class="container search-layout" :class="{ 'sheet-open': mobileFilterOpen }">
+      <!-- 모바일 필터 바텀시트 백드롭 (≤900px에서만 노출) -->
+      <transition name="overlay">
+        <div v-if="mobileFilterOpen" class="filter-backdrop" @click="mobileFilterOpen = false"></div>
+      </transition>
+
+      <aside class="filter-panel" :class="{ 'is-open': mobileFilterOpen }">
         <div class="filter-head">
           <h2 class="t-h2">필터</h2>
-          <button class="link-muted" type="button" @click="resetFilters">초기화</button>
+          <div class="filter-head__actions">
+            <button class="link-muted" type="button" @click="resetFilters">초기화</button>
+            <button class="sheet-close" type="button" aria-label="필터 닫기" @click="mobileFilterOpen = false">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/>
+              </svg>
+            </button>
+          </div>
         </div>
 
         <div class="filter-group">
@@ -49,6 +61,11 @@
             <button :class="['filter-chip', { active: filters.minRating === 3.5 }]" type="button" @click="setMinRating(3.5)">★ 3.5+</button>
           </div>
         </div>
+
+        <!-- 모바일 바텀시트 하단 적용 버튼 (필터는 실시간 반영되므로 닫기 역할) -->
+        <button class="sheet-apply" type="button" @click="mobileFilterOpen = false">
+          결과 {{ pageData.totalCount.toLocaleString() }}개 보기
+        </button>
       </aside>
 
       <section class="results">
@@ -57,6 +74,14 @@
             <span class="search-icon">⌕</span>
             <input v-model.trim="keyword" type="text" placeholder="관광지 이름 또는 키워드" />
           </div>
+          <!-- 모바일 전용: 필터 바텀시트 열기 (활성 필터 개수 뱃지) -->
+          <button class="filter-toggle" type="button" @click="mobileFilterOpen = true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/>
+            </svg>
+            필터
+            <span v-if="activeFilterCount > 0" class="filter-toggle__badge">{{ activeFilterCount }}</span>
+          </button>
         </div>
 
         <div class="results-meta">
@@ -182,6 +207,7 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const keyword = ref('')
+const mobileFilterOpen = ref(false)
 const isLoading = ref(false)
 const errorMessage = ref('')
 const attractions = ref([])
@@ -235,6 +261,16 @@ const selectedTypeLabel = computed(() => {
     .map((type) => type.name)
     .join(' + ')
 })
+// 활성 필터 개수(키워드 제외 — 그건 검색바에 별도 노출). 모바일 '필터' 버튼 뱃지에 표시
+const activeFilterCount = computed(() => {
+  let count = 0
+  if (filters.sidoCode) count += 1
+  if (filters.gugunCode) count += 1
+  count += filters.contentTypeIds.length
+  if (filters.minRating !== null) count += 1
+  return count
+})
+
 const visiblePages = computed(() => {
   const total = pageData.totalPages
   const current = pageData.page
@@ -482,6 +518,11 @@ function cleanDisplayName(value) {
     .replace(/^\s*(?:\(?#?\d{5,}\)?\s+)+/g, '')
 }
 
+// 바텀시트 열림 동안 배경 스크롤 잠금
+watch(mobileFilterOpen, (open) => {
+  document.body.style.overflow = open ? 'hidden' : ''
+})
+
 watch(keyword, scheduleSearch)
 
 watch(
@@ -525,6 +566,7 @@ onMounted(restoreQueryAndLoad)
 
 onBeforeUnmount(() => {
   window.clearTimeout(debounceTimer)
+  document.body.style.overflow = ''
 })
 </script>
 
@@ -624,6 +666,46 @@ onBeforeUnmount(() => {
   background: var(--teal);
   border-color: var(--teal);
   color: white;
+}
+
+.filter-head__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* 모바일 전용 요소 — 데스크톱에선 숨김(사이드바 필터 그대로) */
+.filter-toggle,
+.sheet-close,
+.sheet-apply,
+.filter-backdrop {
+  display: none;
+}
+
+.filter-toggle {
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.filter-toggle__badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--teal);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .results-head {
@@ -922,4 +1004,116 @@ onBeforeUnmount(() => {
 }
 
 .muted { color: var(--muted); }
+
+/* ── 반응형: 필터를 사이드바 → 바텀시트로 전환, 결과를 바로 노출 ── */
+@media (max-width: 900px) {
+  .search-layout {
+    display: block;          /* 그리드 해제 → 결과가 화면 최상단 */
+    padding-top: 24px;
+  }
+  .cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* 검색바 옆 '필터' 버튼 노출 */
+  .filter-toggle {
+    display: inline-flex;
+    height: auto;
+  }
+
+  /* 필터 패널 → 하단에서 올라오는 바텀시트 */
+  .filter-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 110;
+    background: rgba(0, 0, 0, 0.45);
+  }
+
+  .filter-panel {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    z-index: 120;
+    max-height: 85vh;
+    overflow-y: auto;
+    border: none;
+    border-radius: 20px 20px 0 0;
+    padding: 20px var(--space-4) calc(20px + var(--safe-bottom));
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.2);
+    transform: translateY(105%);
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .filter-panel.is-open {
+    transform: translateY(0);
+  }
+
+  /* 시트 상단 grab 핸들 */
+  .filter-panel::before {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 4px;
+    margin: -6px auto 14px;
+    border-radius: 999px;
+    background: var(--line-2);
+  }
+
+  .sheet-close {
+    display: inline-grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    color: var(--ink-3);
+  }
+  .sheet-close:hover {
+    background: var(--bg-2);
+  }
+
+  /* 하단 고정 적용 버튼(스크롤해도 항상 보이게) */
+  .sheet-apply {
+    display: block;
+    position: sticky;
+    bottom: 0;
+    width: 100%;
+    margin-top: 20px;
+    padding: 15px;
+    border-radius: 12px;
+    background: var(--teal);
+    color: white;
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .sheet-apply:hover {
+    background: var(--teal-2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .filter-panel {
+    transition: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .search-layout {
+    padding: 16px var(--space-4) 56px;
+  }
+  .cards-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  /* 터치 타깃 확보 */
+  .pagination button {
+    min-height: 44px;
+    height: 44px;
+  }
+  /* 개발성 페이지/사이즈 표기는 모바일에서 감춰 깔끔하게(페이지네이션이 대체) */
+  .results-meta .t-mono {
+    display: none;
+  }
+}
 </style>

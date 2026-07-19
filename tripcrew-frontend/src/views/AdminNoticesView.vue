@@ -281,4 +281,22 @@ onMounted(load)
 .toast--error { background: #FFE5E8; color: #B12C3A; }
 
 .api-note { margin-top: 20px; font-size: 11px; color: var(--muted); padding: 10px 14px; background: var(--bg-2); border-radius: 6px; }
+
+/* ── 반응형 ── */
+@media (max-width: 640px) {
+  .admin-page-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .head-actions { width: 100%; flex-wrap: wrap; }
+  /* 인라인 작성/수정 폼 여백 축소 */
+  .form-card { padding: 16px; }
+  /* 넓은 표는 열을 지우지 않고 가로 스크롤 */
+  .table-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .admin-table { min-width: 680px; }
+  .action-cell { white-space: nowrap; }
+  .action-btn { padding: 8px 12px; }
+}
 </style>

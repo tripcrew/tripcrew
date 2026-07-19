@@ -509,6 +509,7 @@ async function handleWithdraw() {
 }
 
 @media (max-width: 640px) {
+  .profile-page { padding: 32px var(--space-4) 56px; }
   .profile-panel { padding: 24px; }
   .profile-head { align-items: flex-start; }
   .profile-info div { grid-template-columns: 1fr; gap: 4px; }

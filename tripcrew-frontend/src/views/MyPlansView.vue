@@ -589,8 +589,16 @@ onMounted(() => {
 
 @media (max-width: 640px) {
   .my-plans-layout { padding: 28px var(--space-4) 56px; }
-  .page-header, .plans-overview, .plan-status-group__head { align-items: flex-start; flex-direction: column; }
+  /* 헤더/개요/그룹 헤더: 제목과 액션이 겹치지 않게 세로 스택(+간격 확보) */
+  .page-header, .plans-overview, .plan-status-group__head { align-items: flex-start; flex-direction: column; gap: 12px; }
+  /* 좁은 폭에서 '새 계획 만들기'가 넘치지 않게 꽉 채움(터치 타깃) */
+  .page-header :deep(.base-btn) { width: 100%; }
   .plans-grid { grid-template-columns: 1fr; }
   .plans-overview { margin-bottom: 24px; }
+  /* 받은 초대 카드: 제목 위 / 수락·거절 아래로 스택 */
+  .invite-block { padding: 16px; }
+  .invite-card { flex-direction: column; align-items: stretch; gap: 12px; }
+  .invite-actions { justify-content: flex-end; }
+  .mini-btn { padding: 10px 16px; min-height: 44px; }
 }
 </style>
