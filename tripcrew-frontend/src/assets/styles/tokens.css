@@ -92,6 +92,22 @@
 }
 
 /* ============================================
+ * Responsive breakpoints (문서화 — CSS 변수는 @media 조건엔 못 쓰므로 값은 하드코딩하되
+ * 프로젝트 전역에서 아래 2단계만 사용해 일관성 유지)
+ *   · 태블릿:  @media (max-width: 900px)  — 아이패드 세로, 작은 태블릿, 좁은 창
+ *   · 모바일:  @media (max-width: 640px)  — 아이폰(SE 375 ~ Pro Max 430)·갤럭시(360~412) 전 기종
+ * 세로 좁은 특수 케이스만 예외적으로 480px 사용 가능.
+ * ============================================ */
+
+/* iOS 노치/홈바 safe-area 여백(뷰포트 viewport-fit=cover와 함께). 지원 안 하면 0. */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+/* ============================================
  * Dark theme — only token *overrides*.
  * Brand hues (--teal/--coral) stay; their soft tints, inks,
  * neutrals, surfaces and shadows flip. Applied via

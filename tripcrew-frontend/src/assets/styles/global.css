@@ -231,3 +231,48 @@ body * {
 .pop-enter-active { transition: opacity 0.15s ease, transform 0.15s ease; }
 .pop-leave-active { transition: opacity 0.12s ease, transform 0.12s ease; }
 .pop-enter-from, .pop-leave-to { opacity: 0; transform: translateY(-6px) scale(0.98); }
+
+/* ============================================
+ * Responsive foundations (모바일 기반 — 브레이크포인트 정의는 tokens.css 참고)
+ *  - 뷰포트 메타는 index.html 에서 width=device-width 로 전환됨.
+ *  - 여기서 전역 컨테이너 여백·타이포·미디어 오버플로를 모바일에 맞춤.
+ *    개별 뷰의 그리드/레이아웃은 각 컴포넌트 <style>의 @media 로 처리.
+ * ============================================ */
+
+/* 미디어가 컨테이너를 넘지 않게(가로 스크롤 방지의 기본) */
+img, video {
+  max-width: 100%;
+  height: auto;
+}
+
+/* iOS safe-area: 컨테이너가 노치/홈바 좌우에 가려지지 않도록 */
+.container {
+  padding-left: max(var(--space-6), var(--safe-left));
+  padding-right: max(var(--space-6), var(--safe-right));
+}
+
+/* ── 태블릿 (≤900px) ── */
+@media (max-width: 900px) {
+  .t-display { font-size: 40px; letter-spacing: -1.2px; }
+  .t-h1 { font-size: 28px; letter-spacing: -0.6px; }
+}
+
+/* ── 모바일 (≤640px): 아이폰·갤럭시 ── */
+@media (max-width: 640px) {
+  body { font-size: 15px; }
+
+  /* 좌우 여백 축소 + safe-area 존중 */
+  .container {
+    padding-left: max(var(--space-4), var(--safe-left));
+    padding-right: max(var(--space-4), var(--safe-right));
+  }
+
+  /* 타이포 한 단계 더 축소(모바일에서 거대 헤드라인 방지) */
+  .t-display { font-size: 30px; letter-spacing: -0.8px; }
+  .t-h1 { font-size: 24px; letter-spacing: -0.5px; }
+  .t-h2 { font-size: 19px; }
+  .t-h3 { font-size: 16px; }
+
+  /* 가로 스크롤 안전망(개별 뷰에서 원인을 잡되, 최후 방어) */
+  body { overflow-x: hidden; }
+}

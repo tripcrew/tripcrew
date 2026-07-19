@@ -409,4 +409,91 @@ onMounted(() => {
 .admin-main {
   padding: 32px 40px;
 }
+
+/* ══════════════════════════════════════════════
+ * 반응형 — 태블릿/모바일
+ * ══════════════════════════════════════════════ */
+
+/* ── 태블릿(≤900px): 사이드바 좁힘 + 본문 여백 축소 ── */
+@media (max-width: 900px) {
+  .admin-layout {
+    grid-template-columns: 200px 1fr;
+  }
+  .admin-main {
+    padding: 24px 20px;
+  }
+  .admin-top {
+    gap: 20px;
+    padding: 0 16px;
+  }
+}
+
+/* ── 모바일(≤640px): 사이드바 → 가로 스크롤 탭바, 톱바 슬림 ── */
+@media (max-width: 640px) {
+  /* 톱바: 시스템 상태 숨기고 액션만 우측에 */
+  .admin-top {
+    height: 54px;
+    gap: 10px;
+    padding: 0 max(12px, var(--safe-left)) 0 max(12px, var(--safe-left));
+  }
+  .system-status,
+  .admin-badge {
+    display: none;
+  }
+  .admin-brand {
+    margin-right: auto;
+  }
+  /* 로그아웃은 아이콘만(텍스트 노드 숨김) */
+  .logout-btn {
+    font-size: 0;
+    padding: 7px 9px;
+    gap: 0;
+  }
+
+  /* 헤더(TripCrew·테마·나가기·프로필) + 탭바를 한 덩어리로 상단 고정.
+     기존엔 탭바만 sticky라 스크롤 시 헤더가 사라져 탭바가 떠 보였다. */
+  .admin-top {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+  }
+
+  /* 레이아웃: 단일 컬럼, 사이드바를 상단 가로 탭바로(헤더 바로 아래 고정) */
+  .admin-layout {
+    display: block;
+    min-height: calc(100vh - 54px);
+  }
+  .admin-sidebar {
+    position: sticky;
+    top: 54px;
+    z-index: 20;
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    padding: 8px max(12px, var(--safe-left));
+  }
+  .nav-title {
+    display: none;
+  }
+  .admin-nav {
+    flex-direction: row;
+    gap: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .admin-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .nav-item {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 8px 12px;
+  }
+  .nav-count {
+    margin-left: 6px;
+  }
+  .admin-main {
+    padding: 20px max(14px, var(--safe-left)) calc(24px + var(--safe-bottom));
+  }
+}
 </style>
