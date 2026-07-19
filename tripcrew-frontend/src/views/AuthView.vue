@@ -982,4 +982,15 @@ function getRedirectTarget() {
   .social-btn,
   .demo-hint__btn { transition: none; }
 }
+
+/* 반응형: 폰에서는 좌측 소개 패널을 숨겨 폼이 화면을 꽉 채우도록 */
+@media (max-width: 640px) {
+  .auth-left { display: none; }
+  .auth-grid { grid-template-columns: 1fr; }
+  /* 터치 편의: 입력/탭 최소 높이 확보 */
+  .field input,
+  .auth-tab { min-height: 44px; }
+  .demo-hint__btn,
+  .social-btn { min-height: 44px; }
+}
 </style>

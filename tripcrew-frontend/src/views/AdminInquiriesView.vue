@@ -368,4 +368,14 @@ onMounted(load)
   .iq-card__top { flex-direction: column; gap: 8px; }
   .iq-card__by { align-items: flex-start; }
 }
+
+/* ── 반응형(툴바/카드 여백) ── */
+@media (max-width: 640px) {
+  .admin-page-head { margin-bottom: 16px; }
+  /* 필터 탭 + 새로고침 줄바꿈, 탭은 남는 폭 채우기 */
+  .head-actions { width: 100%; flex-wrap: wrap; }
+  .filter-tabs { flex: 1 1 auto; }
+  .iq-card { padding: 16px; }
+  .iq-card__content { padding: 12px 14px; }
+}
 </style>

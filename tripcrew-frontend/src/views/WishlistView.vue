@@ -547,4 +547,23 @@ onMounted(() => {
 .modal-actions :deep(button) {
   flex: 1;
 }
+
+/* ── 반응형: 카드 그리드/모달 모바일 대응 ── */
+@media (max-width: 900px) {
+  .wishlist-layout { padding-left: var(--space-4); padding-right: var(--space-4); }
+}
+
+@media (max-width: 640px) {
+  .wishlist-layout { padding: 24px var(--space-4) 56px; }
+  /* 제목 + 개수 뱃지가 붙지 않게 간격 확보 */
+  .wishlist-head { gap: 12px; }
+  /* 좁은 폭에선 1열(auto-fill이 처리하지만 명시적으로 고정) */
+  .cards-grid { grid-template-columns: 1fr; gap: 16px; }
+  .wish-card__thumb { height: 160px; }
+  /* 상세/담기 버튼 터치 타깃 확보 */
+  .card-actions :deep(button) { padding: 11px 10px; }
+  .select-input { padding: 12px; }
+  /* 모달: 화면 안에 들어오도록 폭 제한 + 세로 스크롤 */
+  .modal { width: min(94vw, 420px); padding: 22px 20px; max-height: 88vh; overflow-y: auto; }
+}
 </style>

@@ -65,6 +65,7 @@
             </span>
           </div>
 
+          <div class="table-scroll">
           <table class="admin-table">
             <thead>
               <tr>
@@ -204,6 +205,7 @@
               </tr>
             </tbody>
           </table>
+          </div>
         </section>
 
         <BasePagination v-if="!forbidden && !error" v-model="page" :total="filteredUsers.length" :page-size="PAGE_SIZE" />
@@ -777,5 +779,32 @@ onMounted(load)
   padding: 10px 14px;
   background: var(--bg-2);
   border-radius: 6px;
+}
+
+/* ── 반응형 ── */
+@media (max-width: 900px) {
+  .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .admin-page-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .head-actions { width: 100%; }
+  .stat-grid { gap: 12px; margin-bottom: 16px; }
+  .stat-card { padding: 16px; }
+  .stat-value { font-size: 26px; }
+  /* 검색/필터 헤더 줄바꿈(가로 space-between → 세로 나열) */
+  .table-head { flex-wrap: wrap; padding: 12px 14px; }
+  .table-search { max-width: none; flex: 1 1 100%; }
+  .table-count { margin-left: 0; }
+  /* 넓은 표는 열을 지우지 않고 가로 스크롤 */
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .admin-table { min-width: 900px; }
+  /* 행 액션 버튼 터치 타깃 확대 */
+  .action-btn { padding: 8px 12px; }
 }
 </style>

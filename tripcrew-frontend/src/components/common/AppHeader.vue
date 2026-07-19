@@ -112,11 +112,74 @@
           </button>
         </template>
         <template v-else>
-          <router-link :to="{ path: '/auth', query: { mode: 'login' } }" class="nav-link">로그인</router-link>
-          <router-link :to="{ path: '/auth', query: { mode: 'signup' } }" class="btn btn--primary btn--sm">회원가입</router-link>
+          <router-link :to="{ path: '/auth', query: { mode: 'login' } }" class="nav-link desktop-auth">로그인</router-link>
+          <router-link :to="{ path: '/auth', query: { mode: 'signup' } }" class="btn btn--primary btn--sm desktop-auth">회원가입</router-link>
         </template>
+
+        <!-- 모바일 햄버거 (≤640px에서만 노출) -->
+        <button
+          v-if="!minimal"
+          class="icon-btn menu-toggle"
+          type="button"
+          :aria-label="mobileOpen ? '메뉴 닫기' : '메뉴 열기'"
+          :aria-expanded="mobileOpen"
+          @click="toggleMobile"
+        >
+          <svg v-if="!mobileOpen" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+          <svg v-else width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/>
+          </svg>
+        </button>
       </div>
     </div>
+
+    <!-- 모바일 드로어 (햄버거로 토글, ≤640px 전용)
+         ⚠️ Teleport 로 body 직속에 렌더 — .app-header 의 backdrop-filter 가
+         position:fixed 자식의 기준을 헤더 박스로 만들어 드로어가 붕괴하던 버그 회피 -->
+    <Teleport to="body">
+    <transition name="drawer">
+      <div v-if="mobileOpen && !minimal" class="mobile-drawer" @click.self="closeMobile">
+        <nav class="mobile-drawer__panel">
+          <template v-if="isLoggedIn">
+            <router-link to="/profile" class="mobile-drawer__profile" @click="closeMobile">
+              <span class="avatar avatar--sm">{{ avatarText }}</span>
+              <span class="mobile-drawer__name">{{ displayName }}</span>
+            </router-link>
+          </template>
+
+          <router-link to="/home" class="mobile-link" @click="closeMobile">홈</router-link>
+          <router-link to="/attractions" class="mobile-link" @click="closeMobile">관광지</router-link>
+          <router-link to="/chat" class="mobile-link" @click="closeMobile">챗봇</router-link>
+          <router-link to="/plans" class="mobile-link" @click="closeMobile">내 계획</router-link>
+          <router-link to="/wishlist" class="mobile-link" @click="closeMobile">찜</router-link>
+          <router-link to="/notices" class="mobile-link" @click="closeMobile">공지</router-link>
+
+          <div class="mobile-drawer__divider"></div>
+
+          <button class="mobile-link mobile-link--btn" type="button" @click="toggleThemeInDrawer">
+            <span>{{ isDark ? '라이트 모드' : '다크 모드' }}</span>
+            <svg v-if="isDark" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="4.2"/>
+              <path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/>
+            </svg>
+            <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 12.5A8.5 8.5 0 1 1 11.5 3a6.5 6.5 0 0 0 9.5 9.5z"/>
+            </svg>
+          </button>
+
+          <template v-if="isLoggedIn">
+            <button class="mobile-link mobile-link--danger" type="button" @click="handleLogoutMobile">로그아웃</button>
+          </template>
+          <template v-else>
+            <router-link :to="{ path: '/auth', query: { mode: 'login' } }" class="mobile-link" @click="closeMobile">로그인</router-link>
+            <router-link :to="{ path: '/auth', query: { mode: 'signup' } }" class="mobile-link mobile-link--primary" @click="closeMobile">회원가입</router-link>
+          </template>
+        </nav>
+      </div>
+    </transition>
+    </Teleport>
   </header>
 </template>
 
@@ -144,6 +207,33 @@ async function handleLogout() {
   await authStore.logout()
   router.replace('/')
 }
+
+/* ── 모바일 드로어 ─────────────────────────────────────
+   햄버거로 토글. 라우트 이동/링크 클릭 시 닫고, 열려 있는 동안 배경 스크롤 잠금. */
+const mobileOpen = ref(false)
+
+function toggleMobile() {
+  mobileOpen.value = !mobileOpen.value
+}
+function closeMobile() {
+  mobileOpen.value = false
+}
+function toggleThemeInDrawer() {
+  toggleTheme()
+}
+async function handleLogoutMobile() {
+  closeMobile()
+  await handleLogout()
+}
+
+// 열림 상태에 따라 body 스크롤 잠금(드로어 뒤 페이지가 스크롤되지 않도록)
+watch(mobileOpen, (open) => {
+  document.body.style.overflow = open ? 'hidden' : ''
+})
+// 라우트가 바뀌면 드로어 닫기(뒤로가기 등 링크 외 이동 포함)
+watch(() => router.currentRoute.value.fullPath, () => {
+  mobileOpen.value = false
+})
 
 /* ── 알림 ─────────────────────────────────────────────
    벨 뱃지(미읽음 수)는 진입 시 + 60초 폴링으로 갱신,
@@ -305,6 +395,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   document.removeEventListener('click', onDocClick)
   stopPolling()
+  document.body.style.overflow = ''
 })
 const logoTo = computed(() => isLoggedIn.value ? '/home' : '/')
 const displayName = computed(() => authStore.user?.nickname || authStore.user?.email || '사용자')
@@ -676,5 +767,176 @@ const avatarText = computed(() => displayName.value.trim().slice(0, 1).toUpperCa
 .btn--sm {
   padding: 7px 14px;
   font-size: 13px;
+}
+
+/* ══════════════════════════════════════════════
+ * 모바일 드로어 / 햄버거
+ * ══════════════════════════════════════════════ */
+
+/* 햄버거는 데스크톱에서 숨김(모바일에서만 노출) */
+.menu-toggle {
+  display: none;
+}
+
+/* 드로어 백드롭 (Teleport 로 body 직속 → 뷰포트 기준으로 전체 화면 덮음) */
+.mobile-drawer {
+  position: fixed;
+  inset: 0;
+  top: var(--header-height);
+  z-index: 90;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+/* 데스크톱 폭에서는 드로어 자체를 숨김(모바일에서 연 뒤 창을 넓히는 엣지케이스 방지) */
+@media (min-width: 641px) {
+  .mobile-drawer {
+    display: none;
+  }
+}
+
+/* 드로어 패널(우측에서 슬라이드) */
+.mobile-drawer__panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(80vw, 300px);
+  padding: var(--space-4) var(--space-4) calc(var(--space-6) + var(--safe-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--surface);
+  border-left: 1px solid var(--line);
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.16);
+  overflow-y: auto;
+}
+
+.mobile-drawer__profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 4px;
+  border-radius: 10px;
+  background: var(--bg-soft);
+}
+
+.mobile-drawer__name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-drawer__divider {
+  height: 1px;
+  margin: 8px 0;
+  background: var(--line);
+}
+
+.mobile-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 46px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-2);
+  transition: background 0.15s, color 0.15s;
+}
+
+.mobile-link:hover,
+.mobile-link.router-link-active {
+  background: var(--teal-soft);
+  color: var(--teal-ink);
+}
+
+.mobile-link--btn {
+  width: 100%;
+  text-align: left;
+}
+
+.mobile-link--primary {
+  justify-content: center;
+  background: var(--coral);
+  color: white;
+}
+
+.mobile-link--primary:hover {
+  background: var(--coral-2);
+  color: white;
+}
+
+.mobile-link--danger {
+  color: var(--coral-ink);
+}
+
+.mobile-link--danger:hover {
+  background: var(--coral-soft);
+  color: var(--coral-ink);
+}
+
+/* 드로어 슬라이드 전환 */
+.drawer-enter-active,
+.drawer-leave-active {
+  transition: opacity 0.2s ease;
+}
+.drawer-enter-active .mobile-drawer__panel,
+.drawer-leave-active .mobile-drawer__panel {
+  transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.drawer-enter-from,
+.drawer-leave-to {
+  opacity: 0;
+}
+.drawer-enter-from .mobile-drawer__panel,
+.drawer-leave-to .mobile-drawer__panel {
+  transform: translateX(100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer-enter-active .mobile-drawer__panel,
+  .drawer-leave-active .mobile-drawer__panel {
+    transition: none;
+  }
+}
+
+/* ── 태블릿(≤900px): 여백 축소 ── */
+@media (max-width: 900px) {
+  .app-header__inner {
+    gap: var(--space-4);
+    padding: 0 var(--space-4);
+  }
+  .nav-link {
+    padding: 8px 10px;
+  }
+}
+
+/* ── 모바일(≤640px): 가로 네비 → 햄버거 ── */
+@media (max-width: 640px) {
+  .app-header__inner {
+    padding-left: max(var(--space-4), var(--safe-left));
+    padding-right: max(var(--space-4), var(--safe-right));
+  }
+  /* 데스크톱 가로 네비·데스크톱 전용 액션 숨김 → 드로어로 이동
+     (드로어 안 아바타는 유지해야 하므로 상단바 직계 아바타만 겨냥) */
+  .app-header__nav,
+  .theme-toggle,
+  .app-header__actions > .avatar,
+  .logout-btn,
+  .desktop-auth {
+    display: none;
+  }
+  /* 햄버거 노출 */
+  .menu-toggle {
+    display: grid;
+  }
+  .app-header__actions {
+    gap: var(--space-1);
+  }
 }
 </style>

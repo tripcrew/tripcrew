@@ -126,4 +126,16 @@ onMounted(load)
 }
 .state-panel strong { font-size: 16px; color: var(--ink); }
 .state-panel p { font-size: 13px; color: var(--ink-soft); }
+
+/* ── 반응형: 공지 상세 모바일 대응 ── */
+@media (max-width: 640px) {
+  .detail-layout { padding-bottom: 48px; }
+  /* 본문 카드 패딩 축소 */
+  .notice-article { padding: 20px 18px; }
+  .article-head { padding-bottom: 16px; }
+  /* 긴 제목 줄바꿈 보장 */
+  .article-head .t-h1 { overflow-wrap: anywhere; }
+  .article-body { margin-top: 20px; font-size: 14px; line-height: 1.75; }
+  .article-foot { margin-top: 24px; }
+}
 </style>

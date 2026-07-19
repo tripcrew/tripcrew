@@ -144,4 +144,14 @@ onMounted(load)
 }
 .state-panel strong { font-size: 16px; color: var(--ink); }
 .state-panel p { font-size: 13px; color: var(--ink-soft); }
+
+/* ── 반응형: 공지 목록 행 모바일 대응 ── */
+@media (max-width: 640px) {
+  .notices-layout { padding-bottom: 48px; }
+  .page-head { margin-bottom: 20px; }
+  /* 제목 | 날짜·조회수가 한 줄에 꽉 차면 날짜가 아래로 자연스럽게 감싸지도록 */
+  .notice-row { flex-wrap: wrap; row-gap: 4px; padding: 14px 16px; }
+  .notice-title { white-space: normal; }
+  .notice-meta { font-size: 11px; }
+}
 </style>

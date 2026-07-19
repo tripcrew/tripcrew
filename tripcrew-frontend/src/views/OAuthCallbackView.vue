@@ -144,4 +144,10 @@ onMounted(async () => {
 @media (prefers-reduced-motion: reduce) {
   .oauth-spinner { animation: none; }
 }
+
+/* 반응형: 폰에서 카드 여백 축소(내용은 이미 중앙 정렬·max-width 360) */
+@media (max-width: 640px) {
+  .oauth-callback { padding: 20px; }
+  .oauth-card { padding: 32px 22px; }
+}
 </style>

@@ -1237,12 +1237,27 @@ onBeforeUnmount(() => {
 @media (max-width: 640px) {
   .dashboard { padding: 20px var(--space-4) 56px; }
   .dashboard-hero__copy, .trip-starter, .block { padding: 24px; }
-  .dashboard-hero__stats { grid-template-columns: 1fr 1fr; }
-  .stat-card { min-height: 155px; padding: 18px; }
-  .stat-card > strong { font-size: 36px; }
+
+  /* ── 히어로 카드: hover(3D 회전)가 없는 모바일 대응 ── */
+  /* '여행 가이드' 카드는 아래 QUICK START(TripBot) 섹션과 기능 중복 → 모바일 숨김 */
+  .stat-flip:last-child { display: none; }
+  .dashboard-hero__stats { grid-template-columns: 1fr; }
+
+  /* '나의 계획' 카드: 회전 제거 + 계획 칩(뒷면)을 바로 노출(카드·칩 클릭 유지) */
+  .stat-flip:first-child { perspective: none; }
+  .stat-flip:first-child .stat-flip__inner { display: block; transform: none !important; }
+  .stat-flip:first-child .stat-flip__face:not(.stat-flip__back) { display: none; }
+  .stat-flip:first-child .stat-flip__back {
+    transform: none;
+    backface-visibility: visible;
+    -webkit-backface-visibility: visible;
+  }
+  /* 불필요하게 크던 높이 제거 → 내용만큼 컴팩트하게 */
+  .stat-card { min-height: 0; padding: 20px; }
+
   .trip-starter__head, .trip-starter__bottom { align-items: flex-start; flex-direction: column; }
   .theme-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
   .theme-card { min-height: 120px; padding: 14px; }
-  .trip-starter__bottom .btn { width: 100%; }
+  .trip-starter__bottom :deep(.base-btn) { width: 100%; }
 }
 </style>

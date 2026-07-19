@@ -903,4 +903,59 @@ onMounted(loadAll)
 }
 
 .modal-actions :deep(button) { flex: 1; }
+
+/* ── 반응형: 2단(작성 폼 + 목록) → 세로 스택 ── */
+@media (max-width: 900px) {
+  .reviews-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* 스택되면 sticky 가 목록 스크롤을 방해하므로 해제 */
+  .write-form {
+    position: static;
+    top: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .reviews-layout {
+    padding: 20px var(--space-4) 56px;
+  }
+
+  .write-form,
+  .reviews-list {
+    padding: 20px 16px;
+  }
+
+  /* 평점 요약: 큰 숫자 + 막대 세로 스택 */
+  .rating-summary {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .rating-big strong {
+    font-size: 34px;
+  }
+
+  /* 후기 헤더: 닉네임/평점이 겹치지 않게 줄바꿈 */
+  .review-head {
+    flex-wrap: wrap;
+  }
+
+  .review-meta {
+    width: 100%;
+  }
+
+  .sort-tabs {
+    flex-wrap: wrap;
+  }
+
+  /* 모달: 화면 안에 담기고 넘치면 스크롤 */
+  .modal {
+    width: min(94vw, 420px);
+    max-height: 88vh;
+    overflow-y: auto;
+    padding: 22px 18px;
+  }
+}
 </style>

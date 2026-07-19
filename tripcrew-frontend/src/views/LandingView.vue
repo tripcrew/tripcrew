@@ -773,4 +773,26 @@ onBeforeUnmount(() => {
   .co-edit-preview.is-in .presence .avatar:nth-child(3) { animation-delay: 0.26s; }
   .co-edit-preview.is-in .presence .avatar:nth-child(4) { animation-delay: 0.39s; }
 }
+
+/* ── 반응형: 2단 히어로/협업 배너 → 세로 스택 ── */
+@media (max-width: 900px) {
+  .hero { padding: 56px 0 48px; }
+  .hero__inner { grid-template-columns: 1fr; gap: 40px; }
+  .hero__title { font-size: 44px; letter-spacing: -1.2px; }
+  .section { padding: 56px 0; }
+  .co-edit-banner { grid-template-columns: 1fr; gap: 36px; }
+}
+
+@media (max-width: 640px) {
+  .hero { padding: 40px 0 36px; }
+  .hero__title { font-size: 34px; letter-spacing: -0.8px; }
+  .hero__lead { font-size: 16px; }
+  .hero__eyebrow { margin-bottom: 16px; }
+  /* CTA 버튼 세로 꽉 채움(좁은 폭에서 나란히 두면 넘침) */
+  .hero__cta { flex-direction: column; }
+  .hero__cta :deep(.base-btn) { width: 100%; }
+  .section { padding: 40px 0; }
+  .avatar--lg { width: 52px; height: 52px; font-size: 18px; }
+  .co-edit-banner { gap: 28px; }
+}
 </style>

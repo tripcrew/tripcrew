@@ -175,4 +175,26 @@
     gap: 8px;
   }
 }
+
+@media (max-width: 640px) {
+  .app-footer {
+    padding-top: 40px;
+  }
+  .app-footer__inner {
+    padding: 0 var(--space-4);
+    gap: 32px;
+  }
+  /* '서비스' 소개 리스트(AI 추천·동선·공동편집)는 랜딩에도 있고 모바일에선 길기만 해 숨김
+     → 브랜드 + 고객지원/법적고지 링크 + copyright 만 남겨 간결하게 */
+  .app-footer__links {
+    grid-template-columns: 1fr 1fr;
+    gap: 24px 20px;
+  }
+  .app-footer__links .link-group:first-child {
+    display: none;
+  }
+  .app-footer__bottom {
+    padding: 24px var(--space-4) 0;
+  }
+}
 </style>

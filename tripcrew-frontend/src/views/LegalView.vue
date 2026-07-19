@@ -259,7 +259,7 @@ const document = computed(() => documents[props.documentType] || documents.terms
   .legal-page { padding: 32px var(--space-4) 0; }
   .legal-header, .legal-document { padding-left: 24px; padding-right: 24px; }
   .legal-header { padding-top: 32px; padding-bottom: 32px; }
-  .legal-header h1 { font-size: 28px; }
+  .legal-header h1 { font-size: 26px; }
   .notice-box { flex-direction: column; }
 }
 </style>

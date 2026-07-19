@@ -2695,4 +2695,62 @@ onBeforeUnmount(() => {
     gap: 6px;
   }
 }
+
+/* 폰: 여백 축소 + 헤더/접속자바 줄바꿈 + 모달·초대폼 정리 (기존 1000/700 레이아웃 재사용) */
+@media (max-width: 640px) {
+  .plan-edit-layout {
+    padding: 20px var(--space-4) 56px;
+  }
+
+  .edit-card,
+  .plan-main {
+    padding: 18px 16px;
+  }
+
+  /* 헤더 액션 버튼 + 접속자 클러스터가 좁은 폭에서 줄바꿈되도록 */
+  .header-right {
+    flex-wrap: wrap;
+  }
+
+  .presence-cluster {
+    max-width: 100%;
+  }
+
+  /* 지도: 모바일 고정 높이로 축소 */
+  .plan-map {
+    height: clamp(280px, 52vh, 460px);
+  }
+
+  /* 모달: 백드롭 여백 축소 + 화면 안에 담기고 넘치면 스크롤 */
+  .share-overlay,
+  .optimize-overlay {
+    padding: 16px;
+  }
+
+  .share-modal {
+    width: min(94vw, 520px);
+    max-height: 88vh;
+    overflow-y: auto;
+    padding: 22px 18px;
+  }
+
+  .optimize-modal {
+    max-height: 88vh;
+    overflow-y: auto;
+  }
+
+  /* 초대 폼: 이메일 전체폭 + 역할/버튼 아래로 */
+  .invite-row {
+    flex-wrap: wrap;
+  }
+
+  .invite-row input {
+    flex-basis: 100%;
+  }
+
+  /* 멤버 행: 이메일과 액션이 겹치지 않게 줄바꿈 */
+  .member-row {
+    flex-wrap: wrap;
+  }
+}
 </style>

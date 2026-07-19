@@ -89,7 +89,7 @@
       <!-- 통계: 실제 도메인 데이터(가입/후기/신고/회원 분포) 기반 차트 -->
       <h2 class="section-label">통계 <span class="section-note">실데이터</span></h2>
       <div class="chart-grid">
-        <section class="panel">
+        <section v-reveal class="panel">
           <div class="panel-head">
             <h3 class="panel-title">가입 추이</h3>
             <div class="period-picker">
@@ -103,18 +103,18 @@
           </div>
           <MiniBarChart :data="signupSeries" unit="명" :aria-label="`${signupYear}년 ${signupMonth}월 가입 추이`" />
         </section>
-        <section class="panel">
+        <section v-reveal class="panel">
           <div class="panel-head">
             <h3 class="panel-title">콘텐츠 활동 추이</h3>
             <span class="panel-sub">최근 14일</span>
           </div>
           <MiniLineChart :series="activitySeries" unit="건" aria-label="최근 14일 후기·신고 추이" />
         </section>
-        <section class="panel">
+        <section v-reveal class="panel">
           <h3 class="panel-title">회원 역할 분포</h3>
           <MiniDonutChart :data="roleSegments" aria-label="회원 역할 분포" />
         </section>
-        <section class="panel">
+        <section v-reveal class="panel">
           <h3 class="panel-title">회원 상태 분포</h3>
           <MiniDonutChart :data="statusSegments" aria-label="회원 상태 분포" />
         </section>
@@ -122,7 +122,7 @@
 
       <!-- 하단: 바로가기(정지된 계정 등) + 시스템 상태 -->
       <div class="dash-cols">
-        <section class="panel">
+        <section v-reveal class="panel">
           <h2 class="panel-title">관리 바로가기</h2>
           <div class="quick-list">
             <RouterLink class="quick-row" to="/admin/banned">
@@ -158,7 +158,7 @@
           </div>
         </section>
 
-        <section id="system" class="panel">
+        <section id="system" v-reveal class="panel">
           <div class="system-head">
             <h2 class="panel-title">시스템 상태</h2>
             <button class="system-refresh" :disabled="healthLoading" @click="checkExternalHealth(true)">
@@ -196,6 +196,7 @@ import MiniBarChart from '@/components/admin/charts/MiniBarChart.vue'
 import MiniLineChart from '@/components/admin/charts/MiniLineChart.vue'
 import MiniDonutChart from '@/components/admin/charts/MiniDonutChart.vue'
 import AnimatedNumber from '@/components/common/AnimatedNumber.vue'
+import { vReveal } from '@/composables/useReveal'
 
 const summary = ref({
   userCount: null,
@@ -364,6 +365,17 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* 통계/실데이터 패널 — 스크롤해서 뷰포트에 들어올 때 fade-up (v-reveal).
+   첫 화면 아래라 로드 시 애니메이션을 놓치던 문제 해결. reduced-motion이면 즉시 노출. */
+@media (prefers-reduced-motion: no-preference) {
+  .reveal-init { opacity: 0; transform: translateY(16px); }
+  .reveal-in {
+    opacity: 1;
+    transform: none;
+    transition: opacity 0.5s ease, transform 0.6s cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+}
+
 /* 다른 관리자 페이지(회원관리 등)와 동일하게 admin-main 폭을 그대로 꽉 채운다(유동).
    차트는 높이 고정(ResizeObserver 픽셀 렌더)이라 폭이 넓어져도 세로로 길어지지 않으므로
    상한 없이 디스플레이에 맞춰 늘어나고, 화면을 줄이면 아래 브레이크포인트로 자연스럽게 접힌다. */
@@ -718,5 +730,22 @@ onMounted(() => {
 @media (max-width: 1024px) {
   .chart-grid { grid-template-columns: 1fr; }
   .dash-cols { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .admin-page-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .head-actions { width: 100%; }
+  /* 현황 카드: 좁은 화면에서 2열 고정(auto-fit 220px면 1열이 되어 허전) */
+  .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .stat-card { padding: 16px; }
+  .stat-value { font-size: 26px; }
+  /* 차트/바로가기 패널은 min-width:0 유지(SVG 가로 오버플로 방지) + 여백 축소 */
+  .panel { padding: 16px; }
+  .quick-row { padding: 10px; }
 }
 </style>

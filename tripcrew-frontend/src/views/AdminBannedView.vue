@@ -262,4 +262,19 @@ onMounted(load)
   background: var(--bg-2);
   border-radius: 6px;
 }
+
+/* ── 반응형 ── */
+@media (max-width: 640px) {
+  .admin-page-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .head-actions { width: 100%; }
+  /* 넓은 표는 열을 지우지 않고 가로 스크롤 */
+  .table-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .admin-table { min-width: 680px; }
+  .action-btn { padding: 8px 12px; }
+}
 </style>
