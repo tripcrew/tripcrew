@@ -23,7 +23,7 @@
 ![MySQL](https://img.shields.io/badge/MySQL-8-4479A1?logo=mysql&logoColor=white)
 ![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white)
 
-![Last Commit](https://img.shields.io/github/last-commit/jhyungit/tripcrew)
+![Last Commit](https://img.shields.io/github/last-commit/tripcrew/tripcrew)
 ![Status](https://img.shields.io/badge/status-live-brightgreen)
 ![Deploy](https://img.shields.io/badge/deploy-AWS_EC2-FF9900?logo=amazonaws&logoColor=white)
 
@@ -65,7 +65,7 @@
 | 👥 **공동 편집** | 친구와 함께 실시간으로 여행 계획 편집 |
 | 📊 **공공데이터 기반** | 한국관광공사 TourAPI를 활용한 신뢰성 있는 정보 |
 
-> 단순 CRUD를 넘어 **트래픽 대응 · 외부 API 장애 처리 · 데이터 정합성 · 실시간 동기화** 등 실무 도전 과제를 도메인에 녹인 백엔드 학습용 4주 캡스톤 프로젝트입니다.
+> 단순 CRUD를 넘어 **쿼리 성능 최적화 · 데이터 정합성 · 외부 API 장애 처리 · 실시간 동기화** 등 실무 도전 과제를 도메인에 녹인, SSAFY 15기 관통 4주 팀 프로젝트입니다.
 
 <br/>
 
@@ -211,6 +211,22 @@ sequenceDiagram
 
 관광지 조회/추가 이벤트마다 `ZINCRBY`로 점수를 증가시킵니다. RDBMS 집계 대비 **O(log N)** 갱신 성능을 확보합니다.
 
+### 시나리오 F · 관리자 회원 조회 성능 최적화
+
+관리자 페이지의 회원 목록 조회가 초기엔 전체 회원을 로드한 뒤 애플리케이션 메모리에서 필터·정렬·페이징하는 구조였습니다. 더미 데이터 30만 건에서 조회에 **0.473초**가 걸렸고, `EXPLAIN` 결과 풀 테이블 스캔(`type: ALL`)과 별도 정렬(`Using filesort`)이 병목이었습니다.
+
+**서버 사이드 페이징 + `(role, created_at)` 복합 인덱스**로 전환해 정렬을 인덱스가 대신하도록 하고 `LIMIT`으로 조기 종료되게 했습니다. 그 결과 동일 조건에서 **0.473초 → 0.018초 (약 26배)**, `type`은 `ALL → ref`, `Using filesort`는 제거됨을 `EXPLAIN`으로 확인했습니다.
+
+```sql
+-- (role, created_at) 복합 인덱스로 정렬 비용 제거 + LIMIT 조기 종료
+SELECT ... FROM users
+ WHERE role = ?
+ ORDER BY created_at DESC
+ LIMIT ? OFFSET ?;
+```
+
+> `OFFSET`이 커질수록(10만 이상) 앞 행을 모두 세고 버리는 비용 때문에 다시 느려지는 것을 확인했고, 대용량 페이징의 근본 해법은 커서(키셋) 페이징임을 실측으로 파악했습니다.
+
 <br/>
 
 ---
@@ -231,7 +247,7 @@ sequenceDiagram
 | **공동 편집** | `/plans/:id/edit` | WebSocket + 낙관적 락 |
 | 내 계획 리스트 | `/plans` | 페이지네이션 |
 | 후기 작성 / 조회 | `/attractions/:id/reviews` | 로컬 파일시스템 업로드 |
-| 관리자 페이지 | `/admin/users` | ADMIN 권한 |
+| 관리자 페이지 | `/admin/users` | ADMIN 권한 · 회원 조회 최적화(시나리오 F) |
 | 에러 / 빈 상태 | `/errors/:type` | 403 / 404 / 오프라인 |
 
 <!-- ────────────────────────────────────────────────
@@ -349,8 +365,8 @@ AWS EC2에 `docker-compose.prod.yml` + **Caddy**(리버스 프록시 · HTTPS �
 
 | 이름 | 역할 | GitHub | 담당 영역 |
 |---|:---:|---|---|
-| **이정현** | 팀장 | [@jhyungit](https://github.com/jhyungit) | 인증 · 캐싱 · 공동 편집 · ERD |
-| **고용훈** | 팀원 | [@ita010](https://github.com/ita010) | 동선 최적화 · 챗봇 · 인프라 |
+| **이정현** | 팀장 | [@jhyungit](https://github.com/jhyungit) | 인증 · 캐싱 · 공동 편집 · 관리자 페이지(회원 조회 성능 최적화) · ERD |
+| **고용훈** | 팀원 | [@ita010](https://github.com/ita010) | 동선 최적화 · 챗봇 · 관광지 조회 최적화 · 인프라 |
 
 <br/>
 
