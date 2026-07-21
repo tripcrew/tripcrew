@@ -10,8 +10,9 @@
 
 const MAX_CANDIDATES = 12
 
-// 후보에서 떼어낼 흔한 접미 동작어/조사(장소명 자체가 아닌 꼬리)
-const TRAILING_NOISE = /\s*(?:을|를|은|는|이|가|에서|에게|으로|로|에)?\s*(?:방문|관람|관람사|구경|둘러보기|둘러보고|체험|산책|탐방|투어|일정|코스|추천|즐기기|구경하기|감상|이용)?\s*$/
+// 후보 끝에서 떼어낼 명백한 동작어만(장소명의 일부인 조사/'로' 등은 건드리지 않는다).
+// 예: "성산일출봉 방문"→"성산일출봉". "외옹치 바다향기로"는 '로'가 이름 일부라 보존.
+const TRAILING_NOISE = /\s*(?:을|를|은|는|이|가|에서|에게)?\s*(?:방문|탐방|둘러보기|둘러보고|구경하기|즐기기)\s*$/
 
 // 후보로 잡혀도 무의미한 일반 단어(장소명이 아님) — 주로 구획 라벨/일반명사
 const STOPWORDS = new Set([
@@ -85,15 +86,44 @@ function isViableCandidate(cleaned) {
 
 /** 검색 결과 title 과 후보명이 실제로 같은 장소를 가리키는지 판정 */
 export function isNameMatch(candidate, title) {
-  const a = normalizeName(candidate)
-  const b = normalizeName(title)
+  const a = normalizeName(candidate) // 후보(챗봇 텍스트)
+  const b = normalizeName(title) // DB 관광지명
   if (!a || !b) return false
   if (a === b) return true
-  // 한쪽이 다른 쪽을 포함하되, 짧은 쪽이 최소 3자 이상일 때만 인정(과매칭 방지)
-  const shorter = a.length <= b.length ? a : b
-  const longer = a.length <= b.length ? b : a
-  if (shorter.length >= 3 && longer.includes(shorter)) return true
+  // DB 공식명이 후보를 통째로 포함(후보 = 공식명의 일부) → 신뢰도 높음
+  if (a.length >= 3 && b.includes(a)) return true
+  // 후보가 DB명을 포함하는 반대 방향은 오매칭 위험(예: "외옹치바다향기로" ⊃ "바다향기").
+  // 짧은 무관한 이름이 걸리지 않게, 길이가 후보의 60% 이상일 때만 인정.
+  if (b.length >= 3 && a.includes(b) && b.length >= a.length * 0.6) return true
   return false
+}
+
+/** 관광지의 지역 토큰(시/도·시/군/구 + 접미사 제거형)을 뽑는다. 지역 일치 검사용. */
+export function attractionRegionTokens(attraction) {
+  const toks = []
+  const gugun = String((attraction && attraction.gugun) || '').trim()
+  const sido = String((attraction && attraction.sido) || '').trim()
+  if (gugun) {
+    toks.push(gugun) // "통영시"
+    toks.push(gugun.replace(/(시|군|구|읍|면|동)$/, '')) // "통영"
+  }
+  if (sido) {
+    toks.push(sido) // "경상남도"
+    toks.push(sido.replace(/(특별자치도|특별자치시|특별시|광역시|자치도|도|시)$/, '').replace(/특별자치$/, '')) // "경상남"/"강원"
+  }
+  return [...new Set(toks.filter((t) => t && t.length >= 2))]
+}
+
+/**
+ * 매칭된 관광지의 지역이 여행 텍스트(사용자 질문+챗봇 답변)와 일치하는지 검사.
+ * 관광지의 시/군 또는 시/도 토큰이 텍스트에 전혀 없으면 다른 지역이라 보고 탈락시킨다.
+ * (예: "속초" 추천에 뜬 경남 통영 "바다향기" 차단)
+ */
+export function isRegionConsistent(attraction, contextText) {
+  const haystack = String(contextText || '').replace(/\s+/g, '')
+  const tokens = attractionRegionTokens(attraction)
+  if (tokens.length === 0) return true // 지역 정보 없으면 막지 않음
+  return tokens.some((t) => haystack.includes(t))
 }
 
 /** 이름 비교용 정규화: 공백 제거 + 이름 끝/앞의 #숫자(id) 흔적 제거 */
