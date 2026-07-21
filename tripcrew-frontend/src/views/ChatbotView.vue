@@ -114,7 +114,7 @@ import { attractionApi } from '@/api/attractions'
 import AppHeader from '@/components/common/AppHeader.vue'
 import AddToPlanModal from '@/components/common/AddToPlanModal.vue'
 import ChatRecommendations from '@/components/chat/ChatRecommendations.vue'
-import { extractPlaceNames, isNameMatch } from '@/utils/chatRecommendations'
+import { extractPlaceNames, isNameMatch, isRegionConsistent } from '@/utils/chatRecommendations'
 
 const MAX_RECOMMENDATIONS = 6
 
@@ -245,7 +245,7 @@ async function sendMessage() {
     })
     // 답변은 즉시 표시하고, 추천 관광지 해석은 논블로킹으로 이어서 채운다
     const stored = messages.value[messages.value.length - 1]
-    resolveRecommendations(stored)
+    resolveRecommendations(stored, text)
   } catch (error) {
     errorMessage.value = error?.response?.data?.message || '챗봇 응답 중 오류가 발생했습니다.'
   } finally {
@@ -256,9 +256,12 @@ async function sendMessage() {
 
 // 챗봇 답변에서 장소명 후보를 뽑아 우리 DB 관광지로 해석한다.
 // 매칭된 것만 message.recommendations 에 채워 카드로 노출(환각 장소는 자동 탈락).
-async function resolveRecommendations(message) {
+async function resolveRecommendations(message, userText) {
   const names = extractPlaceNames(message.content)
   if (names.length === 0) return
+
+  // 지역 오매칭 방지용 문맥: 사용자 질문 + 챗봇 답변(예: "속초"가 반복 등장)
+  const context = `${userText || ''} ${message.content}`
 
   message.resolving = true
   await scrollToBottom()
@@ -272,7 +275,10 @@ async function resolveRecommendations(message) {
     const seen = new Set()
     for (const s of settled) {
       if (s.status !== 'fulfilled') continue
-      const match = s.value.items.find((item) => isNameMatch(s.value.name, item.title))
+      // 이름이 맞고 + 지역까지 여행 텍스트와 일치하는 첫 결과만 채택
+      const match = s.value.items.find(
+        (item) => isNameMatch(s.value.name, item.title) && isRegionConsistent(item, context),
+      )
       if (match && !seen.has(match.no)) {
         seen.add(match.no)
         picked.push(match)
