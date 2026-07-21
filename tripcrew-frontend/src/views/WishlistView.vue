@@ -63,62 +63,19 @@
       </div>
     </main>
 
-    <!-- 여행 계획에 담기 모달 -->
-    <transition name="overlay">
-    <div v-if="planModal.open" class="modal-backdrop" @click.self="closePlanModal">
-      <div class="modal">
-        <h3 class="t-h3">여행 계획에 담기</h3>
-        <p class="modal-sub t-caption">{{ cleanDisplayName(planModal.title) }}</p>
-
-        <p v-if="planLoading" class="state-note">계획을 불러오는 중…</p>
-
-        <template v-else-if="planOptions.length === 0">
-          <p class="state-note">아직 만든 여행 계획이 없어요. 먼저 계획을 만들어주세요.</p>
-          <div class="modal-actions">
-            <BaseButton variant="secondary" @click="closePlanModal">닫기</BaseButton>
-            <BaseButton variant="primary" @click="goToPlans">계획 만들러 가기</BaseButton>
-          </div>
-        </template>
-
-        <template v-else>
-          <div class="form-block">
-            <label class="form-label">계획 선택</label>
-            <select v-model="selectedPlanId" class="select-input">
-              <option v-for="p in planOptions" :key="p.id" :value="p.id">{{ p.title }}</option>
-            </select>
-          </div>
-
-          <div class="form-block">
-            <label class="form-label">며칠째 일정</label>
-            <select v-model.number="visitDay" class="select-input">
-              <option v-for="d in dayOptions" :key="d" :value="d">{{ d }}일차</option>
-            </select>
-          </div>
-
-          <p v-if="planModal.error" class="form-error">{{ planModal.error }}</p>
-          <p v-if="planModal.message" class="form-ok">{{ planModal.message }}</p>
-
-          <div class="modal-actions">
-            <BaseButton variant="secondary" @click="closePlanModal">닫기</BaseButton>
-            <BaseButton variant="primary" :disabled="planModal.busy" @click="confirmAddToPlan">
-              {{ planModal.busy ? '담는 중…' : '담기' }}
-            </BaseButton>
-          </div>
-        </template>
-      </div>
-    </div>
-    </transition>
+    <!-- 여행 계획에 담기 모달 (공용 컴포넌트) -->
+    <AddToPlanModal :attraction="planTarget" @close="planTarget = null" />
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AppHeader from '@/components/common/AppHeader.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
+import AddToPlanModal from '@/components/common/AddToPlanModal.vue'
 import { attractionLikeApi } from '@/api/attractionLikes'
-import { tripPlanApi } from '@/api/tripPlans'
 import { useAuthStore } from '@/stores/auth'
 import { vStagger } from '@/composables/useReveal'
 
@@ -130,19 +87,8 @@ const loading = ref(false)
 const loadError = ref('')
 const busyNo = ref(null)
 
-// 계획에 담기 모달
-const planModal = ref({ open: false, no: null, title: '', busy: false, error: '', message: '' })
-const planOptions = ref([])
-const planLoading = ref(false)
-const planLoaded = ref(false)
-const selectedPlanId = ref(null)
-const visitDay = ref(1)
-
-const selectedPlan = computed(() => planOptions.value.find((p) => p.id === selectedPlanId.value))
-const dayOptions = computed(() => {
-  const count = planDayCount(selectedPlan.value)
-  return Array.from({ length: count }, (_, i) => i + 1)
-})
+// 계획에 담기 모달 대상 { no, title } — null 이면 닫힘
+const planTarget = ref(null)
 
 function formatCount(n) {
   return n > 999 ? '999+' : String(n || 0)
@@ -158,22 +104,12 @@ function cleanDisplayName(value) {
     .replace(/(?:\s+\(?#?\d{5,}\)?)+\s*$/g, '')
     .replace(/^\s*(?:\(?#?\d{5,}\)?\s+)+/g, '')
 }
-function planDayCount(plan) {
-  if (!plan || !plan.startDate || !plan.endDate) return 1
-  const start = new Date(plan.startDate)
-  const end = new Date(plan.endDate)
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return 1
-  return Math.floor((end - start) / 86400000) + 1
-}
 
 function goExplore() {
   router.push('/attractions')
 }
 function goToDetail(no) {
   router.push(`/attractions/${no}`)
-}
-function goToPlans() {
-  router.push('/plans')
 }
 
 async function load() {
@@ -201,43 +137,8 @@ async function removeLike(item) {
   }
 }
 
-async function openAddToPlan(item) {
-  planModal.value = { open: true, no: item.no, title: item.title, busy: false, error: '', message: '' }
-  if (planLoaded.value) return
-  planLoading.value = true
-  try {
-    planOptions.value = await tripPlanApi.list()
-    planLoaded.value = true
-    selectedPlanId.value = planOptions.value.length ? planOptions.value[0].id : null
-    visitDay.value = dayOptions.value[0] || 1
-  } catch (e) {
-    planModal.value.error = '여행 계획 목록을 불러오지 못했어요.'
-  } finally {
-    planLoading.value = false
-  }
-}
-function closePlanModal() {
-  planModal.value.open = false
-}
-async function confirmAddToPlan() {
-  if (!selectedPlanId.value || planModal.value.busy) return
-  planModal.value.busy = true
-  planModal.value.error = ''
-  planModal.value.message = ''
-  try {
-    const days = dayOptions.value
-    if (!days.includes(visitDay.value)) visitDay.value = days[0] || 1
-    await tripPlanApi.addPlace(selectedPlanId.value, {
-      attractionId: planModal.value.no,
-      visitDay: visitDay.value || null,
-      memo: null,
-    })
-    planModal.value.message = '여행 계획에 담았어요.'
-  } catch (e) {
-    planModal.value.error = e?.response?.data?.message || '계획에 담지 못했어요.'
-  } finally {
-    planModal.value.busy = false
-  }
+function openAddToPlan(item) {
+  planTarget.value = { no: item.no, title: item.title }
 }
 
 onMounted(() => {
@@ -479,76 +380,7 @@ onMounted(() => {
   font-size: 13px;
 }
 
-/* 모달 */
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  display: grid;
-  place-items: center;
-  z-index: 100;
-  padding: 16px;
-}
-
-.modal {
-  background: var(--surface);
-  border-radius: var(--r-xl);
-  padding: 28px;
-  width: 100%;
-  max-width: 420px;
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.2);
-}
-
-.modal-sub {
-  margin: 6px 0 18px;
-  color: var(--teal);
-  font-weight: 600;
-}
-
-.form-block {
-  margin-bottom: 16px;
-}
-
-.form-label {
-  display: block;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--ink-2);
-  margin-bottom: 8px;
-}
-
-.select-input {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--line-2);
-  border-radius: 10px;
-  font-size: 14px;
-  background: var(--bg-soft);
-}
-
-.form-error {
-  font-size: 13px;
-  color: var(--danger);
-  margin-bottom: 8px;
-}
-
-.form-ok {
-  font-size: 13px;
-  color: var(--teal-ink);
-  margin-bottom: 8px;
-}
-
-.modal-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.modal-actions :deep(button) {
-  flex: 1;
-}
-
-/* ── 반응형: 카드 그리드/모달 모바일 대응 ── */
+/* ── 반응형: 카드 그리드 모바일 대응 (모달은 공용 AddToPlanModal 컴포넌트가 담당) ── */
 @media (max-width: 900px) {
   .wishlist-layout { padding-left: var(--space-4); padding-right: var(--space-4); }
 }
@@ -562,8 +394,5 @@ onMounted(() => {
   .wish-card__thumb { height: 160px; }
   /* 상세/담기 버튼 터치 타깃 확보 */
   .card-actions :deep(button) { padding: 11px 10px; }
-  .select-input { padding: 12px; }
-  /* 모달: 화면 안에 들어오도록 폭 제한 + 세로 스크롤 */
-  .modal { width: min(94vw, 420px); padding: 22px 20px; max-height: 88vh; overflow-y: auto; }
 }
 </style>
