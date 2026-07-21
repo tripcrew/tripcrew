@@ -53,6 +53,15 @@
               <div v-else class="msg__bubble">
                 <div class="markdown-message" v-html="renderMessage(message.content)"></div>
               </div>
+
+              <div v-if="message.resolving" class="reco-loading">
+                <span class="reco-loading__spark">✦</span> 추천 관광지 찾는 중…
+              </div>
+              <ChatRecommendations
+                v-else-if="message.recommendations && message.recommendations.length"
+                :attractions="message.recommendations"
+                @add="openAddToPlan"
+              />
             </div>
           </div>
 
@@ -91,6 +100,8 @@
         </footer>
       </section>
     </main>
+
+    <AddToPlanModal :attraction="planTarget" @close="planTarget = null" />
   </div>
 </template>
 
@@ -99,7 +110,16 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import { chatApi } from '@/api/chat'
+import { attractionApi } from '@/api/attractions'
 import AppHeader from '@/components/common/AppHeader.vue'
+import AddToPlanModal from '@/components/common/AddToPlanModal.vue'
+import ChatRecommendations from '@/components/chat/ChatRecommendations.vue'
+import { extractPlaceNames, isNameMatch } from '@/utils/chatRecommendations'
+
+const MAX_RECOMMENDATIONS = 6
+
+// 계획에 담기 모달 대상 관광지 { no, title } — null 이면 닫힘
+const planTarget = ref(null)
 
 const input = ref('')
 const route = useRoute()
@@ -220,13 +240,56 @@ async function sendMessage() {
       id: crypto.randomUUID(),
       role: 'ASSISTANT',
       content: response.answer || '답변을 가져오지 못했어요.',
+      recommendations: [],
+      resolving: false,
     })
+    // 답변은 즉시 표시하고, 추천 관광지 해석은 논블로킹으로 이어서 채운다
+    const stored = messages.value[messages.value.length - 1]
+    resolveRecommendations(stored)
   } catch (error) {
     errorMessage.value = error?.response?.data?.message || '챗봇 응답 중 오류가 발생했습니다.'
   } finally {
     loading.value = false
     await scrollToBottom()
   }
+}
+
+// 챗봇 답변에서 장소명 후보를 뽑아 우리 DB 관광지로 해석한다.
+// 매칭된 것만 message.recommendations 에 채워 카드로 노출(환각 장소는 자동 탈락).
+async function resolveRecommendations(message) {
+  const names = extractPlaceNames(message.content)
+  if (names.length === 0) return
+
+  message.resolving = true
+  await scrollToBottom()
+  try {
+    const settled = await Promise.allSettled(
+      names.map((name) =>
+        attractionApi.search({ keyword: name, size: 3 }).then((res) => ({ name, items: res.items || [] })),
+      ),
+    )
+    const picked = []
+    const seen = new Set()
+    for (const s of settled) {
+      if (s.status !== 'fulfilled') continue
+      const match = s.value.items.find((item) => isNameMatch(s.value.name, item.title))
+      if (match && !seen.has(match.no)) {
+        seen.add(match.no)
+        picked.push(match)
+      }
+      if (picked.length >= MAX_RECOMMENDATIONS) break
+    }
+    message.recommendations = picked
+  } catch {
+    message.recommendations = []
+  } finally {
+    message.resolving = false
+    await scrollToBottom()
+  }
+}
+
+function openAddToPlan(attraction) {
+  planTarget.value = { no: attraction.no, title: attraction.title }
 }
 
 async function scrollToBottom() {
@@ -365,6 +428,19 @@ async function scrollToBottom() {
 .markdown-message :deep(strong) {
   color: var(--ink);
   font-weight: 800;
+}
+
+.reco-loading {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reco-loading__spark {
+  color: var(--teal);
 }
 
 /* Main */
